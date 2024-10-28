@@ -1,16 +1,16 @@
 import './App.css'
-import FaceDetection from './components/facedection/facedection'
-
+import createRoute from "./components/index";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 function App() {
-
+  const createRoutes = createRoute();
   return (
-    <>
-  <div>
-      <h1>Face Detection Demo</h1>
-      <FaceDetection width={640} height={480} modelPath='/models/weights'/>
-    </div>
-    </>
-  )
-}
-
-export default App
+    <BrowserRouter>
+      <Routes>
+        {createRoutes.map((route, index) => (
+          <Route key={index} path={route.path} element={route.element} />
+        ))}
+      </Routes>
+        </BrowserRouter>)
+        
+      }
+export default App;
