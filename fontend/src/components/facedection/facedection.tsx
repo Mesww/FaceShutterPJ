@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
-
+import { BACKEND_URL } from '../../configs/backend';
 interface FaceDetectionProps {
   width?: number;
   height?: number;
@@ -15,9 +15,11 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
+  const [stream, setStream] = useState<MediaStream|null>(null);
   const [error, setError] = useState<string>('');
   const [loadingStatus, setLoadingStatus] = useState<string>('');
-
+  const name = 'test';
+  const employee_id = '123456';
   useEffect(() => {
     const loadModels = async () => {
       try {
@@ -43,6 +45,7 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
 
     return () => {
       if (videoRef.current && videoRef.current.srcObject) {
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         const stream = videoRef.current.srcObject as MediaStream;
         const tracks = stream.getTracks();
         tracks.forEach(track => track.stop());
@@ -62,6 +65,7 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
           }
         });
         videoRef.current.srcObject = stream;
+        setStream(stream)
       } catch (err) {
         setError(`Error accessing webcam: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -101,8 +105,9 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
         alert('โปรดอยู่คนเดียวนะไอเหี้ย');
       }
 
-      if (faceEmbeddings.length > 0 && faceEmbeddings.length < 2) {
-        // sendEmbeddingsToBackend(faceEmbeddings);
+      if (faceEmbeddings.length > 0 && faceEmbeddings.length < 2 && stream ) {
+        stream.getTracks().forEach(track => track.stop());
+        sendEmbeddingsToBackend(faceEmbeddings);
         console.log(faceEmbeddings);
       }
 
@@ -126,6 +131,33 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
   if (loadingStatus) {
     return <div className="text-blue-600">{loadingStatus}</div>;
   }
+  const sendEmbeddingsToBackend = (embeddings: Float32Array[]) => {
+    // Convert Float32Array to regular array
+    const embeddingsArray = embeddings.map(embedding => Array.from(embedding));
+  const payload = { embedding: embeddingsArray, name, employee_id };
+  
+  console.log('Sending payload to backend:', payload); // Log the payload
+    fetch(BACKEND_URL + '/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ embedding: embeddingsArray, name, employee_id })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok ' + response.statusText);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log(data);
+    })
+    .catch(error => {
+      console.error('Error sending face embeddings:', error);
+    });
+  };
+
 
   return (
     <div className="relative">
