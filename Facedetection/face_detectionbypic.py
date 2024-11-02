@@ -3,10 +3,10 @@ import numpy as np
 import cv2
 
 # โหลดภาพ reference สำหรับการรู้จำ
-bank_image = face_recognition.load_image_file("bank.jpg")
+bank_image = face_recognition.load_image_file("/Users/pumpkin/Documents/FaceRecognitionProject/FaceShutterPJ/Facedetection/bank.jpg")
 bank_face_encoding = face_recognition.face_encodings(bank_image)[0]
 
-tu_image = face_recognition.load_image_file("Tu.jpg")
+tu_image = face_recognition.load_image_file("/Users/pumpkin/Documents/FaceRecognitionProject/FaceShutterPJ/Facedetection/Tu.jpg")
 tu_face_encoding = face_recognition.face_encodings(tu_image)[0]
 
 # สร้างลิสต์สำหรับการเข้ารหัสใบหน้าและชื่อ
@@ -14,8 +14,8 @@ known_face_encodings = [bank_face_encoding, tu_face_encoding]
 known_face_names = ["BANK", "TU"]
 
 # โหลดภาพที่ต้องการตรวจจับใบหน้า
-image_path = "bank.jpg"  # เปลี่ยนเป็นชื่อไฟล์ของคุณ
-comparison_image_path = "Tu.jpg"  # เปลี่ยนเป็นชื่อไฟล์ของภาพที่ต้องการเปรียบเทียบ
+image_path = "/Users/pumpkin/Documents/FaceRecognitionProject/FaceShutterPJ/Facedetection/Tu.jpg"  # เปลี่ยนเป็นชื่อไฟล์ของคุณ
+comparison_image_path = "/Users/pumpkin/Documents/FaceRecognitionProject/FaceShutterPJ/Facedetection/Tu.jpg"  # เปลี่ยนเป็นชื่อไฟล์ของภาพที่ต้องการเปรียบเทียบ
 
 # โหลดภาพ
 frame = cv2.imread(image_path)
