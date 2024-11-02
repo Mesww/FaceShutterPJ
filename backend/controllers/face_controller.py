@@ -30,12 +30,19 @@ async def register_user(
         # print("Raw request data:", json.dumps(request.dict()))
         # Convert embeddings to binary
         # Register user with embedding
-        user = await FaceAuthService.register_user(db, request.employee_id, request.name, request.embedding)
-        
+        user, is_new = await FaceAuthService.register_user(db, request.employee_id, request.name, request.embedding)
+        if not is_new:
+            return {
+                "message": "Authenticate successfully",
+                "user_id": user.users_id,
+                "name": user.name
+            }
+        elif user is None:
+            raise HTTPException(status_code=400, detail="User already exists, Please scan again")
         return {
             "message": "User registered successfully",
-            "user_id": user.id,
-            "username": user.username
+            "user_id": user.users_id,
+            "name": user.name
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

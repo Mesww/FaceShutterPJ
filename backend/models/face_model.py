@@ -23,9 +23,9 @@ class User(Base):
     roles = Column(Enum(RoleEnum), nullable=False)
     embedding = Column(BLOB, nullable=False)
     create_at = Column(DateTime, server_default=func.now(), nullable=False)
-
+    updated_at = Column(DateTime, onupdate=func.now(), nullable=True)
     def __repr__(self):
-        return f"<User(id={self.users_id}, username='{self.name}')>"
+        return f"<User(users_id={self.users_id}, name='{self.name}')>"
     
 class FaceEmbedding(BaseModel):
     user_id: str

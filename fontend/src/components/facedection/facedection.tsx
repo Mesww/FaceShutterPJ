@@ -18,8 +18,9 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
   const [stream, setStream] = useState<MediaStream|null>(null);
   const [error, setError] = useState<string>('');
   const [loadingStatus, setLoadingStatus] = useState<string>('');
-  const name = 'test';
-  const employee_id = '123456';
+  const [name, setName] = useState<string|null>(null);
+  const [employee_id, setEmployee_id] = useState<string|null>(null);
+  const [is_register, setIs_register] = useState<boolean>(false);
   useEffect(() => {
     const loadModels = async () => {
       try {
@@ -71,10 +72,10 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
       }
     };
 
-    if (isModelLoaded) {
+    if (isModelLoaded&&is_register) {
       startVideo();
     }
-  }, [isModelLoaded, width, height]);
+  }, [isModelLoaded, width, height,is_register]);
 
   const handleVideoPlay = () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -105,8 +106,11 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
         alert('โปรดอยู่คนเดียวนะไอเหี้ย');
       }
 
-      if (faceEmbeddings.length > 0 && faceEmbeddings.length < 2 && stream ) {
+      if (faceEmbeddings.length > 0 && faceEmbeddings.length < 2 && stream && context) {
         stream.getTracks().forEach(track => track.stop());
+        context.clearRect(0, 0, width, height);
+        faceapi.nets.faceRecognitionNet.dispose();
+        faceapi.nets.faceExpressionNet.dispose();
         sendEmbeddingsToBackend(faceEmbeddings);
         console.log(faceEmbeddings);
       }
@@ -147,6 +151,9 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
     .then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok ' + response.statusText);
+      }else if (response.status === 409) {
+        alert(response.statusText);
+        window.location.reload();
       }
       return response.json();
     })
@@ -160,7 +167,20 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
 
 
   return (
-    <div className="relative">
+  <>
+  <div className=''>
+    <div>
+    <label className='mr-2'>ชื่อ</label>
+    <input className=' border-2 rounded-xl' type="text" onChange={(e) => setName(e.target.value)} />
+    </div>
+    <div>
+    <label className='mr-2'>รหัสพนักงาน</label>
+    <input className=' border-2 rounded-xl' type="text" onChange={(e) => setEmployee_id(e.target.value)} />
+    </div>
+    <button className='border-2 rounded-xl bg-red-500 px-3' onClick={() => {if (name && employee_id) {setIs_register(true)} else {alert('กรุณากรอกชื่อและรหัสพนักงาน')}}}>ยืนยัน</button>
+      
+  </div>
+  <div className="relative">
       <video
         ref={videoRef}
         className="absolute top-0 left-0"
@@ -178,6 +198,7 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({
         height={height}
       />
     </div>
+  </>
   );
 };
 
