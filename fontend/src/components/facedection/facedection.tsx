@@ -1,205 +1,163 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as faceapi from 'face-api.js';
-import { BACKEND_URL } from '../../configs/backend';
-interface FaceDetectionProps {
-  width?: number;
-  height?: number;
-  modelPath?: string;
-}
+import { useRef, useState } from 'react';
 
-const FaceDetection: React.FC<FaceDetectionProps> = ({ 
-  width = 640, 
-  height = 480,
-  modelPath = '/models/weights' 
-}) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isModelLoaded, setIsModelLoaded] = useState(false);
-  const [stream, setStream] = useState<MediaStream|null>(null);
-  const [error, setError] = useState<string>('');
-  const [loadingStatus, setLoadingStatus] = useState<string>('');
-  const [name, setName] = useState<string|null>(null);
-  const [employee_id, setEmployee_id] = useState<string|null>(null);
-  const [is_register, setIs_register] = useState<boolean>(false);
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        setLoadingStatus('Loading models...');
-        
-        const MODEL_URL = modelPath;
+const CameraCapture = () => {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const VITE_BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+  const [name, setName] = useState<string>('');
+  const [employeeId, setEmployeeId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-        await faceapi.nets.tinyFaceDetector.load(MODEL_URL);
-        await faceapi.nets.faceLandmark68Net.load(MODEL_URL);
-        await faceapi.nets.faceRecognitionNet.load(MODEL_URL);
-        await faceapi.nets.faceExpressionNet.load(MODEL_URL);
-
-        setIsModelLoaded(true);
-        setLoadingStatus('');
-      } catch (err) {
-        console.error('Error loading models:', err);
-        setError(`Error loading models: ${err instanceof Error ? err.message : String(err)}`);
-        setLoadingStatus('');
-      }
-    };
-
-    loadModels();
-
-    return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        const stream = videoRef.current.srcObject as MediaStream;
-        const tracks = stream.getTracks();
-        tracks.forEach(track => track.stop());
-      }
-    };
-  }, [modelPath]);
-
-  useEffect(() => {
-    const startVideo = async () => {
-      if (!videoRef.current || !isModelLoaded) return;
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: {
-            width: { ideal: width },
-            height: { ideal: height }
-          }
-        });
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        setStream(stream)
-      } catch (err) {
-        setError(`Error accessing webcam: ${err instanceof Error ? err.message : String(err)}`);
       }
-    };
-
-    if (isModelLoaded&&is_register) {
-      startVideo();
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      alert('Failed to access camera. Please ensure camera permissions are granted.');
     }
-  }, [isModelLoaded, width, height,is_register]);
+  };
 
-  const handleVideoPlay = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    const displaySize = { width, height };
-    faceapi.matchDimensions(canvasRef.current, displaySize);
-
-    const detectFaces = async () => {
-      if (!videoRef.current || !canvasRef.current) return;
-
-      const detections = await faceapi
-        .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceExpressions().withFaceDescriptors();
-
-      const resizedDetections = faceapi.resizeResults(detections, displaySize);
-      const context = canvasRef.current.getContext('2d');
+  const captureImage = () => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    if (canvas && video && video.videoWidth && video.videoHeight) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      if (!context) return;
       
-      if (context) {
-        context.clearRect(0, 0, width, height);
-        faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
-        faceapi.draw.drawFaceLandmarks(canvasRef.current, resizedDetections);
-        faceapi.draw.drawFaceExpressions(canvasRef.current, resizedDetections);
-      }
-      const faceEmbeddings = resizedDetections.map(d => d.descriptor); 
-
-      if (faceEmbeddings.length > 1) {
-        alert('โปรดอยู่คนเดียวนะไอเหี้ย');
-      }
-
-      if (faceEmbeddings.length > 0 && faceEmbeddings.length < 2 && stream && context) {
-        stream.getTracks().forEach(track => track.stop());
-        context.clearRect(0, 0, width, height);
-        faceapi.nets.faceRecognitionNet.dispose();
-        faceapi.nets.faceExpressionNet.dispose();
-        sendEmbeddingsToBackend(faceEmbeddings);
-        console.log(faceEmbeddings);
-      }
-
-      requestAnimationFrame(detectFaces); // Use requestAnimationFrame for continuous detection
-    };
-
-    detectFaces(); // Start detecting faces
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          setCapturedImage(URL.createObjectURL(blob));
+        }
+      }, 'image/jpeg', 0.8);
+    }
   };
 
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-500 rounded-md">
-        <p className="text-red-700">{error}</p>
-        <p className="text-sm text-red-600 mt-2">
-          Please make sure the model files are in the correct location: {modelPath}
-        </p>
-      </div>
-    );
-  }
+  const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setName(event.target.value);
+  };
 
-  if (loadingStatus) {
-    return <div className="text-blue-600">{loadingStatus}</div>;
-  }
-  const sendEmbeddingsToBackend = (embeddings: Float32Array[]) => {
-    // Convert Float32Array to regular array
-    const embeddingsArray = embeddings.map(embedding => Array.from(embedding));
-  const payload = { embedding: embeddingsArray, name, employee_id };
-  
-  console.log('Sending payload to backend:', payload); // Log the payload
-    fetch(BACKEND_URL + '/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ embedding: embeddingsArray, name, employee_id })
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok ' + response.statusText);
-      }else if (response.status === 409) {
-        alert(response.statusText);
-        window.location.reload();
+  const handleEmployeeIdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setEmployeeId(event.target.value);
+  };
+
+  const sendImageToBackend = async () => {
+    if (!capturedImage) {
+      alert('Please capture an image first');
+      return;
+    }
+    if (!name || !employeeId) {
+      alert('Please enter both name and employee ID');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Convert data URL to Blob
+      const response = await fetch(capturedImage);
+      const blob = await response.blob();
+
+      const formData = new FormData();
+      formData.append('image', blob, `${name}_${employeeId}.jpg`);
+      formData.append('name', name);
+      formData.append('employee_id', employeeId);
+
+      const apiResponse = await fetch(`${VITE_BACKEND_URL}/api/auth/register`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        throw new Error(errorData.detail || 'Registration failed');
       }
-      return response.json();
-    })
-    .then(data => {
+
+      const data = await apiResponse.json();
+      alert('Registration successful!');
       console.log(data);
-    })
-    .catch(error => {
-      console.error('Error sending face embeddings:', error);
-    });
-  };
 
+      // Reset form
+      setName('');
+      setEmployeeId('');
+      setCapturedImage(null);
+
+    } catch (error) {
+      console.error('Error:', error);
+      alert(error instanceof Error ? error.message : 'Registration failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-  <>
-  <div className=''>
-    <div>
-    <label className='mr-2'>ชื่อ</label>
-    <input className=' border-2 rounded-xl' type="text" onChange={(e) => setName(e.target.value)} />
+    <div className="p-4 max-w-md mx-auto">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <input 
+            className="w-full p-2 border-2 rounded-lg"
+            type="text"
+            placeholder="Name"
+            value={name}
+            onChange={handleNameChange}
+          />
+          <input 
+            className="w-full p-2 border-2 rounded-lg"
+            type="text"
+            placeholder="Employee ID"
+            value={employeeId}
+            onChange={handleEmployeeIdChange}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <video 
+            ref={videoRef}
+            autoPlay
+            className="w-full border rounded-lg"
+          />
+          <div className="flex space-x-2">
+            <button
+              onClick={startCamera}
+              className="flex-1 bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600"
+            >
+              Start Camera
+            </button>
+            <button
+              onClick={captureImage}
+              className="flex-1 bg-green-500 text-white p-2 rounded-lg hover:bg-green-600"
+            >
+              Capture Image
+            </button>
+          </div>
+        </div>
+
+        {capturedImage && (
+          <div className="space-y-2">
+            <img 
+              src={capturedImage}
+              alt="Captured"
+              className="w-full border rounded-lg"
+            />
+            <button
+              onClick={sendImageToBackend}
+              disabled={isLoading}
+              className="w-full bg-purple-500 text-white p-2 rounded-lg hover:bg-purple-600 disabled:bg-gray-400"
+            >
+              {isLoading ? 'Sending...' : 'Send to Backend'}
+            </button>
+          </div>
+        )}
+
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+      </div>
     </div>
-    <div>
-    <label className='mr-2'>รหัสพนักงาน</label>
-    <input className=' border-2 rounded-xl' type="text" onChange={(e) => setEmployee_id(e.target.value)} />
-    </div>
-    <button className='border-2 rounded-xl bg-red-500 px-3' onClick={() => {if (name && employee_id) {setIs_register(true)} else {alert('กรุณากรอกชื่อและรหัสพนักงาน')}}}>ยืนยัน</button>
-      
-  </div>
-  <div className="relative">
-      <video
-        ref={videoRef}
-        className="absolute top-0 left-0"
-        autoPlay
-        playsInline
-        muted
-        width={width}
-        height={height}
-        onPlay={handleVideoPlay}
-      />
-      <canvas
-        ref={canvasRef}
-        className="absolute top-0 left-0"
-        width={width}
-        height={height}
-      />
-    </div>
-  </>
   );
 };
 
-export default FaceDetection;
+export default CameraCapture;

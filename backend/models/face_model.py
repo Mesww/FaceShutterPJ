@@ -21,9 +21,9 @@ class User(Base):
     name = Column(String(60), unique=True, nullable=False)
     employee_id = Column(String(60), unique=True, nullable=False)
     roles = Column(Enum(RoleEnum), nullable=False)
-    embedding = Column(BLOB, nullable=False)
-    create_at = Column(DateTime, server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime, onupdate=func.now(), nullable=True)
+    image_name = Column(String(100), nullable=False)
+    create_at = Column(DateTime, unique=True, server_default=func.now(), nullable=False)
+    update_at = Column(DateTime, onupdate=func.now(), nullable=True)
     def __repr__(self):
         return f"<User(users_id={self.users_id}, name='{self.name}')>"
     
