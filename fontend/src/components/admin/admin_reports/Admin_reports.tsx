@@ -5,7 +5,7 @@ import 'jspdf-autotable';
 import { UserOptions } from 'jspdf-autotable';
 // import autoTable from 'jspdf-autotable';
 // import 'jspdf-autotable';
-import THSarabunNew from "../../../../public/font/THSarabunNew.ttf";
+import THSarabunNew from "/font/THSarabunNew.ttf";
 
 const AdminReports = () => {
   const [searchReportName, setSearchReportName] = useState("");
