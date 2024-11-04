@@ -8,15 +8,21 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  Bell,
 } from "lucide-react";
 import AdminManage from "../admin_manage/Admin_manage";
 import AdminAccess from "../admin_access/Admin_access";
 import AdminReports from "../admin_reports/Admin_reports";
+import NotificationProblem from "../admin_notification/NotificationProblem";
 import "../admin_dashboard/Admin_dashboard.css";
 
 const AdminDashboard = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activePage, setActivePage] = useState("user-management");
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  // Dummy notifications count - you can replace this with actual data
+  const notificationCount = 3;
 
   const menuItems = [
     {
@@ -129,20 +135,45 @@ const AdminDashboard = () => {
               </p>
             </div>
 
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <User size={20} className="text-red-600" />
+            <div className="flex items-center space-x-6">
+              {/* Notification Icon */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <Bell size={20} className="text-gray-600" />
+                  {notificationCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                      {notificationCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notification Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <NotificationProblem />
+                  </div>
+                )}
               </div>
-              <div className="text-right">
-                <div className="font-medium text-gray-900">ผู้ดูแลระบบ</div>
-                <div className="text-sm text-gray-500">admin@example.com</div>
+
+              {/* User Profile */}
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <User size={20} className="text-red-600" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium text-gray-900">ผู้ดูแลระบบ</div>
+                  <div className="text-sm text-gray-500">admin@example.com</div>
+                </div>
               </div>
             </div>
           </div>
         </header>
 
         {/* Content Area */}
-        <main className="container mx-auto p-6"> {/* Added container and mx-auto */}
+        <main className="container mx-auto p-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
             {activePage === "user-management" && <AdminManage />}
             {activePage === "system-access" && <AdminAccess />}

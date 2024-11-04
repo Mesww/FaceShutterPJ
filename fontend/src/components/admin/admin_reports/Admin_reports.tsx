@@ -1,37 +1,54 @@
 import { useState } from 'react';
-import { Search, Download, File } from 'lucide-react';
+import { Search, File, FileSpreadsheet } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-import { UserOptions } from 'jspdf-autotable';
-// import autoTable from 'jspdf-autotable';
-// import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import THSarabunNew from "/font/THSarabunNew.ttf";
+import * as XLSX from 'xlsx';
+
+interface AttendanceRecord {
+  id: number;
+  name: string;
+  date: string;
+  checkIn: string;
+  checkOut: string;
+  checkInStatus: string;
+  checkOutStatus: string;
+  note: string;
+}
 
 const AdminReports = () => {
   const [searchReportName, setSearchReportName] = useState("");
-  const [attendanceRecords] = useState([
+  const [attendanceRecords] = useState<AttendanceRecord[]>([
     {
       id: 1,
       name: "John Doe",
-      date: "2024-11-02",
-      checkIns: [
-        { time: "08:45:23", type: "เข้างาน" },
-        { time: "12:30:11", type: "พักเที่ยง" },
-        { time: "13:15:45", type: "กลับเข้างาน" },
-        { time: "17:30:00", type: "ออกงาน" },
-      ],
+      date: "2024-11-01",
+      checkIn: "08:45",
+      checkOut: "17:30",
+      checkInStatus: "เข้าปกติ",
+      checkOutStatus: "ออกปกติ",
+      note: "-"
     },
     {
       id: 2,
       name: "Jane Smith",
-      date: "2024-11-02", 
-      checkIns: [
-        { time: "09:00:00", type: "เข้างาน" },
-        { time: "12:15:33", type: "พักเที่ยง" },
-        { time: "13:00:22", type: "กลับเข้างาน" },
-        { time: "18:00:15", type: "ออกงาน" },
-      ],
+      date: "2024-11-15",
+      checkIn: "09:00",
+      checkOut: "-",
+      checkInStatus: "เข้าปกติ",
+      checkOutStatus: "ไม่ได้ลงเวลาออก",
+      note: "-"
     },
+    {
+      id: 3,
+      name: "Bob Johnson",
+      date: "2024-11-20",
+      checkIn: "-",
+      checkOut: "-",
+      checkInStatus: "-",
+      checkOutStatus: "-",
+      note: "วันหยุด"
+    }
   ]);
 
   const [startDate, setStartDate] = useState(
@@ -48,119 +65,115 @@ const AdminReports = () => {
       record.date <= endDate
   );
 
-interface CheckIn {
-  time: string;
-  type: string;  // Changed from union type to string since that's what your data has
-}
+  const getCombinedStatus = (checkInStatus: string, checkOutStatus: string, note: string): string => {
+    if (checkInStatus === '-' && checkOutStatus === '-' && note === 'วันหยุด') {
+      return 'นอกเวลา';
+    }
+    if (checkInStatus === 'เข้าปกติ' && checkOutStatus === 'ออกปกติ') {
+      return 'มาปกติ';
+    }
+    if (checkInStatus === 'เข้าปกติ' && checkOutStatus === 'ไม่ได้ลงเวลาออก') {
+      return 'ขาดงาน';
+    }
+    return `${checkInStatus} - ${checkOutStatus}`;
+  };
 
-interface AttendanceRecord {
-  id: number;    // Added this field
-  date: string;
-  name: string;
-  checkIns: CheckIn[];
-}
+  const downloadAttendanceExcel = () => {
+    // สร้างข้อมูลสำหรับ Excel
+    const excelData = filteredAttendanceRecords.map(record => ({
+      'วันที่': formatDateForDisplay(record.date),
+      'ชื่อ-นามสกุล': record.name,
+      'เวลาเข้า': record.checkIn,
+      'เวลาออก': record.checkOut,
+      'สถานะ': getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note),
+      'หมายเหตุ': record.note
+    }));
 
-interface CheckInAccumulator {
-  [key: string]: string | undefined;
-}
+    // สร้าง workbook และ worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
 
-interface jsPDFWithAutoTable extends jsPDF {
-  autoTable: (options: UserOptions) => jsPDF;
-}
-
-
-const downloadAttendanceRecords = () => {
-  const csvContent = [
-    "วันที่,ชื่อ-นามสกุล,เวลาเข้างาน,เวลาพักเที่ยง,กลับเข้างาน,เวลาออกงาน",
-    ...filteredAttendanceRecords.map((record: AttendanceRecord) => {
-      const checkIns = record.checkIns.reduce<CheckInAccumulator>((acc, check) => {
-        acc[check.type] = check.time;
-        return acc;
-      }, {});
-
-      // Format the date here
-      const formattedDate = formatDateForDisplay(record.date);
-
-      return `${formattedDate},${record.name},${checkIns["เข้างาน"] || "-"},${
-        checkIns["พักเที่ยง"] || "-"
-      },${checkIns["กลับเข้างาน"] || "-"},${checkIns["ออกงาน"] || "-"}`;
-    }),
-  ].join("\n");
-
-  const blob = new Blob(["\ufeff" + csvContent], {
-    type: "text/csv;charset=utf-8;",
-  });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.setAttribute("href", url);
-  link.setAttribute("download", `attendance_report_${startDate}_to_${endDate}.csv`);
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
-const downloadAttendancePDF = () => {
-  const doc = new jsPDF("p", "mm", "a4") as jsPDFWithAutoTable;
-  
-  doc.addFont(THSarabunNew, "THSarabun", "normal");
-  doc.setFont("THSarabun");
-  
-  // Format dates for the header
-  const formattedStartDate = formatDateForDisplay(startDate);
-  const formattedEndDate = formatDateForDisplay(endDate);
-  
-  doc.setFontSize(18);
-  doc.text(`รายงานการเข้าออกงาน วันที่ ${formattedStartDate} ถึง ${formattedEndDate}`, 14, 22);
-  
-  const tableData = filteredAttendanceRecords.map((record: AttendanceRecord) => {
-    const checkIns = record.checkIns.reduce<CheckInAccumulator>((acc, check) => {
-      acc[check.type] = check.time;
-      return acc;
-    }, {});
-
-    // Format the date for table data
-    const formattedDate = formatDateForDisplay(record.date);
-
-    return [
-      formattedDate,  // Use formatted date here
-      record.name,
-      checkIns["เข้างาน"] || "-",
-      checkIns["พักเที่ยง"] || "-",
-      checkIns["กลับเข้างาน"] || "-",
-      checkIns["ออกงาน"] || "-",
+    // ตั้งค่าความกว้างของคอลัมน์
+    const columnWidths = [
+      { wch: 20 }, // วันที่
+      { wch: 25 }, // ชื่อ-นามสกุล
+      { wch: 10 }, // เวลาเข้า
+      { wch: 10 }, // เวลาออก
+      { wch: 15 }, // สถานะ
+      { wch: 15 }  // หมายเหตุ
     ];
-  });
+    ws['!cols'] = columnWidths;
 
-  doc.autoTable({
-    startY: 30,
-    head: [
-      [
-        "วันที่",
-        "ชื่อ-นามสกุล",
-        "เวลาเข้างาน",
-        "เวลาพักเที่ยง",
-        "กลับเข้างาน",
-        "เวลาออกงาน",
-      ],
-    ],
-    body: tableData,
-    theme: "striped",
-    styles: {
-      font: "THSarabun",
-      fontSize: 12,
-      cellPadding: 3,
-    },
-    headStyles: {
-      font: "THSarabun",
-      fillColor: [31, 41, 55],
-    },
-  });
+    // เพิ่ม worksheet ลงใน workbook
+    XLSX.utils.book_append_sheet(wb, ws, "รายงานการเข้าออกงาน");
 
-  doc.save(`attendance_report_${formattedStartDate}_to_${formattedEndDate}.pdf`);
-};
+    // บันทึกไฟล์
+    const formattedStartDate = formatDateForDisplay(startDate);
+    const formattedEndDate = formatDateForDisplay(endDate);
+    XLSX.writeFile(wb, `รายงานการเข้าออกงาน_${formattedStartDate}_ถึง_${formattedEndDate}.xlsx`);
+  };
 
-  const formatDateForDisplay = (dateString:string) => {
+  const downloadAttendancePDF = () => {
+    const doc = new jsPDF();
+    
+    // Add Thai font support
+    doc.addFont(THSarabunNew, "THSarabun", "normal");
+    doc.setFont("THSarabun");
+    
+    const formattedStartDate = formatDateForDisplay(startDate);
+    const formattedEndDate = formatDateForDisplay(endDate);
+    
+    // Set title
+    doc.setFontSize(18);
+    doc.text(`รายงานการเข้าออกงาน`, 14, 15);
+    doc.setFontSize(14);
+    doc.text(`วันที่ ${formattedStartDate} ถึง ${formattedEndDate}`, 14, 22);
+    
+    const tableData = filteredAttendanceRecords.map((record) => {
+      const status = getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note);
+      const formattedDate = formatDateForDisplay(record.date);
+      return [
+        formattedDate,
+        record.name,
+        record.checkIn,
+        record.checkOut,
+        status,
+        record.note,
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 30,
+      head: [["วันที่", "ชื่อ-นามสกุล", "เวลาเข้า", "เวลาออก", "สถานะ", "หมายเหตุ"]],
+      body: tableData,
+      theme: "grid",
+      styles: {
+        font: "THSarabun",
+        fontSize: 14,
+        cellPadding: 4,
+        overflow: 'linebreak',
+        halign: 'center'
+      },
+      headStyles: {
+        font: "THSarabun",
+        fillColor: [31, 41, 55],
+        fontSize: 14,
+        halign: 'center'
+      },
+      columnStyles: {
+        0: { halign: 'left' },  // วันที่
+        1: { halign: 'left' },  // ชื่อ-นามสกุล
+        2: { halign: 'center' }, // เวลาเข้า
+        3: { halign: 'center' }, // เวลาออก
+        4: { halign: 'center' }, // สถานะ
+        5: { halign: 'left' }   // หมายเหตุ
+      }
+    });
+
+    doc.save(`รายงานการเข้าออกงาน_${formattedStartDate}_ถึง_${formattedEndDate}.pdf`);
+  };
+
+  const formatDateForDisplay = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('th-TH', {
       year: 'numeric',
@@ -170,94 +183,98 @@ const downloadAttendancePDF = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center">
-            <label htmlFor="start-date" className="mr-3">
-              วันที่เริ่มต้น:
+    <div className="space-y-4">
+      {/* Filter Section */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              วันที่เริ่มต้น
             </label>
             <input
               type="date"
-              id="start-date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="p-2 border rounded"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div className="flex items-center">
-            <label htmlFor="end-date" className="mr-3">
-              วันที่สิ้นสุด:
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              วันที่สิ้นสุด
             </label>
             <input
               type="date"
-              id="end-date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="p-2 border rounded"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
               min={startDate}
             />
           </div>
-        </div>
-
-        <div className="flex items-center bg-gray-100 rounded p-2">
-          <Search className="w-5 h-5 text-gray-500 mr-2" />
-          <input
-            type="text"
-            placeholder="ค้นหาชื่อ"
-            value={searchReportName}
-            onChange={(e) => setSearchReportName(e.target.value)}
-            className="bg-transparent border-none focus:outline-none w-48"
-          />
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              ค้นหาชื่อ
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="ค้นหาชื่อ"
+                value={searchReportName}
+                onChange={(e) => setSearchReportName(e.target.value)}
+                className="w-full p-2 pl-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+              <Search className="w-4 h-4 text-gray-500 absolute left-2 top-3" />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto">
-        <table className="w-full border-collapse border">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-3 text-left font-semibold border-b">วันที่</th>
-              <th className="p-3 text-left font-semibold border-b">ชื่อ-นามสกุล</th>
-              <th className="p-3 text-left font-semibold border-b">เวลาเข้างาน</th>
-              <th className="p-3 text-left font-semibold border-b">เวลาพักเที่ยง</th>
-              <th className="p-3 text-left font-semibold border-b">กลับเข้างาน</th>
-              <th className="p-3 text-left font-semibold border-b">เวลาออกงาน</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAttendanceRecords.map((record) => (
-              <tr key={record.id} className="border-b">
-                <td className="p-3">{formatDateForDisplay(record.date)}</td>
-                <td className="p-3">{record.name}</td>
-                {["เข้างาน", "พักเที่ยง", "กลับเข้างาน", "ออกงาน"].map(
-                  (type) => (
-                    <td key={type} className="p-3">
-                      {record.checkIns.find(
-                        (check) => check.type === type
-                      )?.time || "-"}
-                    </td>
-                  )
-                )}
+      {/* Table Section */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">ชื่อ-นามสกุล</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะ</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">หมายเหตุ</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredAttendanceRecords.map((record) => (
+                <tr key={record.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{formatDateForDisplay(record.date)}</td>
+                  <td className="px-4 py-3 text-sm">{record.name}</td>
+                  <td className="px-4 py-3 text-sm text-center">{record.checkIn}</td>
+                  <td className="px-4 py-3 text-sm text-center">{record.checkOut}</td>
+                  <td className="px-4 py-3 text-sm text-center">
+                    {getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-center">{record.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="flex justify-end mt-6 space-x-4">
+      {/* Action Buttons */}
+      <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-end space-x-4">
         <button
-          onClick={downloadAttendanceRecords}
-          className="bg-green-600 text-white px-4 py-2 rounded flex items-center space-x-2 hover:bg-green-700"
+          onClick={downloadAttendanceExcel}
+          className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
         >
-          <Download className="w-5 h-5" />
-          <span>ดาวน์โหลดรายงาน Excel</span>
+          <FileSpreadsheet className="w-4 h-4 mr-2" />
+          <span>ดาวน์โหลด Excel</span>
         </button>
         <button
           onClick={downloadAttendancePDF}
-          className="bg-red-600 text-white px-4 py-2 rounded flex items-center space-x-2 hover:bg-red-700"
+          className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
         >
-          <File className="w-5 h-5" />
-          <span>ดาวน์โหลดรายงาน PDF</span>
+          <File className="w-4 h-4 mr-2" />
+          <span>ดาวน์โหลด PDF</span>
         </button>
       </div>
     </div>
