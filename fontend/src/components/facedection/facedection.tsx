@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 
-const CameraCapture = () => {
+
+
+const CameraCapture  = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -8,7 +10,6 @@ const CameraCapture = () => {
   const [name, setName] = useState<string>('');
   const [employeeId, setEmployeeId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -38,6 +39,8 @@ const CameraCapture = () => {
       }, 'image/jpeg', 0.8);
     }
   };
+
+  
 
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setName(event.target.value);
