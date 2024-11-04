@@ -40,6 +40,8 @@ const CameraCapture  = () => {
     }
   };
 
+  
+
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setName(event.target.value);
   };

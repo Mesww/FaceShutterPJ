@@ -99,8 +99,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({ modelPath = '/models/weight
           setCapturedsendImage(URL.createObjectURL(blob));
         }
       }, 'image/jpeg', 0.8);
+
       if (capturedsendImage) {
-        
+        console.log('captured face image:', capturedsendImage !== null);
+      
         await sendImageToBackend(setIsLoading, capturedsendImage, name, employeeId);
       }
       // stopDetection(); // Stop further detection
@@ -108,13 +110,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({ modelPath = '/models/weight
     }
   };
   
-  // const stopDetection = () => {
-  //   if (detectionIntervalRef.current) {
-  //     clearInterval(detectionIntervalRef.current);
-  //     detectionIntervalRef.current = null;
-  //   }
-  // };
-  // Function to start camera
+
   const startCamera = async () => {
     try {
       setCapturedImage(null); // Clear any previously captured image
@@ -227,19 +223,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({ modelPath = '/models/weight
             <video ref={videoRef} autoPlay playsInline className="video-feed absolute inset-0 w-full h-full object-cover" />
           )}
           <canvas ref={canvasRef} style={{ display: 'none' }} /> {/* Hidden canvas */}
-
-      {/* <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-      /> */}
-       {/* <canvas
-      ref={canvasRef}
-      className="absolute inset-0 w-full h-full"
-      width={videoRef.current?.videoWidth || 640}
-      height={videoRef.current?.videoHeight || 480}
-    /> */}
 
       <div className="relative h-screen flex flex-col z-10">
         <div className="h-20" />

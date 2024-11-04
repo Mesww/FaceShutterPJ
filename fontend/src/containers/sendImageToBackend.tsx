@@ -7,7 +7,7 @@ export const sendImageToBackend = async (setIsLoading: React.Dispatch<React.SetS
       return;
     }
     try {
-        
+     setIsLoading(true); 
       // Convert data URL to Blob
       const response = await fetch(capturedImage);
       const blob = await response.blob();
@@ -30,10 +30,12 @@ export const sendImageToBackend = async (setIsLoading: React.Dispatch<React.SetS
       const data:interfaceResponseFacescanInterface = await apiResponse.json();
       alert('Registration successful!');
       console.log(data);
+      setIsLoading(false);
       return data;
     } catch (error) {
       console.error('Error:', error);
       alert(error instanceof Error ? error.message : 'Registration failed');
+      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
