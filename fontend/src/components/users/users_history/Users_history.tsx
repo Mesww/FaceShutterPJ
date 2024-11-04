@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
 interface AttendanceRecord {
   id: number;
@@ -11,14 +12,12 @@ interface AttendanceRecord {
 }
 
 const AttendanceHistoryPage = () => {
-  // ฟังก์ชันสำหรับหาวันแรกของเดือนปัจจุบัน
   const getFirstDayOfCurrentMonth = () => {
     const date = new Date();
     date.setDate(1);
     return date.toISOString().split('T')[0];
   };
 
-  // ฟังก์ชันสำหรับหาวันสุดท้ายของเดือนปัจจุบัน
   const getLastDayOfCurrentMonth = () => {
     const date = new Date();
     date.setMonth(date.getMonth() + 1);
@@ -28,8 +27,10 @@ const AttendanceHistoryPage = () => {
 
   const [startDate, setStartDate] = useState(getFirstDayOfCurrentMonth());
   const [endDate, setEndDate] = useState(getLastDayOfCurrentMonth());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
-  // Mock data สำหรับประวัติการเข้างาน
+  // Mock data
   const attendanceData: AttendanceRecord[] = [
     {
       id: 1,
@@ -60,7 +61,6 @@ const AttendanceHistoryPage = () => {
     }
   ];
 
-  // ฟังก์ชันสำหรับตรวจสอบและแสดงสถานะรวม
   const getCombinedStatus = (checkInStatus: string, checkOutStatus: string, note: string): string => {
     if (checkInStatus === '-' && checkOutStatus === '-' && note === 'วันหยุด') {
       return 'นอกเวลา';
@@ -74,14 +74,12 @@ const AttendanceHistoryPage = () => {
     return `${checkInStatus} - ${checkOutStatus}`;
   };
 
-  // ฟังก์ชันสำหรับกรองข้อมูลตามช่วงวันที่
   const getFilteredData = (): AttendanceRecord[] => {
     if (!startDate && !endDate) {
       return attendanceData;
     }
   
     return attendanceData.filter(record => {
-      // แปลง string เป็น Date object และ reset เวลาเป็น 00:00:00
       const recordDate = new Date(record.date);
       recordDate.setHours(0, 0, 0, 0);
   
@@ -95,7 +93,6 @@ const AttendanceHistoryPage = () => {
         filterEndDate.setHours(0, 0, 0, 0);
       }
   
-      // ตรวจสอบว่าวันที่อยู่ในช่วงที่เลือกหรือไม่
       if (filterStartDate && filterEndDate) {
         return recordDate >= filterStartDate && recordDate <= filterEndDate;
       } else if (filterStartDate) {
@@ -108,7 +105,6 @@ const AttendanceHistoryPage = () => {
     });
   };
 
-  // ฟังก์ชันสำหรับแปลงรูปแบบวันที่
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('th-TH', {
@@ -118,19 +114,23 @@ const AttendanceHistoryPage = () => {
     });
   };
 
-  // กรองข้อมูลตามช่วงวันที่
   const filteredData = getFilteredData();
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
-    <div className="space-y-6">
-      {/* ส่วนตัวกรองข้อมูล */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="mb-4">
+    <div className="space-y-4">
+      {/* Filter Section */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="flex items-center mb-4">
+          <Calendar className="w-5 h-5 text-blue-600 mr-2" />
           <h2 className="text-lg font-semibold">ตัวกรองข้อมูล</h2>
-          <p className="text-sm text-gray-600">เลือกช่วงวันที่ที่ต้องการดูข้อมูล</p>
         </div>
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="w-full md:w-1/2">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               วันที่เริ่มต้น
             </label>
@@ -138,10 +138,10 @@ const AttendanceHistoryPage = () => {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div className="w-full md:w-1/2">
+          <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               วันที่สิ้นสุด
             </label>
@@ -149,81 +149,99 @@ const AttendanceHistoryPage = () => {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
       </div>
 
-      {/* ตารางประวัติการเข้างาน */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {paginatedData.map((record) => (
+          <div key={record.id} className="bg-white rounded-lg shadow p-4">
+            <div className="flex justify-between items-center mb-3">
+              <div className="text-lg font-medium">{formatDate(record.date)}</div>
+              <div className="text-sm text-gray-500">#{record.id}</div>
+            </div>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-sm text-gray-600">เวลาเข้า:</div>
+                <div className="text-sm font-medium">{record.checkIn}</div>
+                <div className="text-sm text-gray-600">เวลาออก:</div>
+                <div className="text-sm font-medium">{record.checkOut}</div>
+              </div>
+              <div className="pt-2 border-t">
+                <div className="text-sm text-gray-600 mb-1">สถานะ:</div>
+                <div className="text-sm font-medium">
+                  {getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note)}
+                </div>
+              </div>
+              {record.note !== '-' && (
+                <div className="pt-2 border-t">
+                  <div className="text-sm text-gray-600 mb-1">หมายเหตุ:</div>
+                  <div className="text-sm">{record.note}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">ลำดับที่</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">วันที่</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">ลำดับที่</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
                 <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
                 <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะเข้า - ออก</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะเข้า</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะออก</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะ</th>
                 <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">หมายเหตุ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredData.map((record) => (
+              {paginatedData.map((record) => (
                 <tr key={record.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-center text-sm">{record.id}</td>
-                  <td className="px-4 py-3 text-center text-sm">{formatDate(record.date)}</td>
-                  <td className="px-4 py-3 text-center text-sm">{record.checkIn}</td>
-                  <td className="px-4 py-3 text-center text-sm">{record.checkOut}</td>
-                  <td className="px-4 py-3 text-center text-sm">
+                  <td className="px-4 py-3 text-sm">{record.id}</td>
+                  <td className="px-4 py-3 text-sm">{formatDate(record.date)}</td>
+                  <td className="px-4 py-3 text-sm text-center">{record.checkIn}</td>
+                  <td className="px-4 py-3 text-sm text-center">{record.checkOut}</td>
+                  <td className="px-4 py-3 text-sm text-center">
                     {getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note)}
                   </td>
-                  <td className="px-4 py-3 text-center text-sm">{record.checkInStatus}</td>
-                  <td className="px-4 py-3 text-center text-sm">{record.checkOutStatus}</td>
-                  <td className="px-4 py-3 text-center text-sm">{record.note}</td>
+                  <td className="px-4 py-3 text-sm text-center">{record.note}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 bg-gray-50">
-          <div className="flex items-center gap-2">
-            <button className="p-1 rounded-md hover:bg-gray-200">
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-5 w-5" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2"
-              >
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <button className="p-1 rounded-md hover:bg-gray-200">
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-5 w-5" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-            <span className="text-sm text-gray-600">
-              หน้า 1 จาก {Math.ceil(filteredData.length / 10)}
-            </span>
-          </div>
-          <div className="text-sm text-gray-600 hidden md:block">
-            แสดง 1-{Math.min(10, filteredData.length)} จาก {filteredData.length} รายการ
-          </div>
+      {/* Pagination */}
+      <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <span className="text-sm text-gray-600">
+            หน้า {currentPage} จาก {totalPages}
+          </span>
+        </div>
+        <div className="text-sm text-gray-600 hidden sm:block">
+          แสดง {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredData.length)} จาก {filteredData.length} รายการ
         </div>
       </div>
     </div>
