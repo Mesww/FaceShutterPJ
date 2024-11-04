@@ -1,42 +1,125 @@
 import { useState } from 'react';
 
+interface AttendanceRecord {
+  id: number;
+  date: string;
+  checkIn: string;
+  checkOut: string;
+  checkInStatus: string;
+  checkOutStatus: string;
+  note: string;
+}
+
 const AttendanceHistoryPage = () => {
-  const [selectedMonth, setSelectedMonth] = useState('10');
-  const [selectedYear, setSelectedYear] = useState('2024');
+  // ฟังก์ชันสำหรับหาวันแรกของเดือนปัจจุบัน
+  const getFirstDayOfCurrentMonth = () => {
+    const date = new Date();
+    date.setDate(1);
+    return date.toISOString().split('T')[0];
+  };
+
+  // ฟังก์ชันสำหรับหาวันสุดท้ายของเดือนปัจจุบัน
+  const getLastDayOfCurrentMonth = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 1);
+    date.setDate(0);
+    return date.toISOString().split('T')[0];
+  };
+
+  const [startDate, setStartDate] = useState(getFirstDayOfCurrentMonth());
+  const [endDate, setEndDate] = useState(getLastDayOfCurrentMonth());
 
   // Mock data สำหรับประวัติการเข้างาน
-  const attendanceData = [
+  const attendanceData: AttendanceRecord[] = [
     {
+      id: 1,
       date: '2024-10-01',
-      checkIn: '08:30',
+      checkIn: '8:30',
       checkOut: '17:30',
-      status: 'ปกติ'
+      checkInStatus: 'เข้าปกติ',
+      checkOutStatus: 'ออกปกติ',
+      note: '-'
     },
     {
-      date: '2024-10-02',
-      checkIn: '08:45',
-      checkOut: '17:45',
-      status: 'เข้างานสาย'
+      id: 2,
+      date: '2024-10-15',
+      checkIn: '8:15',
+      checkOut: '-',
+      checkInStatus: 'เข้าปกติ',
+      checkOutStatus: 'ไม่ได้ลงเวลาออก',
+      note: '-'
     },
     {
-      date: '2024-10-03',
-      checkIn: '08:15',
-      checkOut: '17:30',
-      status: 'ปกติ'
-    },
-    {
-      date: '2024-10-04',
-      checkIn: '08:50',
-      checkOut: '17:30',
-      status: 'เข้างานสาย'
-    },
-    {
-      date: '2024-10-05',
-      checkIn: '08:20',
-      checkOut: '17:30',
-      status: 'ปกติ'
+      id: 3,
+      date: '2024-10-20',
+      checkIn: '-',
+      checkOut: '-',
+      checkInStatus: '-',
+      checkOutStatus: '-',
+      note: 'วันหยุด'
     }
   ];
+
+  // ฟังก์ชันสำหรับตรวจสอบและแสดงสถานะรวม
+  const getCombinedStatus = (checkInStatus: string, checkOutStatus: string, note: string): string => {
+    if (checkInStatus === '-' && checkOutStatus === '-' && note === 'วันหยุด') {
+      return 'นอกเวลา';
+    }
+    if (checkInStatus === 'เข้าปกติ' && checkOutStatus === 'ออกปกติ') {
+      return 'มาปกติ';
+    }
+    if (checkInStatus === 'เข้าปกติ' && checkOutStatus === 'ไม่ได้ลงเวลาออก') {
+      return 'ขาดงาน';
+    }
+    return `${checkInStatus} - ${checkOutStatus}`;
+  };
+
+  // ฟังก์ชันสำหรับกรองข้อมูลตามช่วงวันที่
+  const getFilteredData = (): AttendanceRecord[] => {
+    if (!startDate && !endDate) {
+      return attendanceData;
+    }
+  
+    return attendanceData.filter(record => {
+      // แปลง string เป็น Date object และ reset เวลาเป็น 00:00:00
+      const recordDate = new Date(record.date);
+      recordDate.setHours(0, 0, 0, 0);
+  
+      const filterStartDate = startDate ? new Date(startDate) : null;
+      if (filterStartDate) {
+        filterStartDate.setHours(0, 0, 0, 0);
+      }
+  
+      const filterEndDate = endDate ? new Date(endDate) : null;
+      if (filterEndDate) {
+        filterEndDate.setHours(0, 0, 0, 0);
+      }
+  
+      // ตรวจสอบว่าวันที่อยู่ในช่วงที่เลือกหรือไม่
+      if (filterStartDate && filterEndDate) {
+        return recordDate >= filterStartDate && recordDate <= filterEndDate;
+      } else if (filterStartDate) {
+        return recordDate >= filterStartDate;
+      } else if (filterEndDate) {
+        return recordDate <= filterEndDate;
+      }
+      
+      return true;
+    });
+  };
+
+  // ฟังก์ชันสำหรับแปลงรูปแบบวันที่
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  // กรองข้อมูลตามช่วงวันที่
+  const filteredData = getFilteredData();
 
   return (
     <div className="space-y-6">
@@ -44,79 +127,63 @@ const AttendanceHistoryPage = () => {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="mb-4">
           <h2 className="text-lg font-semibold">ตัวกรองข้อมูล</h2>
-          <p className="text-sm text-gray-600">เลือกเดือนและปีที่ต้องการดูข้อมูล</p>
+          <p className="text-sm text-gray-600">เลือกช่วงวันที่ที่ต้องการดูข้อมูล</p>
         </div>
         <div className="flex flex-col md:flex-row gap-4">
-          {/* เลือกเดือน */}
           <div className="w-full md:w-1/2">
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              วันที่เริ่มต้น
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="1">มกราคม</option>
-              <option value="2">กุมภาพันธ์</option>
-              <option value="3">มีนาคม</option>
-              <option value="4">เมษายน</option>
-              <option value="5">พฤษภาคม</option>
-              <option value="6">มิถุนายน</option>
-              <option value="7">กรกฎาคม</option>
-              <option value="8">สิงหาคม</option>
-              <option value="9">กันยายน</option>
-              <option value="10">ตุลาคม</option>
-              <option value="11">พฤศจิกายน</option>
-              <option value="12">ธันวาคม</option>
-            </select>
+            />
           </div>
-
-          {/* เลือกปี */}
           <div className="w-full md:w-1/2">
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              วันที่สิ้นสุด
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="2024">2024</option>
-              <option value="2023">2023</option>
-              <option value="2022">2022</option>
-            </select>
+            />
           </div>
         </div>
       </div>
 
       {/* ตารางประวัติการเข้างาน */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6">
-          <h2 className="text-lg font-semibold">ประวัติการเข้างาน</h2>
-          <p className="text-sm text-gray-600">แสดงข้อมูลการเข้า-ออกงานทั้งหมด</p>
-        </div>
-
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">เวลาเข้า</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">เวลาออก</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">สถานะ</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">ลำดับที่</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">วันที่</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะเข้า - ออก</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะเข้า</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะออก</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">หมายเหตุ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {attendanceData.map((record, index) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">{record.date}</td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">{record.checkIn}</td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">{record.checkOut}</td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium
-                      ${record.status === 'ปกติ' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
-                      {record.status}
-                    </span>
+              {filteredData.map((record) => (
+                <tr key={record.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-center text-sm">{record.id}</td>
+                  <td className="px-4 py-3 text-center text-sm">{formatDate(record.date)}</td>
+                  <td className="px-4 py-3 text-center text-sm">{record.checkIn}</td>
+                  <td className="px-4 py-3 text-center text-sm">{record.checkOut}</td>
+                  <td className="px-4 py-3 text-center text-sm">
+                    {getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note)}
                   </td>
+                  <td className="px-4 py-3 text-center text-sm">{record.checkInStatus}</td>
+                  <td className="px-4 py-3 text-center text-sm">{record.checkOutStatus}</td>
+                  <td className="px-4 py-3 text-center text-sm">{record.note}</td>
                 </tr>
               ))}
             </tbody>
@@ -150,10 +217,12 @@ const AttendanceHistoryPage = () => {
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </button>
-            <span className="text-sm text-gray-600">หน้า 1 จาก 10</span>
+            <span className="text-sm text-gray-600">
+              หน้า 1 จาก {Math.ceil(filteredData.length / 10)}
+            </span>
           </div>
           <div className="text-sm text-gray-600 hidden md:block">
-            แสดง 1-10 จาก 100 รายการ
+            แสดง 1-{Math.min(10, filteredData.length)} จาก {filteredData.length} รายการ
           </div>
         </div>
       </div>
