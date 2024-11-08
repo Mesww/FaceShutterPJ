@@ -4,6 +4,7 @@ import * as faceapi from 'face-api.js';
 import LoadingSpinner from '@/components/loading/loading';
 import { FaceScanPageProps } from '@/interfaces/users_facescan.interface';
 import { sendImageToBackend } from '@/containers/sendImageToBackend';
+import { interfaceResponseFacescanInterface } from '@/interfaces/response_facescan.interface';
 
 const FaceScanPage: React.FC<FaceScanPageProps> = ({ 
   modelPath = '/models/weights',
@@ -16,6 +17,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [loadingmessage, setLoadingMessage] = useState<string | null>(null);
+  const [data_recieved, setData_recieved] = useState<interfaceResponseFacescanInterface | null>(null);
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -143,7 +145,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({
     canvasRef.current.width = videoRef.current.videoWidth;
     canvasRef.current.height = videoRef.current.videoHeight;
 
-    ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+    await ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
     
     try {
       // ! must have  await 
@@ -161,11 +163,15 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({
       stopCamera();
       setLoadingMessage('กำลังส่งข้อมูล...');
       // Send to backend
-      await sendImageToBackend({setIsLoading: setIsLoading, capturedImage: image,name: name,employeeId: employeeId});
-      setLoadingMessage(null);
+      const data = await sendImageToBackend({setIsLoading: setIsLoading, capturedImage: image,name: name,employeeId: employeeId});
+      setData_recieved(data);
+      // alert(data.message);
+      console.log(data_recieved);
+      // handleClose();
+      // setLoadingMessage(null);
     } catch (error) {
       console.error('Error capturing image:', error);
-      alert('Failed to capture image');
+      alert(error);
     }
   };
 

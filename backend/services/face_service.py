@@ -128,6 +128,80 @@ class FaceAuthService:
             raise ValueError(f"Registration/Authentication failed: {str(e)}")
     
     @staticmethod
+    async def edit_user(
+        db: AsyncSession,
+        employee_id: int,
+        name: str | None,
+        image: UploadFile | None = File(...),
+        additional_metadata: Optional[Dict[str, Any]] = None
+    ) -> User:
+        """
+        Edit user details
+        
+        Args:
+            db: Database session
+            employee_id: Employee_id unique identifier
+            name: User's name
+            additional_metadata: Optional additional user data
+            
+        Returns:
+            User object
+        """
+        try:
+            print('Editing user')
+            # Fetch user
+            stmt = select(User).filter(User.employee_id == employee_id)
+            result = await db.execute(stmt)
+            results = result.scalars().all()
+            if len(results) > 1:
+                raise ValueError("Multiple users found with same employee_id")
+            user = results[0]
+            
+            print('User:',user.name)
+            if user is None:
+                raise ValueError("User not found")
+            
+            # Update user details
+            if name and image:
+                
+                user.name = name
+                image_name = await ImageCompairUtils.random_name_image(image.filename)
+                """
+                    Delete old image and upload new image 
+                """ 
+                delete_success = await ImageCompairUtils.delete_Image(os.path.join(image_storage_path, user.image_name))
+                if not delete_success:
+                    raise ValueError("Failed to delete old image")
+                upload_success = await ImageCompairUtils.upload_image(image, os.path.join(image_storage_path, image_name))
+                if not upload_success:
+                    raise ValueError("Failed to upload image")
+                user.image_name = image_name
+                
+            elif name and not image:
+                user.name = name
+                
+            elif image and not name:
+                image_name = await ImageCompairUtils.random_name_image(image.filename)
+                """ Delete old image and upload new image """ 
+                delete_success = await ImageCompairUtils.delete_Image(os.path.join(image_storage_path, user.image_name))
+                if not delete_success:
+                    raise ValueError("Failed to delete old image")
+                upload_success = await ImageCompairUtils.upload_image(image, os.path.join(image_storage_path, image_name))
+                if not upload_success:
+                    raise ValueError("Failed to upload image")
+                user.image_name = image_name
+            
+            user.metadata = json.dumps(additional_metadata) if additional_metadata else None
+            await db.commit()
+            await db.refresh(user)
+            return user
+        
+        except Exception as e:
+            await db.rollback()
+            raise ValueError(f"Failed to edit user: {str(e)}")
+
+        
+    @staticmethod
     async def check_user_exists_with_images(
         db: AsyncSession,
         image: UploadFile

@@ -1,5 +1,5 @@
 import { BACKEND_URL } from "@/configs/backend";
-import { interfaceResponseFacescanInterface } from "@/interfaces/response_facescan,interface";
+import { interfaceResponseFacescanInterface } from "@/interfaces/response_facescan.interface";
 
 // Types
 interface SendImageProps {
@@ -86,7 +86,7 @@ export const sendImageToBackend = async ({
     const data = await handleApiResponse(apiResponse);
 
     // Show success message
-    console.log('Registration successful:', data);
+    // console.log('Registration successful:', data);
     return data;
 
   } catch (error) {

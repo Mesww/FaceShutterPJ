@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Optional, Tuple, Union
 import cv2
 import face_recognition
@@ -70,6 +71,16 @@ class ImageCompairUtils:
         if image is None:
             raise ValueError(f"Failed to load image from path: {image_path}")
         return image
+    
+    @staticmethod
+    def delete_Image(image_path: str) -> bool:
+        """Delete image from path"""
+        try:
+            os.remove(image_path)
+            return True
+        except Exception as e:
+            print(f"Error deleting image: {str(e)}")
+            return False
     
     @staticmethod
     async def upload_image(upload_file: UploadFile, image_path: str) -> bool:

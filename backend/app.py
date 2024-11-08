@@ -1,7 +1,8 @@
 from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 from fastapi import FastAPI
-from backend.routes import face_routes 
+from backend.routes import face_routes, user_routes 
+
 from backend.configs.db import database, engine, Base
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -76,6 +77,12 @@ app.include_router(
     face_routes.router,
     prefix="/api/auth",  # Base path for authentication routes
     tags=["face-authentication"]
+)
+
+app.include_router(
+    user_routes.router,
+    prefix="/api/user",  # Base path for user routes
+    tags=["user"]
 )
 
 if __name__ == "__main__":
