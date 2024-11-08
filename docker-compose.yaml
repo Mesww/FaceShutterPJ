@@ -2,6 +2,7 @@ version: "3.7"
 services:
   database:
     image: mysql:5.7
+    platform: linux/x86_64
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: faceshutter
@@ -15,6 +16,7 @@ services:
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
+    platform: linux/amd64
     environment:
       PMA_HOST: database
       MYSQL_ROOT_PASSWORD: root

@@ -79,12 +79,13 @@ app.include_router(
     tags=["face-authentication"]
 )
 
+# Include routes from user_routes
 app.include_router(
-    user_routes.router,
-    prefix="/api/user",  # Base path for user routes
-    tags=["user"]
+    user_routes.router,  # เพิ่มการรวม user_routes
+    prefix="/api/users",  # Base path for user-related routes
+    tags=["users"]
 )
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
