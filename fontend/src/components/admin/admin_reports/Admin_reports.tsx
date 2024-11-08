@@ -4,6 +4,8 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import THSarabunNew from "/font/THSarabunNew.ttf";
 import * as XLSX from 'xlsx';
+import Sidebar from '../sidebar/Sidebar';
+import Header from '../header/Header';
 
 interface AttendanceRecord {
   id: number;
@@ -16,8 +18,11 @@ interface AttendanceRecord {
   note: string;
 }
 
-const AdminReports = () => {
+const AdminReports: React.FC = () => {
   const [searchReportName, setSearchReportName] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const notificationCount = 3;
   const [attendanceRecords] = useState<AttendanceRecord[]>([
     {
       id: 1,
@@ -115,20 +120,20 @@ const AdminReports = () => {
 
   const downloadAttendancePDF = () => {
     const doc = new jsPDF();
-    
+
     // Add Thai font support
     doc.addFont(THSarabunNew, "THSarabun", "normal");
     doc.setFont("THSarabun");
-    
+
     const formattedStartDate = formatDateForDisplay(startDate);
     const formattedEndDate = formatDateForDisplay(endDate);
-    
+
     // Set title
     doc.setFontSize(18);
     doc.text(`รายงานการเข้าออกงาน`, 14, 15);
     doc.setFontSize(14);
     doc.text(`วันที่ ${formattedStartDate} ถึง ${formattedEndDate}`, 14, 22);
-    
+
     const tableData = filteredAttendanceRecords.map((record) => {
       const status = getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note);
       const formattedDate = formatDateForDisplay(record.date);
@@ -182,100 +187,147 @@ const AdminReports = () => {
     });
   };
 
+  // Map paths to titles and descriptions
+  const menuItems = [
+    {
+      path: "/admin/AdminDashboard",
+      title: "Dashboard",
+      description: "หน้าแดชบอร์ดหลัก",
+    },
+    {
+      path: "/admin/AdminManage",
+      title: "จัดการผู้ใช้งาน",
+      description: "เพิ่ม ลบ แก้ไขข้อมูลผู้ใช้",
+    },
+    {
+      path: "/admin/AdminAccess",
+      title: "สิทธิ์การเข้าถึง",
+      description: "กำหนดสิทธิ์การเข้าถึงระบบ",
+    },
+    {
+      path: "/admin/AdminReports",
+      title: "รายงาน",
+      description: "ดูรายงานการเข้าออกงาน",
+    },
+    {
+      path: "/admin/AdminSettings",
+      title: "ตั้งค่าระบบ",
+      description: "ตั้งค่าทั่วไปของระบบ",
+    },
+  ];
+
+  const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
+
   return (
-    <div className="space-y-4">
-      {/* Filter Section */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              วันที่เริ่มต้น
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              วันที่สิ้นสุด
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              min={startDate}
-            />
-          </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              ค้นหาชื่อ
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="ค้นหาชื่อ"
-                value={searchReportName}
-                onChange={(e) => setSearchReportName(e.target.value)}
-                className="w-full p-2 pl-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-              <Search className="w-4 h-4 text-gray-500 absolute left-2 top-3" />
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar
+        isSidebarCollapsed={isSidebarCollapsed}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
+      />
+      {/* Main Content */}
+      <div className={`flex-1 ${isSidebarCollapsed ? 'ml-16' : 'ml-72'} transition-all duration-300`}>
+        <Header
+          currentMenuItem={currentMenuItem}
+          notificationCount={notificationCount}
+          showNotifications={showNotifications}
+          setShowNotifications={setShowNotifications}
+        />
+
+        <div className="w-full p-4 bg-white">
+          {/* Filter Section */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  วันที่เริ่มต้น
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  วันที่สิ้นสุด
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  min={startDate}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ค้นหาชื่อ
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="ค้นหาชื่อ"
+                    value={searchReportName}
+                    onChange={(e) => setSearchReportName(e.target.value)}
+                    className="w-full p-2 pl-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                  <Search className="w-4 h-4 text-gray-500 absolute left-2 top-3" />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Table Section */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">ชื่อ-นามสกุล</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะ</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">หมายเหตุ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredAttendanceRecords.map((record) => (
-                <tr key={record.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm">{formatDateForDisplay(record.date)}</td>
-                  <td className="px-4 py-3 text-sm">{record.name}</td>
-                  <td className="px-4 py-3 text-sm text-center">{record.checkIn}</td>
-                  <td className="px-4 py-3 text-sm text-center">{record.checkOut}</td>
-                  <td className="px-4 py-3 text-sm text-center">
-                    {getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-center">{record.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          {/* Table Section */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">ชื่อ-นามสกุล</th>
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะ</th>
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredAttendanceRecords.map((record) => (
+                    <tr key={record.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm">{formatDateForDisplay(record.date)}</td>
+                      <td className="px-4 py-3 text-sm">{record.name}</td>
+                      <td className="px-4 py-3 text-sm text-center">{record.checkIn}</td>
+                      <td className="px-4 py-3 text-sm text-center">{record.checkOut}</td>
+                      <td className="px-4 py-3 text-sm text-center">
+                        {getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-center">{record.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-      {/* Action Buttons */}
-      <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-end space-x-4">
-        <button
-          onClick={downloadAttendanceExcel}
-          className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-        >
-          <FileSpreadsheet className="w-4 h-4 mr-2" />
-          <span>ดาวน์โหลด Excel</span>
-        </button>
-        <button
-          onClick={downloadAttendancePDF}
-          className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-        >
-          <File className="w-4 h-4 mr-2" />
-          <span>ดาวน์โหลด PDF</span>
-        </button>
+          {/* Action Buttons */}
+          <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-end space-x-4">
+            <button
+              onClick={downloadAttendanceExcel}
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              <span>ดาวน์โหลด Excel</span>
+            </button>
+            <button
+              onClick={downloadAttendancePDF}
+              className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            >
+              <File className="w-4 h-4 mr-2" />
+              <span>ดาวน์โหลด PDF</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
