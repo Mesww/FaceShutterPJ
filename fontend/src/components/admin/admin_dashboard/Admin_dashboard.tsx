@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import Sidebar from "../sidebar/Sidebar";
 import Header from "../header/Header";
 import "./Admin_dashboard.css";
 
-const AdminDashboard: React.FC = () => {
+const AdminDashboard = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const location = useLocation();
@@ -57,11 +57,10 @@ const AdminDashboard: React.FC = () => {
           setShowNotifications={setShowNotifications}
         />
 
-        <main className="container mx-auto p-6">
+        <div className="container mx-auto p-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <Outlet />
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );

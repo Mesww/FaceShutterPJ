@@ -73,9 +73,8 @@ const UserDashboard = () => {
     <div className="flex min-h-screen bg-gray-100">
       {/* Desktop Sidebar */}
       <div
-        className={`hidden md:block fixed left-0 h-full transition-width duration-300 ease-in-out ${
-          isSidebarCollapsed ? "w-20" : "w-64"
-        }`}
+        className={`hidden md:block fixed left-0 h-full transition-width duration-300 ease-in-out ${isSidebarCollapsed ? "w-20" : "w-64"
+          }`}
         style={{ backgroundColor: colors.secondary }}
       >
         {/* Logo/Header */}
@@ -104,11 +103,10 @@ const UserDashboard = () => {
             <button
               key={item.id}
               onClick={() => handleMenuItemClick(item.id)}
-              className={`w-full text-left mb-2 px-4 py-3 transition-colors ${
-                activePage === item.id
+              className={`w-full text-left mb-2 px-4 py-3 transition-colors ${activePage === item.id
                   ? "bg-blue-700 text-white"
                   : "text-gray-300 hover:bg-blue-600 hover:text-white"
-              }`}
+                }`}
             >
               <div className="flex items-center">
                 <span className="mr-3">{item.icon}</span>
@@ -132,9 +130,8 @@ const UserDashboard = () => {
 
       {/* Main Content */}
       <div
-        className={`flex-1 md:transition-margin md:duration-300 md:ease-in-out ${
-          isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
-        }`}
+        className={`flex-1 md:transition-margin md:duration-300 md:ease-in-out ${isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
+          }`}
       >
         {/* Header */}
         <header className="h-auto md:h-16 bg-white shadow-sm px-4 md:px-6 py-3 md:py-0">

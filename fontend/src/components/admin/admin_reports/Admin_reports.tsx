@@ -18,7 +18,7 @@ interface AttendanceRecord {
   note: string;
 }
 
-const AdminReports: React.FC = () => {
+const AdminReports= () => {
   const [searchReportName, setSearchReportName] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -56,12 +56,14 @@ const AdminReports: React.FC = () => {
     }
   ]);
 
-  const [startDate, setStartDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
-  const [endDate, setEndDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const getCurrentDate = () => {
+    const date = new Date();
+    date.setHours(date.getHours() + 7); // ปรับเวลาเป็น UTC+7 สำหรับเขตเวลาไทย
+    return date.toISOString().split("T")[0]; // แปลงเป็นรูปแบบ YYYY-MM-DD
+  };
+
+  const [startDate, setStartDate] = useState(getCurrentDate());
+  const [endDate, setEndDate] = useState(getCurrentDate());
 
   const filteredAttendanceRecords = attendanceRecords.filter(
     (record) =>
@@ -219,21 +221,34 @@ const AdminReports: React.FC = () => {
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar
-        isSidebarCollapsed={isSidebarCollapsed}
-        setIsSidebarCollapsed={setIsSidebarCollapsed}
-      />
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
+
+      {/* Mobile Sidebar */}
+      <div className={`md:hidden`}>
+        <Sidebar
+          isSidebarCollapsed={false}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+        />
+      </div>
+
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block">
+        <Sidebar
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+        />
+      </div>
+
       {/* Main Content */}
-      <div className={`flex-1 ${isSidebarCollapsed ? 'ml-16' : 'ml-72'} transition-all duration-300`}>
-        <Header
-          currentMenuItem={currentMenuItem}
+      <div className={`flex-1 w-full md:w-auto transition-all duration-300 
+        ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
+        <Header currentMenuItem={currentMenuItem}
           notificationCount={notificationCount}
           showNotifications={showNotifications}
           setShowNotifications={setShowNotifications}
         />
 
-        <div className="w-full p-4 bg-white">
+        <div className="w-full p-2 md:p-4 bg-white">
           {/* Filter Section */}
           <div className="bg-white rounded-lg shadow p-4">
             <div className="flex flex-col sm:flex-row gap-4">

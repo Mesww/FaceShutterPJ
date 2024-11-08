@@ -1,16 +1,16 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Menu } from 'lucide-react';
 import {
-    Users,
-    FileText,
-    Settings,
-    LogOut,
-    Monitor,
+    Scan,
+    History,
+    Bell,
+    User,
     ChevronLeft,
     ChevronRight,
-} from "lucide-react";
+    Menu
+} from 'lucide-react';
 
 interface SidebarProps {
     isSidebarCollapsed: boolean;
@@ -24,43 +24,34 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
 
     const menuItems = [
         {
-            path: "/admin/AdminManage",
-            title: "จัดการผู้ใช้งาน",
-            icon: <Users size={20} />,
-            description: "เพิ่ม ลบ แก้ไขข้อมูลผู้ใช้",
+            path: '/users/UsersFacescan',
+            title: 'สแกนใบหน้า',
+            icon: <Scan size={20} />,
+            description: 'บันทึกเวลาด้วยการสแกนใบหน้า'
         },
         {
-            path: "/admin/AdminAccess",
-            title: "สิทธิ์การเข้าถึง",
-            icon: <Monitor size={20} />,
-            description: "กำหนดสิทธิ์การเข้าถึงระบบ",
+            path: '/users/UsersEditprofile',
+            title: 'แก้ไขข้อมูลส่วนตัว',
+            icon: <User size={20} />,
+            description: 'อัพเดตข้อมูลส่วนตัว เช่น ชื่อ อีเมล'
         },
         {
-            path: "/admin/AdminReports",
-            title: "รายงาน",
-            icon: <FileText size={20} />,
-            description: "ดูรายงานการเข้าออกงาน",
+            path: '/users/UsersHistory',
+            title: 'ประวัติการเข้างาน',
+            icon: <History size={20} />,
+            description: 'ตรวจสอบประวัติการเข้า-ออกงาน'
         },
         {
-            path: "/admin/AdminSettings",
-            title: "ตั้งค่าระบบ",
-            icon: <Settings size={20} />,
-            description: "ตั้งค่าทั่วไปของระบบ",
-        }, {
-            title: 'Logout',
-            description: 'ออกจากระบบ',
-            path: '/admin/login',
-            icon: <LogOut size={24} />
+            path: '/users/UsersNotification',
+            title: 'การแจ้งเตือน',
+            icon: <Bell size={20} />,
+            description: 'รับการแจ้งเตือนเมื่อมีการเปลี่ยนแปลง'
         }
     ];
 
-    const handleLogout = () => {
-        // เพิ่มโลจิกการ logout ที่นี่
-        navigate("/admin/Login");
-    };
-
     const handleNavigate = (path: string) => {
         navigate(path);
+        setIsMobileMenuOpen(false);
     };
 
     // Desktop Sidebar
@@ -69,15 +60,15 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
             className={`hidden md:block fixed top-0 left-0 h-full bg-gray-800 transition-all duration-300 ease-in-out z-20 
             ${isSidebarCollapsed ? 'w-16' : 'w-72'}`}
         >
-            <div className="bg-red-700 px-4 py-4 flex items-center justify-between min-h-[64px]">
+            <div className="bg-blue-700 px-4 py-4 flex items-center justify-between min-h-[64px]">
                 {!isSidebarCollapsed && (
                     <h1 className="text-white text-xl font-semibold truncate">
-                        ADMIN SYSTEM
+                        USERS SYSTEM
                     </h1>
                 )}
                 <button
                     onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                    className="p-2 bg-red-700 rounded-md transition-colors"
+                    className="p-2 bg-blue-700 rounded-md transition-colors"
                 >
                     {isSidebarCollapsed ? (
                         <ChevronRight className="text-white" size={20} />
@@ -93,7 +84,7 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
                         key={item.path}
                         onClick={() => handleNavigate(item.path)}
                         className={`w-full text-left transition-colors duration-200 
-                        ${location.pathname === item.path ? 'bg-red-700' : 'text-gray-300 hover:bg-gray-700'}`}
+                        ${location.pathname === item.path ? 'bg-blue-700' : 'text-gray-300 hover:bg-gray-700'}`}
                     >
                         <div className="px-4 py-3 flex items-center space-x-3">
                             <span
@@ -130,9 +121,9 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
         <div className="md:hidden fixed bottom-4 right-4 z-20">
             <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="bg-gradient-to-r from-red-600 to-red-800 text-white p-4 rounded-full shadow-lg 
-           hover:shadow-xl transform hover:scale-105 transition-all duration-300
-           flex items-center justify-center"
+                className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-full shadow-lg 
+                   hover:shadow-xl transform hover:scale-105 transition-all duration-300
+                   flex items-center justify-center"
             >
                 {isMobileMenuOpen ? (
                     <X size={24} className="text-white" />
@@ -149,8 +140,12 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         transition={{ duration: 0.2 }}
                         className="absolute bottom-16 right-0 w-72 bg-gray-900 rounded-xl shadow-2xl overflow-hidden
-           border border-gray-700"
+                       border border-gray-700"
                     >
+                        {/* <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-4 py-4">
+                            <h2 className="text-white text-xl font-bold tracking-wide">USERS SYSTEM</h2>
+                        </div> */}
+
                         <nav className="py-2">
                             {menuItems.map((item, index) => (
                                 <motion.button
@@ -158,25 +153,19 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: index * 0.1 }}
-                                    onClick={() => {
-                                        if (item.path === '/admin/login') {
-                                            handleLogout();
-                                        } else {
-                                            handleNavigate(item.path);
-                                        }
-                                    }}
+                                    onClick={() => handleNavigate(item.path)}
                                     className={`w-full text-left transition-all duration-200 
-        ${location.pathname === item.path
-                                            ? 'bg-red-600 bg-opacity-20'
+                    ${location.pathname === item.path
+                                            ? 'bg-blue-600 bg-opacity-20'
                                             : 'hover:bg-gray-800'
                                         } group`}
                                 >
                                     <div className="px-4 py-3 flex items-center space-x-4">
                                         <span
                                             className={`flex-shrink-0 transform transition-transform group-hover:scale-110
-              ${location.pathname === item.path
-                                                    ? 'text-red-400'
-                                                    : 'text-gray-400 group-hover:text-red-400'
+                        ${location.pathname === item.path
+                                                    ? 'text-blue-400'
+                                                    : 'text-gray-400 group-hover:text-blue-400'
                                                 }`}
                                         >
                                             {item.icon}
@@ -184,16 +173,16 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
                                         <div className="flex flex-col">
                                             <span
                                                 className={`font-medium transition-colors
-                ${location.pathname === item.path
-                                                        ? 'text-red-400'
-                                                        : 'text-gray-300 group-hover:text-red-400'
+                          ${location.pathname === item.path
+                                                        ? 'text-blue-400'
+                                                        : 'text-gray-300 group-hover:text-blue-400'
                                                     }`}
                                             >
                                                 {item.title}
                                             </span>
                                             <span
                                                 className={`text-sm transition-colors
-                ${location.pathname === item.path
+                          ${location.pathname === item.path
                                                         ? 'text-gray-300'
                                                         : 'text-gray-500 group-hover:text-gray-300'
                                                     }`}

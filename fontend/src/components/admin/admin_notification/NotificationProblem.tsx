@@ -41,7 +41,7 @@ const NotificationProblem = () => {
   );
 
   return (
-    <div className="p-6">
+    <div className="w-full p-2 md:p-4 bg-white">
       <div className="mb-6">
         <input
           type="text"
@@ -52,7 +52,7 @@ const NotificationProblem = () => {
         />
       </div>
 
-      <div className="space-y-4">
+      <div className="w-full p-2 md:p-4 bg-white">
         {filteredNotifications.length > 0 ? (
           filteredNotifications.map((notification) => (
             <div

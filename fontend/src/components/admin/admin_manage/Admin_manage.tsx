@@ -3,6 +3,7 @@ import { Search, Plus, Edit, Trash2, User } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header';
 import "../admin_dashboard/Admin_dashboard.css";
+import { Outlet } from 'react-router-dom';
 
 interface User {
   id: number;
@@ -87,11 +88,6 @@ const AdminManage: React.FC = () => {
   // Map paths to titles and descriptions
   const menuItems = [
     {
-        path: "/admin/AdminDashboard",
-        title: "Dashboard",
-        description: "หน้าแดชบอร์ดหลัก",
-    },
-    {
         path: "/admin/AdminManage",
         title: "จัดการผู้ใช้งาน",
         description: "เพิ่ม ลบ แก้ไขข้อมูลผู้ใช้",
@@ -116,24 +112,36 @@ const AdminManage: React.FC = () => {
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar
-        isSidebarCollapsed={isSidebarCollapsed}
-        setIsSidebarCollapsed={setIsSidebarCollapsed}
-      />
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
+
+      {/* Mobile Sidebar */}
+      <div className={`md:hidden`}>
+        <Sidebar
+          isSidebarCollapsed={false}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+        />
+      </div>
+
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block">
+        <Sidebar
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+        />
+      </div>
 
       {/* Main Content */}
-      <div className={`flex-1 ${isSidebarCollapsed ? 'ml-16' : 'ml-72'} transition-all duration-300`}>
-        <Header
-          currentMenuItem={currentMenuItem}
+      <div className={`flex-1 w-full md:w-auto transition-all duration-300 
+        ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
+        <Header currentMenuItem={currentMenuItem}
           notificationCount={notificationCount}
           showNotifications={showNotifications}
           setShowNotifications={setShowNotifications}
         />
 
         {/* Main content area with proper margin for sidebar */}
-        <div className="w-full p-4 bg-white">
-          <div className="p-8">
+        <main className="w-full p-2 md:p-4 bg-white">
+          <div className="p-3 md:p-6 bg-white rounded-lg shadow overflow-hidden">
             {/* Search and Add User Section */}
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center bg-gray-100 rounded-md p-2">
@@ -266,7 +274,8 @@ const AdminManage: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
+          <Outlet />
+        </main>
       </div>
     </div>
   );
