@@ -2,6 +2,7 @@ from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 from fastapi import FastAPI
 from backend.routes import face_routes 
+from backend.routes import user_routes  # เพิ่มการนำเข้า user_routes
 from backend.configs.db import database, engine, Base
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -78,6 +79,13 @@ app.include_router(
     tags=["face-authentication"]
 )
 
+# Include routes from user_routes
+app.include_router(
+    user_routes.router,  # เพิ่มการรวม user_routes
+    prefix="/api/users",  # Base path for user-related routes
+    tags=["users"]
+)
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
