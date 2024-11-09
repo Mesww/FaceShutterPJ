@@ -4,10 +4,11 @@ To install
 pip install -r requirements.txt
 
 # Development
-uvicorn backend.main:app --reload
-
+    uvicorn backend.main:app --reload
+## Window
+    uvicorn backend.app:app --reload 
 # Production
-gunicorn backend.main:app -w 4 -k uvicorn.workers.UvicornWorker
+    gunicorn backend.main:app -w 4 -k uvicorn.workers.UvicornWorker
 
 .env need 
 COMMUNITY = for get data from router 

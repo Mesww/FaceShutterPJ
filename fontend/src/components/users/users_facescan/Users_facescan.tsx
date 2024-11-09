@@ -5,8 +5,11 @@ import LoadingSpinner from '@/components/loading/loading';
 import { FaceScanPageProps } from '@/interfaces/users_facescan.interface';
 import { sendImageToBackend } from '@/containers/sendImageToBackend';
 import { interfaceResponseFacescanInterface } from '@/interfaces/response_facescan.interface';
+import Sidebar from '../sidebar/Sidebar';
+import Header from '../header/Header.js';
+import { Outlet } from 'react-router-dom';
 
-const FaceScanPage: React.FC<FaceScanPageProps> = ({ 
+const FaceScanPage: React.FC<FaceScanPageProps> = ({
   modelPath = '/models/weights',
   name = 'test',
   employeeId = '123'
@@ -23,6 +26,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Start camera stream
   const startCamera = useCallback(async () => {
@@ -58,14 +63,14 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({
             };
           }
         });
-        
+
         await videoRef.current.play();
         streamRef.current = stream;
-        
+
         // Start face detection after video is playing
         detectFace();
       }
-      
+
       setIsLoading(false);
       setLoadingMessage(null);
     } catch (err) {
@@ -75,7 +80,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({
       setIsLoading(false);
       setLoadingMessage(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [facingMode]);
 
   // Stop camera stream
@@ -115,7 +120,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({
 
     detectionIntervalRef.current = setInterval(async () => {
       if (!videoRef.current) return;
-      
+
       try {
         const detections = await faceapi
           .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
@@ -132,7 +137,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({
         console.error('Face detection error:', error);
       }
     }, 100);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopCamera]);
 
   // Capture image
@@ -204,7 +209,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({
     return () => {
       stopCamera();
     };
-  }, [isScanning, modelPath,startCamera,stopCamera]);
+  }, [isScanning, modelPath, startCamera, stopCamera]);
 
 
   useEffect(() => {
@@ -225,77 +230,131 @@ const FaceScanPage: React.FC<FaceScanPageProps> = ({
     setCapturedImage(null);
   };
 
+
+  // Map paths to titles and descriptions
+  const menuItems = [
+    {
+      path: "/UsersFacescan",
+      title: "สแกนใบหน้า",
+      description: "บันทึกเวลาด้วยการสแกนใบหน้า",
+    },
+    {
+      path: "/UsersEditprofile",
+      title: "แก้ไขข้อมูลส่วนตัว",
+      description: "อัพเดตข้อมูลส่วนตัว เช่น ชื่อ อีเมล",
+    },
+    {
+      path: "/UsersHistory",
+      title: "ประวัติการเข้างาน",
+      description: "ตรวจสอบประวัติการเข้า-ออกงาน",
+    },
+    {
+      path: "/UsersNotification",
+      title: "การแจ้งเตือน",
+      description: "รับการแจ้งเตือนเมื่อมีการเปลี่ยนแปลง",
+    },
+  ];
+
+  const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
+
   return (
-    <div className="w-full">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">สแกนใบหน้า</h3>
-            <Scan className="text-blue-600" size={24} />
-          </div>
-          <p className="text-gray-600 mb-4">
-            บันทึกเวลาเข้างานด้วยการสแกนใบหน้า
-          </p>
-          <button
-            onClick={() => setIsScanning(true)}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-          >
-            <Camera size={20} />
-            <span>เริ่มสแกน</span>
-          </button>
-        </div>
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
 
-        {isScanning && (
-          <div className="fixed inset-0 bg-gray-900 z-50">
-            <button
-              onClick={handleClose}
-              className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
-            >
-              <X size={32} />
-            </button>
-            
-            <button
-              onClick={handleSwitchCamera}
-              className="absolute top-4 left-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
-            >
-              <FlipHorizontal size={24} />
-            </button>
+      {/* Mobile Sidebar */}
+      <div className={`md:hidden`}>
+        <Sidebar
+          isSidebarCollapsed={false}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+        />
+      </div>
 
-            <div className="relative h-screen">
-              {isLoading && (
-                <LoadingSpinner message={loadingmessage} />
-              )} 
-               (
-                <>
-                  {capturedImage ? (
-                    <img 
-                      src={capturedImage} 
-                      alt="Captured face" 
-                      className="absolute inset-0 w-full h-full object-contain"
-                    />
-                  ) : (
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block">
+        <Sidebar
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+        />
+      </div>
+
+      {/* Main Content */}
+      <main className={`flex-1 w-full md:w-auto transition-all duration-300 
+        ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
+        <Header currentMenuItem={currentMenuItem} />
+
+        {/* Main content area with proper margin for sidebar */}
+        <div className="w-full p-2 md:p-4 bg-white">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">สแกนใบหน้า</h3>
+                <Scan className="text-blue-600" size={24} />
+              </div>
+              <p className="text-gray-600 mb-4">
+                บันทึกเวลาเข้างานด้วยการสแกนใบหน้า
+              </p>
+              <button
+                onClick={() => setIsScanning(true)}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Camera size={20} />
+                <span>เริ่มสแกน</span>
+              </button>
+            </div>
+
+            {isScanning && (
+              <div className="fixed inset-0 bg-gray-900 z-50">
+                <button
+                  onClick={handleClose}
+                  className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
+                >
+                  <X size={32} />
+                </button>
+
+                <button
+                  onClick={handleSwitchCamera}
+                  className="absolute top-4 left-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
+                >
+                  <FlipHorizontal size={24} />
+                </button>
+
+                <div className="relative h-screen">
+                  {isLoading && (
+                    <LoadingSpinner message={loadingmessage} />
                   )}
-                  <canvas ref={canvasRef} className="hidden" />
-                  
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative w-64 h-64 border-2 border-blue-400 rounded-lg">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Scan size={48} className="text-blue-400 animate-pulse" />
+                  (
+                  <>
+                    {capturedImage ? (
+                      <img
+                        src={capturedImage}
+                        alt="Captured face"
+                        className="absolute inset-0 w-full h-full object-contain"
+                      />
+                    ) : (
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
+                    <canvas ref={canvasRef} className="hidden" />
+
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="relative w-64 h-64 border-2 border-blue-400 rounded-lg">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Scan size={48} className="text-blue-400 animate-pulse" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </>
-              )
-            </div>
+                  </>
+                  )
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+        <Outlet />
+      </main>
     </div>
   );
 };
