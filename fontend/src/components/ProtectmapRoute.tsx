@@ -13,15 +13,16 @@ const ProtectmapRoute: React.FC<ProtectmapRouteProps> = ({
   // Function to get current user role from localStorage or your auth state management
   const getCurrentUserRole = (): string => {
     // This should be replaced with your actual auth logic
-    return 'ADMIN';
+    return 'USER';
   };
 
   // Function to check if user is authenticated
-//   const isAuthenticated = (): boolean => {
-//     // This should be replaced with your actual auth logic
-//     const token = localStorage.getItem('authToken');
-//     return !!token;
-//   };
+  const isAuthenticated = (): boolean => {
+    // This should be replaced with your actual auth logic
+    // const token = localStorage.getItem('authToken');
+    // replace this with your actual check
+    return true;
+  };
 
   // Check if user has required role
   const hasRequiredRole = (): boolean => {
@@ -30,10 +31,13 @@ const ProtectmapRoute: React.FC<ProtectmapRouteProps> = ({
   };
 
   // If not authenticated, redirect to login
-//   if (!isAuthenticated()) {
-//     return <Navigate to="/admin/Login" replace />;
-//   }
-
+  // if (!isAuthenticated()) {
+  //   return <Navigate to="/admin/Login" replace />;
+  // }
+  if (getCurrentUserRole() === 'ADMIN' && !isAuthenticated()) {
+    return <Navigate to="/admin/login" replace />;
+    
+  }
   // If authenticated but doesn't have required role, redirect to unauthorized page
   // You can create a separate unauthorized page or redirect to home
   if (!hasRequiredRole()) {

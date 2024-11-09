@@ -5,7 +5,7 @@ import usersRoutes from "./components/users/Usersroutes";
 import Adminlayout from "./components/admin/Adminlayout";
 import Userslayout from "./components/users/Userslayout";
 import ProtectmapRoute from "./components/ProtectmapRoute";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 function App() {
   // const createRoutes = createRoute();
   const adminRoute = adminRoutes();
@@ -13,17 +13,18 @@ function App() {
   return (
     <BrowserRouter>
       {/* <Routes>
-        <Route
-          path="/"
-          element={<Navigate to="/faceDetection" />}
-        />
         {createRoutes.map((route, index) => (
           <Route key={index} path={route.path} element={route.element} />
-        ))}
-      </Routes> */}
+          ))}
+          </Routes> */}
 
       {/* Users Routes */}
       <Routes>
+          <Route
+            path="/"
+            element={<Navigate to="/users/UsersFacescan" />}
+          />
+
         <Route
           path="users/*"
           element={
@@ -40,6 +41,9 @@ function App() {
 
       {/* Amin Routes */}
       <Routes>
+        <Route path='/admin/' element={<Navigate to={"/admin/login"}/>}>
+
+        </Route>
         <Route
           path="/admin/*"
           element={
