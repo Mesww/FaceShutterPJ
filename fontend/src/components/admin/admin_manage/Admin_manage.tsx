@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import { Search, Plus, Edit, Trash2, User } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Upload } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header';
-import "../admin_dashboard/Admin_dashboard.css";
 import { Outlet } from 'react-router-dom';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 interface User {
   id: number;
@@ -38,6 +45,7 @@ const AdminManage: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditFormVisible, setIsEditFormVisible] = useState(false);
   const [isAddingUser, setIsAddingUser] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleDeleteUser = (userId: number) => {
     setUsers(users.filter((user) => user.id !== userId));
@@ -57,63 +65,82 @@ const AdminManage: React.FC = () => {
       phone: "",
       avatar: "https://via.placeholder.com/150",
     });
+    setPreviewImage(null);
     setIsAddingUser(true);
     setIsEditFormVisible(true);
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleUpdateUser = (updatedUser: User) => {
+    const userWithNewImage = {
+      ...updatedUser,
+      avatar: previewImage || updatedUser.avatar,
+    };
+
     if (isAddingUser) {
-      setUsers([...users, updatedUser]);
+      setUsers([...users, userWithNewImage]);
     } else {
       setUsers(users.map(user =>
-        user.id === updatedUser.id ? updatedUser : user
+        user.id === userWithNewImage.id ? userWithNewImage : user
       ));
     }
     setEditingUser(null);
     setIsEditFormVisible(false);
     setIsAddingUser(false);
+    setPreviewImage(null);
   };
 
   const handleCancelEdit = () => {
     setEditingUser(null);
     setIsEditFormVisible(false);
     setIsAddingUser(false);
+    setPreviewImage(null);
   };
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchUserTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchUserTerm.toLowerCase())
+    user.email.toLowerCase().includes(searchUserTerm.toLowerCase()) ||
+    user.phone.includes(searchUserTerm)
   );
 
   // Map paths to titles and descriptions
   const menuItems = [
     {
-        path: "/admin/AdminManage",
-        title: "จัดการผู้ใช้งาน",
-        description: "เพิ่ม ลบ แก้ไขข้อมูลผู้ใช้",
+      path: "/admin/AdminManage",
+      title: "จัดการผู้ใช้งาน",
+      description: "เพิ่ม ลบ แก้ไขข้อมูลผู้ใช้",
     },
     {
-        path: "/admin/AdminAccess",
-        title: "สิทธิ์การเข้าถึง",
-        description: "กำหนดสิทธิ์การเข้าถึงระบบ",
+      path: "/admin/AdminAccess",
+      title: "สิทธิ์การเข้าถึง",
+      description: "กำหนดสิทธิ์การเข้าถึงระบบ",
     },
     {
-        path: "/admin/AdminReports",
-        title: "รายงาน",
-        description: "ดูรายงานการเข้าออกงาน",
+      path: "/admin/AdminReports",
+      title: "รายงาน",
+      description: "ดูรายงานการเข้าออกงาน",
     },
     {
-        path: "/admin/AdminSettings",
-        title: "ตั้งค่าระบบ",
-        description: "ตั้งค่าทั่วไปของระบบ",
+      path: "/admin/AdminSettings",
+      title: "ตั้งค่าระบบ",
+      description: "ตั้งค่าทั่วไปของระบบ",
     },
-];
+  ];
 
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
-
       {/* Mobile Sidebar */}
       <div className={`md:hidden`}>
         <Sidebar
@@ -144,11 +171,11 @@ const AdminManage: React.FC = () => {
           <div className="p-3 md:p-6 bg-white rounded-lg shadow overflow-hidden">
             {/* Search and Add User Section */}
             <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center bg-gray-100 rounded-md p-2">
+              <div className="flex items-center bg-gray-100 rounded-md p-2 w-full md:w-96">
                 <Search className="w-5 h-5 text-gray-500 mr-2" />
                 <input
                   type="text"
-                  placeholder="ค้นหาผู้ใช้"
+                  placeholder="ค้นหาตามชื่อ, อีเมล, หรือเบอร์โทร"
                   value={searchUserTerm}
                   onChange={(e) => setSearchUserTerm(e.target.value)}
                   className="bg-transparent border-none outline-none flex-1"
@@ -163,47 +190,61 @@ const AdminManage: React.FC = () => {
               </button>
             </div>
 
-            {/* User Cards Grid */}
-            <div className="user-cards-container">
-              {filteredUsers.map((user) => (
-                <div
-                  key={user.id}
-                  className="bg-white p-6 rounded-lg shadow-md border border-gray-200"
-                >
-                  <div className="flex items-center mb-4">
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="w-20 h-20 rounded-full mr-4 object-cover"
-                    />
-                    <div>
-                      <h3 className="text-lg font-semibold">{user.name}</h3>
-                      <p className="text-gray-600">{user.email}</p>
-                    </div>
-                  </div>
-                  <div className="mb-4">
-                    <p>
-                      <span className="font-semibold">โทรศัพท์:</span> {user.phone}
-                    </p>
-                  </div>
-                  <div className="flex justify-between">
-                    <button
-                      onClick={() => handleEditUser(user)}
-                      className="flex items-center gap-2 bg-gray-800 text-white px-3 py-2 rounded hover:bg-gray-900 transition-colors"
-                    >
-                      <Edit className="w-4 h-4" />
-                      แก้ไข
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(user.id)}
-                      className="flex items-center gap-2 bg-red-600 text-white px-3 py-2 rounded hover:bg-red-700 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      ลบ
-                    </button>
-                  </div>
-                </div>
-              ))}
+            {/* Users Table */}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-24">รูปโปรไฟล์</TableHead>
+                    <TableHead>ชื่อ</TableHead>
+                    <TableHead>อีเมล</TableHead>
+                    <TableHead>เบอร์โทรศัพท์</TableHead>
+                    <TableHead className="text-right">จัดการ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <img
+                            src={user.avatar}
+                            alt={user.name}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.phone}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => handleEditUser(user)}
+                              className="flex items-center gap-1 bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-900 transition-colors"
+                            >
+                              <Edit className="w-4 h-4" />
+                              แก้ไข
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="flex items-center gap-1 bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              ลบ
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                        <div className="px-6 py-4 text-center text-gray-500">ไม่พบข้อมูลที่ค้นหา</div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
 
             {/* Edit Form Modal */}
@@ -223,6 +264,26 @@ const AdminManage: React.FC = () => {
                     });
                   }}>
                     <div className="space-y-4">
+                      {/* Image Upload Section */}
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="relative w-32 h-32">
+                          <img
+                            src={previewImage || editingUser.avatar}
+                            alt="Profile preview"
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                          <label className="absolute bottom-0 right-0 bg-blue-600 p-2 rounded-full cursor-pointer hover:bg-blue-700">
+                            <Upload className="w-4 h-4 text-white" />
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={handleImageChange}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-sm font-medium mb-1">ชื่อ</label>
                         <input
