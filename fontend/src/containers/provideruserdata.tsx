@@ -67,6 +67,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('employee_id', '123');
     fetchUserData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only fetch on mount
 
   const value = {
