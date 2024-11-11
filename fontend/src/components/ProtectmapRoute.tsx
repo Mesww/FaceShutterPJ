@@ -13,7 +13,7 @@ const ProtectmapRoute: React.FC<ProtectmapRouteProps> = ({
   // Function to get current user role from localStorage or your auth state management
   const getCurrentUserRole = (): string => {
     // This should be replaced with your actual auth logic
-    return 'USER';
+    return 'ADMIN';
   };
 
   // Function to check if user is authenticated

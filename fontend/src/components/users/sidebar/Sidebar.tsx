@@ -119,43 +119,66 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
     // Mobile Floating Button and Menu
     const MobileMenu = () => (
         <div className="md:hidden fixed bottom-4 right-4 z-20">
-            <button
+            <motion.button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-full shadow-lg 
                    hover:shadow-xl transform hover:scale-105 transition-all duration-300
                    flex items-center justify-center"
+                whileTap={{ scale: 0.95 }}
+                animate={{
+                    rotate: isMobileMenuOpen ? 180 : 0
+                }}
+                transition={{ duration: 0.2 }}
             >
                 {isMobileMenuOpen ? (
                     <X size={24} className="text-white" />
                 ) : (
                     <Menu size={24} className="text-white" />
                 )}
-            </button>
+            </motion.button>
 
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
                 {isMobileMenuOpen && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        transition={{ duration: 0.2 }}
+                        exit={{ 
+                            opacity: 0, 
+                            scale: 0.95, 
+                            y: 20,
+                            transition: { 
+                                duration: 0.2,
+                                ease: "easeInOut" 
+                            }
+                        }}
+                        transition={{ 
+                            duration: 0.2,
+                            ease: "easeOut"
+                        }}
                         className="absolute bottom-16 right-0 w-72 bg-gray-900 rounded-xl shadow-2xl overflow-hidden
                        border border-gray-700"
                     >
-                        {/* <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-4 py-4">
-                            <h2 className="text-white text-xl font-bold tracking-wide">USERS SYSTEM</h2>
-                        </div> */}
-
                         <nav className="py-2">
                             {menuItems.map((item, index) => (
                                 <motion.button
                                     key={item.path}
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.1 }}
+                                    exit={{ 
+                                        opacity: 0, 
+                                        x: -20,
+                                        transition: {
+                                            duration: 0.15,
+                                            delay: (menuItems.length - index - 1) * 0.05
+                                        }
+                                    }}
+                                    transition={{ 
+                                        delay: index * 0.1,
+                                        duration: 0.2
+                                    }}
                                     onClick={() => handleNavigate(item.path)}
                                     className={`w-full text-left transition-all duration-200 
-                    ${location.pathname === item.path
+                                        ${location.pathname === item.path
                                             ? 'bg-blue-600 bg-opacity-20'
                                             : 'hover:bg-gray-800'
                                         } group`}
@@ -163,7 +186,7 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
                                     <div className="px-4 py-3 flex items-center space-x-4">
                                         <span
                                             className={`flex-shrink-0 transform transition-transform group-hover:scale-110
-                        ${location.pathname === item.path
+                                                ${location.pathname === item.path
                                                     ? 'text-blue-400'
                                                     : 'text-gray-400 group-hover:text-blue-400'
                                                 }`}
@@ -173,7 +196,7 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
                                         <div className="flex flex-col">
                                             <span
                                                 className={`font-medium transition-colors
-                          ${location.pathname === item.path
+                                                    ${location.pathname === item.path
                                                         ? 'text-blue-400'
                                                         : 'text-gray-300 group-hover:text-blue-400'
                                                     }`}
@@ -182,7 +205,7 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
                                             </span>
                                             <span
                                                 className={`text-sm transition-colors
-                          ${location.pathname === item.path
+                                                    ${location.pathname === item.path
                                                         ? 'text-gray-300'
                                                         : 'text-gray-500 group-hover:text-gray-300'
                                                     }`}
