@@ -8,7 +8,7 @@ from fastapi import File, Form, HTTPException, UploadFile
 import numpy as np
 # from pydantic import BaseModel
 from sqlalchemy import func
-from backend.models.face_model import User, RoleEnum
+from backend.models.user_model import User, RoleEnum
 from backend.utils.embedding_utils import EmbeddingComparator, euclidean_distance 
 
 from sqlalchemy.future import select

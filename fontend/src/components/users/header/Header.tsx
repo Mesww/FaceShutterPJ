@@ -9,10 +9,12 @@ interface MenuItem {
 
 interface AdminHeaderProps {
   currentMenuItem: MenuItem | undefined;
+  name:string | null
 }
 
 const Header: React.FC<AdminHeaderProps> = ({
   currentMenuItem,
+  name
 }) => {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
@@ -37,7 +39,7 @@ const Header: React.FC<AdminHeaderProps> = ({
             </div>
             <div className="text-left">
               <div className="font-medium text-gray-900">พนักงาน</div>
-              <div className="text-sm text-gray-500">users@example.com</div>
+              <div className="text-sm text-gray-500">{name ? name :""}</div>
             </div>
           </div>
         </div>

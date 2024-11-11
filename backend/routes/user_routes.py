@@ -17,7 +17,7 @@ router = APIRouter(
 router.add_api_route("/delete/{user_id}", UserController.delete_user, methods=["DELETE"])
 
 # เส้นทางสำหรับการดึงข้อมูลผู้ใช้
-router.add_api_route("/users/{user_id}", UserController.get_user, methods=["GET"])
+router.add_api_route("/{employee_id}", UserController.get_user, methods=["GET"])
 
 # เส้นทางสำหรับการอัปเดตข้อมูลผู้ใช้
 router.add_api_route("/update", UserController.update_user, methods=["PUT"])

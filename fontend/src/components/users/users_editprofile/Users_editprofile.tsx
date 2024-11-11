@@ -1,15 +1,47 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Scan, X, FlipHorizontal, UserCircle } from "lucide-react";
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
+import { useUserData } from '../../../containers/provideruserdata';
+import { edituserdata } from '@/containers/getUserdata.js'; // Import the edituserdata function
 
-const EditProfilePage = () => {
+const EditProfilePage: React.FC = () => {
+  const { userData, profileImage, isLoading, setProfileImage,refreshUserData } = useUserData();
   const [isScanning, setIsScanning] = useState(false);
   const [facingMode, setFacingMode] = useState("user");
-  const [profileImage, setProfileImage] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // State for form fields
+  const [name, setName] = useState(userData?.user.name || '');
+  const [email, setEmail] = useState(userData?.user.email || '');
+  const [phone, setPhone] = useState(userData?.user.tel || '');
+
+  const base64ToFile = async (base64String: string): Promise<File> => {
+    // Remove data URL prefix
+    const base64Content = base64String.split(',')[1];
+    // Convert base64 to blob
+    const byteCharacters = atob(base64Content);
+    const byteArrays = [];
+    
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      const byteNumbers = new Array(slice.length);
+      
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    
+    const blob = new Blob(byteArrays, { type: 'image/jpeg' });
+    return new File([blob], 'profile.jpg', { type: 'image/jpeg' });
+  };
 
 
   const startCamera = async () => {
@@ -49,7 +81,7 @@ const EditProfilePage = () => {
     setFacingMode(prevMode => prevMode === "user" ? "environment" : "user");
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (videoRef.current) {
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
@@ -59,6 +91,12 @@ const EditProfilePage = () => {
         ctx.drawImage(videoRef.current, 0, 0);
         const imageData = canvas.toDataURL('image/jpeg');
         setProfileImage(imageData);
+        try {
+          const file = await base64ToFile(imageData);
+          setImageFile(file);
+        } catch (error) {
+          console.error('Error converting image:', error);
+        }
         handleClose();
       }
     }
@@ -80,6 +118,18 @@ const EditProfilePage = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScanning, facingMode]);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      await edituserdata(userData?.user.employee_id || '', name, email, phone, imageFile);
+      await refreshUserData();
+      alert('Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile');
+    }
+  };
 
   const CloseButton = () => (
     <button
@@ -199,7 +249,11 @@ const EditProfilePage = () => {
       {/* Main Content */}
       <div className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
-        <Header currentMenuItem={currentMenuItem} />
+         {isLoading? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
+            ) : ( <Header name={userData!.user.name} currentMenuItem={currentMenuItem} />)}
 
         <div className="w-full p-2 md:p-4 bg-white">
           <div className="p-4 md:p-6 bg-white rounded-lg shadow">
@@ -208,65 +262,76 @@ const EditProfilePage = () => {
               {/* <p className="text-gray-600">อัพเดตข้อมูลและรูปโปรไฟล์ของคุณ</p> */}
             </div>
 
-            <div className="mb-6 flex flex-col items-center">
-              <div className="relative mb-4">
-                {profileImage ? (
-                  <img
-                    src={profileImage}
-                    alt="Profile"
-                    className="w-32 h-32 rounded-full object-cover"
-                  />
-                ) : (
-                  <UserCircle size={128} className="text-gray-400" />
-                )}
-                <button
-                  onClick={() => setIsScanning(true)}
-                  className="absolute bottom-0 right-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
-                >
-                  <Camera size={20} />
-                </button>
+            {isLoading? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
               </div>
-              <p className="text-sm text-gray-600">คลิกที่ไอคอนกล้องเพื่อถ่ายภาพโปรไฟล์</p>
-            </div>
+            ) : (
+              <>
+                <div className="mb-6 flex flex-col items-center">
+                  <div className="relative mb-4">
+                    {profileImage ? (
+                      <img
+                        src={profileImage}
+                        alt="Profile"
+                        className="w-32 h-32 rounded-full object-cover"
+                      />
+                    ) : (
+                      <UserCircle size={128} className="text-gray-400" />
+                    )}
+                    <button
+                      onClick={() => setIsScanning(true)}
+                      className="absolute bottom-0 right-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
+                    >
+                      <Camera size={20} />
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-600">คลิกที่ไอคอนกล้องเพื่อถ่ายภาพโปรไฟล์</p>
+                </div>
 
-            <form className="space-y-4 md:space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ชื่อ-นามสกุล
-                </label>
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  defaultValue="Robert Johnson"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  อีเมล
-                </label>
-                <input
-                  type="email"
-                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  defaultValue="robert@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  เบอร์โทรศัพท์
-                </label>
-                <input
-                  type="tel"
-                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  defaultValue="0812345678"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                บันทึกข้อมูล
-              </button>
-            </form>
+                <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit} encType="multipart/form-data">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ชื่อ-นามสกุล
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      อีเมล
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      เบอร์โทรศัพท์
+                    </label>
+                    <input
+                      type="tel"
+                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    บันทึกข้อมูล
+                  </button>
+                </form>
+              </>
+            )}
           </div>
 
           {isScanning && <ScanningOverlay />}

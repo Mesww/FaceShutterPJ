@@ -2,7 +2,6 @@ import json
 from typing import Union,List
 from pydantic import BaseModel
 from backend.services.face_service import FaceAuthService
-from backend.models.face_model import FaceEmbedding 
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.configs.db import get_async_db
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -23,10 +22,12 @@ class RegisterUserRequest:
         self,
         image: UploadFile = File(...),
         name: str = Form(...),
+        email:str = Form(...),
         employee_id: str = Form(...),
     ):
         self.image = image
         self.name = name
+        self.email = email
         self.employee_id = employee_id
 
 # routes.py

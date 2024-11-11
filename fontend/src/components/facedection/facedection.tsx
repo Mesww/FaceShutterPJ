@@ -8,6 +8,7 @@ const CameraCapture  = () => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const VITE_BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
   const [name, setName] = useState<string>('');
+  // const [email, setEmail] = useState<string>('');
   const [employeeId, setEmployeeId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const startCamera = async () => {
@@ -45,6 +46,9 @@ const CameraCapture  = () => {
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setName(event.target.value);
   };
+  // const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   setEmail(event.target.value);
+  // };
 
   const handleEmployeeIdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setEmployeeId(event.target.value);
@@ -70,7 +74,7 @@ const CameraCapture  = () => {
       formData.append('image', blob, `${name}_${employeeId}.jpg`);
       formData.append('name', name);
       formData.append('employee_id', employeeId);
-
+      // formData.append('email', email);
       const apiResponse = await fetch(`${VITE_BACKEND_URL}/api/auth/register`, {
         method: 'POST',
         body: formData,
@@ -88,6 +92,7 @@ const CameraCapture  = () => {
       // Reset form
       setName('');
       setEmployeeId('');
+      // setEmail('');
       setCapturedImage(null);
 
     } catch (error) {
@@ -116,6 +121,13 @@ const CameraCapture  = () => {
             value={employeeId}
             onChange={handleEmployeeIdChange}
           />
+          {/* <input 
+            className="w-full p-2 border-2 rounded-lg"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={handleEmailChange}
+          /> */}
         </div>
 
         <div className="space-y-2">

@@ -19,7 +19,9 @@ class User(Base):
 
     users_id = Column(Integer, primary_key=True, index=True)  # Use 'users_id' as the primary key
     name = Column(String(60), unique=True, nullable=False)
+    email = Column(String(60), nullable=True)
     employee_id = Column(String(60), unique=True, nullable=False)
+    tel = Column(String(10), nullable=True)
     roles = Column(Enum(RoleEnum), nullable=False)
     image_name = Column(String(100), nullable=False)
     create_at = Column(DateTime, unique=True, server_default=func.now(), nullable=False)
@@ -34,9 +36,10 @@ class User(Base):
 class UserBase(BaseModel):
     name: str
     employee_id: str
+    email:str
     roles: RoleEnum
     create_at: datetime  # เปลี่ยนเป็น datetime แทน SQLAlchemy DateTime
-
+    tel: str
     class Config:
         from_attributes = True  # ใช้ from_attributes แทน orm_mode ใน Pydantic V2
 

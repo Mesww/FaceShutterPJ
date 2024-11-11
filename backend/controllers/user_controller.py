@@ -59,16 +59,17 @@ class UserController:
             raise HTTPException(status_code=400, detail=str(e))
 
     @staticmethod
-    @router.get("/users/{user_id}")
+    @router.get("/users/${employee_id}")
     async def get_user(
-        user_id: str,
+        employee_id: str,
         db: AsyncSession = Depends(get_async_db)
     ):
         try:
-            user = await UserService.get_user(db=db, user_id=user_id)
-            if user is None:
+            logging.info(f"Fetching user with employee_id: {employee_id}")
+            user = await UserService.get_user(db=db, employee_id=employee_id)
+            if user.get("user") is None:
                 raise HTTPException(status_code=404, detail="User not found")
-            return {"user_id": user.id, "name": user.name, "email": user.email}
+            return user
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -78,17 +79,21 @@ class UserController:
             employee_id: int = Form(...),
             name: Optional[str] = Form(None),
             image: Optional[UploadFile] = File(None),
+            email: Optional[str] = Form(None),
+            tel: Optional[str] = Form(None),
             db: AsyncSession = Depends(get_async_db)
         ):
             try:
                 logging.info(f"Editing user: {employee_id}")
                 
                 # Call service to edit user
-                user = await FaceAuthService.edit_user(
+                user = await UserService.edit_user(
                     db=db,
                     employee_id=employee_id,
                     name=name,
-                    image=image
+                    image=image,
+                    email=email,
+                    tel=tel
                 )
                 
                 if user is None:

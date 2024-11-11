@@ -1,5 +1,17 @@
 export interface FaceScanPageProps {
     modelPath?: string;
-    name?:string;
-    employeeId?:string;
+ 
+  }
+
+  export interface UserData {
+    user: {
+      employee_id: string;
+      name: string;
+      email: string;
+      tel: string;
+    };
+    image: {
+      filename: string;
+      data: string;
+    };
   }
