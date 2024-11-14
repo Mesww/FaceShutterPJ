@@ -10,6 +10,12 @@ pip install -r requirements.txt
 # Production
     gunicorn backend.main:app -w 4 -k uvicorn.workers.UvicornWorker
 
+## Docker 
+### Window
+    docker compose up -d --build
+### Linux && Mac
+    sudo docker compose up -d --build
+
 .env need 
 COMMUNITY = for get data from router 
 HOST = ip router

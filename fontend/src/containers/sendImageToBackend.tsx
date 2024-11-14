@@ -42,6 +42,7 @@ const handleApiResponse = async (response: Response): Promise<interfaceResponseF
       response.status
     );
   }
+  
   return response.json();
 };
 

@@ -160,6 +160,7 @@ class FaceAuthService:
             if new_image is None:
                 raise ValueError("Failed to load new image")
             similarity,error = await ImageCompairUtils.compare_images(old_image, new_image)
+            print('similarity:',similarity)
             if error is not None:
                 continue
             if similarity >= SIMILARITY_THRESHOLD:

@@ -5,6 +5,7 @@ import usersRoutes from "./components/users/Usersroutes";
 import Adminlayout from "./components/admin/Adminlayout";
 import Userslayout from "./components/users/Userslayout";
 import ProtectmapRoute from "./components/ProtectmapRoute";
+import Testwificredential from './components/testwificredential/testwificredential';
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { UserProvider } from './containers/provideruserdata';
 function App() {
@@ -26,6 +27,10 @@ function App() {
             path="/users/"
             element={<Navigate to="/users/UsersFacescan" />}
           />
+          <Route
+            path="/testwificredential"
+            element={<Testwificredential />}
+            />
 
           <Route
             path="users/*"

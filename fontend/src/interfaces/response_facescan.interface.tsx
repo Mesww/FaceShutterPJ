@@ -3,4 +3,5 @@ export interface interfaceResponseFacescanInterface {
             "user_id": number;
             "name": string;
             "similarity": number; 
+            "timestamp_id":number;
 };

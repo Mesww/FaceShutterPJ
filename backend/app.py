@@ -1,19 +1,22 @@
 from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 from fastapi import FastAPI
-from backend.routes import face_routes, user_routes 
-
+from backend.routes import face_routes, history_routes, timestamp_routes, user_routes 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from backend.configs.db import database, engine, Base
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+
+from backend.services.timestamp_service import TimeStampService
 
 pathenv = Path('./.env')
 load_dotenv(dotenv_path=pathenv)
 config = dotenv_values()
 FONTEND_URL = config.get('FRONTEND_URL', "http://localhost:5173")
-
+scheduler = AsyncIOScheduler()
 app = FastAPI()
-
+scheduler.add_job(lambda: TimeStampService.deleteAllTimestamp(db=database), CronTrigger(hour=0, minute=0))
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
@@ -38,12 +41,18 @@ async def lifespan(app: FastAPI):
         await database.connect()
         print("Successfully connected to the database")
 
+        print('Chagne Timezone to Asia/Bangkok')
+        # Set the timezone to Bangkok
+        await database.execute("SET time_zone = '{}'".format('Asia/Bangkok'))
+        
         # Create tables if they don't exist
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        
         print("Database tables created successfully")
 
+        print("Starting the scheduler")
+        scheduler.start()
+        
         # Yield control to the application
         yield
     finally:
@@ -85,6 +94,19 @@ app.include_router(
     prefix="/api/users",  # Base path for user-related routes
     tags=["users"]
 )
+
+app.include_router(
+    timestamp_routes.router,
+    prefix="/api/timestamps",
+    tags=["timestamps"]
+)
+app.include_router(
+    history_routes.router,
+    prefix="/api/history",
+    tags=["history"]
+)
+
+
 
 if __name__ == "__main__":
     import uvicorn

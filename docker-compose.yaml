@@ -11,7 +11,9 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - ./data:/var/lib/mysql
+      - data:/var/lib/mysql
+    networks:
+      - faceshutter
     restart: always
 
   phpmyadmin:
@@ -24,4 +26,13 @@ services:
       - "8080:80"
     depends_on:
       - database
+    networks:
+      - faceshutter
     restart: always
+
+networks:
+  faceshutter:
+    driver: bridge
+
+volumes:
+  data:
