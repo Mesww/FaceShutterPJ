@@ -72,19 +72,7 @@ async def global_exception_handler(request, exc):
         "message": str(exc)
     }
 
-# Include routes from face_routes
-app.include_router(
-    face_routes.router,
-    prefix="/api/auth",  # Base path for authentication routes
-    tags=["face-authentication"]
-)
 
-# Include routes from user_routes
-app.include_router(
-    user_routes.router,  # เพิ่มการรวม user_routes
-    prefix="/api/users",  # Base path for user-related routes
-    tags=["users"]
-)
 
 if __name__ == "__main__":
     import uvicorn

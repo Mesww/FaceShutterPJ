@@ -1,27 +1,21 @@
 version: "3.7"
 services:
   database:
-    image: mysql:5.7
-    platform: linux/x86_64
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: faceshutter
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
+    image: mongo
+    container_name: faceshuttermongo
     ports:
-      - "3306:3306"
+      - 27017:27017
     volumes:
-      - ./data:/var/lib/mysql
-    restart: always
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    platform: linux/amd64
+      - data:/data/db
     environment:
-      PMA_HOST: database
-      MYSQL_ROOT_PASSWORD: root
-    ports:
-      - "8080:80"
-    depends_on:
-      - database
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=1234
     restart: always
+    networks:
+      - faceshutter
+
+volumes:
+  data:
+networks:
+  faceshutter:
+    driver: bridge
