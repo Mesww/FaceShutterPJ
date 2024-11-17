@@ -30,6 +30,12 @@ class TimeStampService:
     @staticmethod
     def get_timestamp(db: Session, timestamp_id: int):
         return db.query(Timestamp).filter(Timestamp.timestamp_id == timestamp_id).first()
+    @staticmethod
+    async def get_timestamp_user_id(db: Session, user_id: int):
+        stmt = select(Timestamp).filter(Timestamp.users_id == user_id)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        return user
 
     @staticmethod
     def get_timestamps(db: Session, skip: int = 0, limit: int = 100):

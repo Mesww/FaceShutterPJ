@@ -91,6 +91,13 @@ async def register_user(
             )
         elif is_end_works:
             print('end work')
+            oldstamp = await TimeStampService.get_timestamp_user_id(db=db,user_id=user.users_id)
+            
+            if oldstamp is None:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="You can only check-in from 8:00 am to 8:30 am and check-out from 4:00 pm to 5:00 pm."
+                )
             timestamp = await TimeStampService.update_timestampbyuserid(
                 db=db,
                 userid=user.users_id,
@@ -103,6 +110,7 @@ async def register_user(
                 end_time=current_time,
                 status_work=StatushistoryEnum.NORMAL
             )
+            
         else:
             print('not start work')
             raise HTTPException(

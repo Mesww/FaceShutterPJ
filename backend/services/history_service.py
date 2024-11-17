@@ -34,6 +34,13 @@ class HistoryService:
         return db.query(History).offset(skip).limit(limit).all()
 
     @staticmethod
+    async def get_historys_user_id(db: Session, user_id: int):
+        stmt = select(History).filter(History.users_id == user_id)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        return user
+
+    @staticmethod
     async def update_history(
         db: Session,
         history_id: int,

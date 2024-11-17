@@ -20,12 +20,12 @@ function App() {
         <Routes>
           <Route
             path="/"
-            element={<Navigate to="/users/UsersFacescan" />}
+            element={<Navigate to="/Users/UsersFacescan" />}
           />
 
           <Route
             path="/users/"
-            element={<Navigate to="/users/UsersFacescan" />}
+            element={<Navigate to="/Users/UsersFacescan" />}
           />
           <Route
             path="/testwificredential"
