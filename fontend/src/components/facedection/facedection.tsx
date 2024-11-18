@@ -24,6 +24,7 @@ const CameraCapture = () => {
   const [instructions, setInstructions] = useState<string>('กดปุ่ม "เริ่มสแกน" เพื่อเริ่มต้น');
   const [countdown, setCountdown] = useState<number>(0);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [showSuccess, setShowSuccess] = useState<boolean>(false);
 
   const enterFullscreen = async () => {
     const container = containerRef.current as FullscreenElement;
@@ -50,7 +51,6 @@ const CameraCapture = () => {
         await doc.webkitExitFullscreen();
       }
       setIsFullscreen(false);
-      // Unlock screen orientation if supported
       if ('orientation' in screen && 'unlock' in screen.orientation) {
         screen.orientation.unlock();
       }
@@ -120,6 +120,13 @@ const CameraCapture = () => {
     await enterFullscreen();
   };
 
+  const showSuccessMessage = () => {
+    setShowSuccess(true);
+    setTimeout(() => {
+      setShowSuccess(false);
+    }, 2000);
+  };
+
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
@@ -136,9 +143,12 @@ const CameraCapture = () => {
           break;
         case 'front':
           captureImage();
-          setScanningStage('prepare-left');
-          setInstructions('เตรียมตัว: กรุณาหันหน้าไปทางซ้าย');
-          setCountdown(5);
+          showSuccessMessage();
+          setTimeout(() => {
+            setScanningStage('prepare-left');
+            setInstructions('เตรียมตัว: กรุณาหันหน้าไปทางซ้าย');
+            setCountdown(5);
+          }, 2000);
           break;
         case 'prepare-left':
           setScanningStage('left');
@@ -147,9 +157,12 @@ const CameraCapture = () => {
           break;
         case 'left':
           captureImage();
-          setScanningStage('prepare-right');
-          setInstructions('เตรียมตัว: กรุณาหันหน้าไปทางขวา');
-          setCountdown(5);
+          showSuccessMessage();
+          setTimeout(() => {
+            setScanningStage('prepare-right');
+            setInstructions('เตรียมตัว: กรุณาหันหน้าไปทางขวา');
+            setCountdown(5);
+          }, 2000);
           break;
         case 'prepare-right':
           setScanningStage('right');
@@ -158,9 +171,12 @@ const CameraCapture = () => {
           break;
         case 'right':
           captureImage();
-          setScanningStage('prepare-up');
-          setInstructions('เตรียมตัว: กรุณาหันหน้าขึ้น');
-          setCountdown(5);
+          showSuccessMessage();
+          setTimeout(() => {
+            setScanningStage('prepare-up');
+            setInstructions('เตรียมตัว: กรุณาหันหน้าขึ้น');
+            setCountdown(5);
+          }, 2000);
           break;
         case 'prepare-up':
           setScanningStage('up');
@@ -169,9 +185,12 @@ const CameraCapture = () => {
           break;
         case 'up':
           captureImage();
-          setScanningStage('prepare-down');
-          setInstructions('เตรียมตัว: กรุณาหันหน้าลง');
-          setCountdown(5);
+          showSuccessMessage();
+          setTimeout(() => {
+            setScanningStage('prepare-down');
+            setInstructions('เตรียมตัว: กรุณาหันหน้าลง');
+            setCountdown(5);
+          }, 2000);
           break;
         case 'prepare-down':
           setScanningStage('down');
@@ -180,9 +199,12 @@ const CameraCapture = () => {
           break;
         case 'down':
           captureImage();
-          setScanningStage('idle');
-          setInstructions('การสแกนเสร็จสิ้น');
-          stopCamera();
+          showSuccessMessage();
+          setTimeout(() => {
+            setScanningStage('idle');
+            setInstructions('การสแกนเสร็จสิ้น');
+            stopCamera();
+          }, 2000);
           break;
       }
     }
@@ -192,7 +214,7 @@ const CameraCapture = () => {
         clearTimeout(timeoutId);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countdown, scanningStage]);
 
   useEffect(() => {
@@ -308,6 +330,13 @@ const CameraCapture = () => {
               </div>
             )}
           </div>
+          {showSuccess && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+              <div className="bg-green-500 text-white p-4 rounded-lg text-xl font-bold">
+                ✓ สแกนสำเร็จ
+              </div>
+            </div>
+          )}
         </div>
 
         <div className={`flex space-x-2 ${isFullscreen ? 'absolute bottom-4 left-4 right-4' : ''}`}>
