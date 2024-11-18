@@ -11,7 +11,7 @@ load_dotenv(dotenv_path=pathenv)
 config = dotenv_values()
 
 # Database URL
-DATABASE_URL = config.get('DATABASEURL', "mysql+asyncmy://root:root@localhost:3306/faceshutter")
+DATABASE_URL = config.get('DATABASEURL', "mysql+asyncmy://root:root@192.168.187.130:3306/faceshutter")
 
 # Async database instance
 database = databases.Database(DATABASE_URL)

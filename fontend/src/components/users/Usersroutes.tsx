@@ -4,6 +4,7 @@ import UsersEditprofile from "../users/users_editprofile/Users_editprofile";
 import UsersHistory from "../users/users_history/Users_history";
 import UsersNotification from "../users/users_notification/Users_notificationproblem";
 import CameraCapture from "../facedection/facedection";
+import FaceRegistration from "../users/users_register/users_register";
 // import UsersDashboard from "../users/users_dashboard/Users_dashboard";
 
   const usersRoutes = (): RouteObject[] => [
@@ -12,7 +13,8 @@ import CameraCapture from "../facedection/facedection";
     { path: "UsersEditprofile", element: <UsersEditprofile /> },
     { path: "UsersHistory", element: <UsersHistory  /> },
     { path: "UsersNotification", element: <UsersNotification  /> },
-    {path:"CameraCapture",element:<CameraCapture/>}
+    {path:"CameraCapture",element:<CameraCapture/>},
+    {path:"FaceRegistration",element:<FaceRegistration/>}
   ];
   
   export default usersRoutes;
