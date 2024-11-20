@@ -1,7 +1,4 @@
 from fastapi import APIRouter
-from backend.controllers import user_controller
-
-
 
 from backend.controllers.user_controller import UserController
 
@@ -11,13 +8,7 @@ router = APIRouter(
 
 
 # เส้นทางสำหรับการลงทะเบียนผู้ใช้
-# router.add_api_route("/register", UserController.register_user, methods=["POST"])
+router.add_api_route("/register", UserController.register_user, methods=["POST"])
+router.add_api_route("/get_user_by_employee_id/{employee_id}", UserController.get_user_by_employee_id, methods=["GET"])
 
-# เส้นทางสำหรับการลบผู้ใช้
-router.add_api_route("/delete/{user_id}", UserController.delete_user, methods=["DELETE"])
 
-# เส้นทางสำหรับการดึงข้อมูลผู้ใช้
-router.add_api_route("/{employee_id}", UserController.get_user, methods=["GET"])
-
-# เส้นทางสำหรับการอัปเดตข้อมูลผู้ใช้
-router.add_api_route("/update", UserController.update_user, methods=["PUT"])

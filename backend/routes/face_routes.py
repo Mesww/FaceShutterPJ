@@ -1,10 +1,8 @@
 from fastapi import APIRouter
-from backend.controllers import face_controller 
-# from backend.models.face_model import FaceEmbedding 
 
+from ..controllers.face_controller import Face_controller
 router = APIRouter(
-    tags=["face-authentication"]
+    tags=["face"]
 )
-        
-# router.add_api_route("/authenticate", face_controller.authenticate_user, methods=["POST"])
-router.add_api_route("/register", face_controller.register_user, methods=["POST"])
+router.add_api_route("/save_landmarks", Face_controller.save_landmarks, methods=["POST"])
+

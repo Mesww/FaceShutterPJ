@@ -1,79 +1,46 @@
-import json
-from typing import Union,List
-from pydantic import BaseModel
-from backend.services.face_service import FaceAuthService
-from sqlalchemy.ext.asyncio import AsyncSession
-from backend.configs.db import get_async_db
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-
-# models.py
-from fastapi import File, Form, UploadFile
-from pydantic import BaseModel
-from typing import Optional
-
-# We need to create separate models for request validation
-class RegisterUserBase(BaseModel):
-    name: str
-    employee_id: str
-
-class RegisterUserRequest:
-    def __init__(
-        self,
-        image: UploadFile = File(...),
-        name: str = Form(...),
-        email:str = Form(...),
-        employee_id: str = Form(...),
-    ):
-        self.image = image
-        self.name = name
-        self.email = email
-        self.employee_id = employee_id
-
-# routes.py
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy.ext.asyncio import AsyncSession
-from backend.configs.db import get_async_db
-from backend.services.face_service import FaceAuthService
+from backend.models.user_model import Faceimage, Userupdate
+from backend.services.user_service import UserService
+from ..services.face_service import Face_service
+import cv2
+import numpy as np
 
 router = APIRouter()
 
-@router.post("/register")
-async def register_user(
-    image: UploadFile = File(...),
-    name: str = Form(...),
-    employee_id: str = Form(...),
-    db: AsyncSession = Depends(get_async_db)
-):
-    try:
-        # Create request object with the received data
-        request = RegisterUserRequest(
-            image=image,
-            name=name,
-            employee_id=employee_id
-        ) 
-        
-        # Call the service method with corrected parameters
-        user, similarity,message = await FaceAuthService.registerface_user(
-            db=db,
-            name=request.name,
-            employee_id=request.employee_id,
-            input_image=request.image
-        )
-        
-        if user is None:
-            raise HTTPException(
-                status_code=400, 
-                detail=message
-            )
-            
-        return {
-            "message": message,
-            "user_id": user.users_id,
-            "name": user.name,
-            "similarity":similarity
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
+class Face_controller:
+    @staticmethod
+    @router.post("/save_landmarks")
+    async def save_landmarks(
+        ScanDirection: str = Form(...),
+        frame: UploadFile = File(...),  # Correct usage of File
+        name: str = Form(...),
+        employee_id: str = Form(...),
+    ):
+        try:
+            # Read the uploaded file and convert it to a NumPy array
+            file_content = await frame.read()
+            np_frame = cv2.imdecode(
+                np.frombuffer(file_content, np.uint8), cv2.IMREAD_COLOR
+            )
+
+            # Call the Face_service to process the frame
+            res = Face_service.save_landmarks(ScanDirection, np_frame, name)
+            if res.status >= 400:
+                raise HTTPException(status_code=400, detail=res.message)
+
+            face_image = Faceimage(scan_direction=ScanDirection, image_path=res.data.get("image_path"))
+            face_image = face_image.model_dump()
+            face_image["scan_direction"] = ScanDirection
+
+            update_user = Userupdate(faceimage=[face_image])
+            update_res = await UserService.update_user_by_employee_id(
+                employee_id, update_user
+            )
+            if update_res.status >= 400:
+                raise HTTPException(status_code=400, detail=update_res.message)
+            
+            return update_res.to_json()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))

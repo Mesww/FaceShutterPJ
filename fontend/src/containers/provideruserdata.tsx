@@ -24,7 +24,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   // Get employee_id from localStorage or another auth source
   const getEmployeeId = () => {
     // Replace this with your actual auth logic
-    const employeeId = localStorage.getItem('employee_id') || "123";
+    const employeeId = localStorage.getItem('employee_id') || "1234";
     return employeeId;
   };
 

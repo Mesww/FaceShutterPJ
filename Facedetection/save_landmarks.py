@@ -3,6 +3,13 @@ import numpy as np
 import os
 import json
 import time
+import base64
+from pymongo import MongoClient
+
+# MongoDB setup
+client = MongoClient("mongodb://root:1234@localhost:27017/")  # Adjust as needed
+db = client["face_data"]
+collection = db["scanned_images"]
 
 # MediaPipe Setup
 import mediapipe as mp
@@ -22,10 +29,6 @@ last_saved_time = time.time()
 # Get user input for the person's name before opening the webcam
 person_name = input("Enter the name of the person to save images: ")
 
-# Create directory to save images if it doesn't exist
-if not os.path.exists('saved_images'):
-    os.makedirs('saved_images')
-
 # Open Webcam after getting the name
 cap = cv2.VideoCapture(1)  # Change to 0 if using the default camera
 
@@ -41,6 +44,11 @@ def crop_face(frame, landmarks):
     # Crop the face region from the frame
     cropped_face = frame[bounding_box[1]:bounding_box[3], bounding_box[0]:bounding_box[2]]
     return cropped_face
+
+# Helper function to encode image as Base64
+def encode_image_to_base64(image):
+    _, buffer = cv2.imencode('.jpg', image)
+    return base64.b64encode(buffer).decode('utf-8')
 
 while cap.isOpened():
     success, frame = cap.read()
@@ -70,31 +78,30 @@ while cap.isOpened():
             
             # Check delay time before saving data
             if time.time() - last_saved_time >= delay_time:
-                # Countdown before capturing image
-                countdown_time = 3  # Set countdown time in seconds
-                
-                for i in range(countdown_time, 0, -1):
-                    countdown_text = f"Capturing in {i}..."
-                    cv2.putText(frame, countdown_text, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 3)
-                    cv2.imshow('3D Face Detection - Save Images', frame)
-                    cv2.waitKey(1000)  # Wait for one second
-                
-                # Save the cropped face image with a name based on the person's name and current direction in a dedicated folder
-                cropped_face = crop_face(frame, face_landmarks.landmark)  # Crop again after countdown
-                
-                filename = f"saved_images/{person_name.replace(' ', '_')}_{scan_directions[current_direction_idx].replace(' ', '_').lower()}.jpg"
-                cv2.imwrite(filename, cropped_face)
-                scanned_images.append(cropped_face)  # Store image for potential future use
+                # Save the cropped face image with metadata
+                cropped_face = crop_face(frame, face_landmarks.landmark)
+
+                # Encode image to Base64
+                base64_image = encode_image_to_base64(cropped_face)
+
+                # Save to MongoDB
+                document = {
+                    "person_name": person_name,
+                    "scan_direction": scan_directions[current_direction_idx],
+                    "image_data": base64_image
+                }
+                collection.insert_one(document)
+
+                print(f"Saved {scan_directions[current_direction_idx]} image for {person_name} to MongoDB.")
                 
                 # Move to the next direction
                 current_direction_idx += 1
                 if current_direction_idx >= len(scan_directions):
-                    # Save all scanned data to a JSON file and terminate the program after scanning all directions
-                    with open('saved_landmarks.json', 'w') as json_file:
-                        json.dump(scan_directions, json_file)
-                    print("Successfully saved images from all directions")
-                    break
-                
+                    print("Successfully saved images from all directions.")
+                    cap.release()
+                    cv2.destroyAllWindows()
+                    exit()
+
                 # Reset delay time
                 last_saved_time = time.time()
 

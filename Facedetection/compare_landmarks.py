@@ -4,6 +4,11 @@ import os
 import json
 from mtcnn.mtcnn import MTCNN
 
+# Force user input for name
+person_name = ""
+while not person_name.strip():  # Ensure the name is not empty or just spaces
+    person_name = input("Enter the name of the person (cannot be empty): ").strip()
+
 # Load the saved directions from the JSON file
 with open('saved_landmarks.json', 'r') as json_file:
     scan_directions = json.load(json_file)
@@ -27,6 +32,9 @@ for i, image_file in enumerate(image_files):
 
 # Create LBPH Face Recognizer and train it with saved faces
 recognizer = cv2.face.LBPHFaceRecognizer_create()
+if len(saved_faces) < 2:
+    print("Not enough data to train the recognizer. At least two distinct images are required.")
+    exit()
 recognizer.train(saved_faces, np.array(list(labels.keys())))  # Train with saved faces
 
 # Initialize MTCNN detector

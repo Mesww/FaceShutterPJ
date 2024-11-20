@@ -1,45 +1,24 @@
 from pathlib import Path
-from dotenv import load_dotenv, dotenv_values
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-import databases
+from dotenv import dotenv_values, load_dotenv
+from pymongo import MongoClient,database,AsyncMongoClient
 
-# Load environment variables
+
 pathenv = Path('./.env')
 load_dotenv(dotenv_path=pathenv)
 config = dotenv_values()
-
-# Database URL
-DATABASE_URL = config.get('DATABASEURL', "mysql+asyncmy://root:root@localhost:3306/faceshutter")
-
-# Async database instance
-database = databases.Database(DATABASE_URL)
-
-# Create async engine
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=True,
-    future=True
-)
-
-# Base for declarative models
-Base = declarative_base()
-
-# Async session factory
-AsyncSessionLocal = sessionmaker(
-    engine, 
-    class_=AsyncSession,
-    expire_on_commit=False
-)
-
-# Dependency for getting async database session
-async def get_async_db():
-    """
-    Async database session dependency
-    """
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+MONGOURL = config.get('MONGOURL', "mongodb://localhost:27017/")
+async def connect_to_mongodb() -> database.Database:
+    # Replace the connection string with your own MongoDB connection string
+    try:
+        # Create a MongoClient object
+        client =  AsyncMongoClient(MONGOURL)
+        
+        # Access the database
+        db = client["face_data"]
+        
+        # Return the database object
+        return db
+    
+    except Exception as e:
+        print("Error connecting to MongoDB:", str(e))
+        return None
