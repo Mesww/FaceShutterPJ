@@ -2,46 +2,64 @@ import cv2
 import numpy as np
 import os
 import json
-from mtcnn.mtcnn import MTCNN
+import mediapipe as mp
+import math
 
-# Force user input for name
-person_name = ""
-while not person_name.strip():  # Ensure the name is not empty or just spaces
-    person_name = input("Enter the name of the person (cannot be empty): ").strip()
+def calculate_eye_aspect_ratio(eye_landmarks):
+    """Calculate the Eye Aspect Ratio to detect blinking"""
+    # Vertical eye landmarks
+    A = math.dist(eye_landmarks[1], eye_landmarks[5])
+    B = math.dist(eye_landmarks[2], eye_landmarks[4])
+    # Horizontal eye landmark
+    C = math.dist(eye_landmarks[0], eye_landmarks[3])
+    
+    # Eye Aspect Ratio
+    ear = (A + B) / (2.0 * C)
+    return ear
 
-# Load the saved directions from the JSON file
+def is_face_moving(prev_landmarks, curr_landmarks, threshold=0.02):
+    """Check if face is moving between frames"""
+    if prev_landmarks is None:
+        return False
+    
+    # Calculate total movement of landmark points
+    total_movement = sum([
+        math.dist((lm1.x, lm1.y), (lm2.x, lm2.y)) 
+        for lm1, lm2 in zip(prev_landmarks.landmark, curr_landmarks.landmark)
+    ])
+    
+    return total_movement > threshold
+
+# Load the rest of the original code remains the same
 with open('saved_landmarks.json', 'r') as json_file:
     scan_directions = json.load(json_file)
 
-# Open Webcam
 cap = cv2.VideoCapture(1)  # Change to 0 if using the default camera
 
 # Load the saved images and prepare labels
-image_folder = 'saved_images'  # Directory where images are saved
+image_folder = 'saved_images'
 image_files = [f for f in os.listdir(image_folder) if f.endswith('.jpg')]
 saved_faces = []
 labels = {}
 
-# Load the saved face images into a list and convert them to grayscale
 for i, image_file in enumerate(image_files):
     img_path = os.path.join(image_folder, image_file)
     img = cv2.imread(img_path)
     if img is not None:
         saved_faces.append(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
-        labels[i] = image_file.split('.')[0]  # Save just the name without extension
+        labels[i] = image_file.split('.')[0]
 
-# Create LBPH Face Recognizer and train it with saved faces
 recognizer = cv2.face.LBPHFaceRecognizer_create()
-if len(saved_faces) < 2:
-    print("Not enough data to train the recognizer. At least two distinct images are required.")
-    exit()
-recognizer.train(saved_faces, np.array(list(labels.keys())))  # Train with saved faces
+recognizer.train(saved_faces, np.array(list(labels.keys())))
 
-# Initialize MTCNN detector
-detector = MTCNN()
+mp_face_mesh = mp.solutions.face_mesh
+mp_drawing = mp.solutions.drawing_utils
+face_mesh = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.5)
 
-# Set confidence threshold (adjust this value as needed)
-threshold_confidence = 100  
+# Liveness detection variables
+prev_landmarks = None
+blink_counter = 0
+liveness_checks = []
 
 while cap.isOpened():
     success, frame = cap.read()
@@ -49,50 +67,70 @@ while cap.isOpened():
         print("Unable to access the camera")
         break
 
-    # Flip the frame horizontally
     frame = cv2.flip(frame, 1)
-
-    # Convert BGR to RGB for MTCNN
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(rgb_frame)
 
-    # Detect faces in the frame using MTCNN
-    detected_faces = detector.detect_faces(rgb_frame)
+    cv2.putText(frame, "Please face the camera", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-    # Check if any faces are detected
-    if detected_faces:
-        for face in detected_faces:
-            x, y, width, height = face['box']
-            confidence = face['confidence']
+    if results.multi_face_landmarks:
+        for face_landmarks in results.multi_face_landmarks:
+            # Liveness Detection Logic
+            is_live = False
+            
+            # Eye Blink Detection
+            left_eye = [face_landmarks.landmark[i] for i in [362, 385, 387, 263, 373, 380]]
+            right_eye = [face_landmarks.landmark[i] for i in [33, 160, 158, 133, 153, 144]]
+            
+            left_ear = calculate_eye_aspect_ratio([(lm.x, lm.y) for lm in left_eye])
+            right_ear = calculate_eye_aspect_ratio([(lm.x, lm.y) for lm in right_eye])
+            
+            eye_aspect_ratio = (left_ear + right_ear) / 2.0
+            
+            # Face Movement Detection
+            face_movement = is_face_moving(prev_landmarks, face_landmarks) if prev_landmarks is not None else False
+            
+            # Liveness Criteria
+            if eye_aspect_ratio < 0.2:  # Blink detection
+                blink_counter += 1
+            
+            if blink_counter >= 2 and face_movement:
+                is_live = True
+            
+            # Store current landmarks for next frame comparison
+            prev_landmarks = face_landmarks
 
-            # Crop the detected face region for recognition 
-            face_roi = rgb_frame[y:y + height, x:x + width]
+            # Rest of the original face recognition code...
+            h, w, _ = frame.shape
+            bounding_box = [
+                int(min([lm.x * w for lm in face_landmarks.landmark])),
+                int(min([lm.y * h for lm in face_landmarks.landmark])),
+                int(max([lm.x * w for lm in face_landmarks.landmark])),
+                int(max([lm.y * h for lm in face_landmarks.landmark]))
+            ]
+            cropped_face = frame[bounding_box[1]:bounding_box[3], bounding_box[0]:bounding_box[2]]
 
-            # Use the recognizer to predict the label of the detected face 
-            gray_face_roi = cv2.cvtColor(face_roi, cv2.COLOR_RGB2GRAY)
-            label_id, pred_confidence = recognizer.predict(gray_face_roi)
+            if cropped_face.size > 0:
+                gray_cropped_face = cv2.cvtColor(cropped_face, cv2.COLOR_BGR2GRAY)
+                label_id, pred_confidence = recognizer.predict(gray_cropped_face)
 
-            # Check if confidence is below a certain threshold
-            if pred_confidence < threshold_confidence:
-                label_text = f"Match: {labels[label_id]} (Confidence: {pred_confidence:.2f})"
-                color = (0, 255, 0)  # Green for a match 
+                # Modify recognition logic to include liveness check
+                if is_live and pred_confidence < 80:
+                    label_text = f"Hi : {labels[label_id]} (Confidence: {pred_confidence:.2f})"
+                    color = (0, 255, 0)  # Green for live match
+                else:
+                    label_text = "You are Fake!!!!" 
+                    color = (0, 0, 255)  # Red for no live match
+
+                cv2.rectangle(frame, (bounding_box[0], bounding_box[1]), (bounding_box[2], bounding_box[3]), color, 2)
+                cv2.putText(frame, label_text, (bounding_box[0], bounding_box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
             else:
-                label_text = "No Match"
-                color = (0, 0, 255)  # Red for no match 
+                print("Cropped face is empty.")
 
-            # Draw rectangle around the face and put label text 
-            cv2.rectangle(frame, (x, y), (x + width, y + height), color, 2)
-            cv2.putText(frame, label_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-    else:
-        # If no faces are detected
-        cv2.putText(frame, "No Face Detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-    # Show the frame with detection results 
     cv2.imshow('Face Comparison', frame)
 
-    # Press 'q' to exit the program 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# Release the camera and close all windows 
 cap.release()
 cv2.destroyAllWindows()
