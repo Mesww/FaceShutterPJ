@@ -82,12 +82,13 @@ async def websocket_endpoint(websocket: WebSocket):
     face_service = Face_service()
     user_service = UserService()
     await websocket.accept()
-    scan_directions = ["Front", "Turn left", "Turn right", "Look up", "Look down"]
+    scan_directions = ["Front", "Turn left", "Turn right"]
     current_direction_idx = 0
     images = []  # To store images temporarily
 
     # Request user information
     await websocket.send_text("Provide user details (employee_id, name, email, password):")
+    await websocket.send_json({'scan_directions': scan_directions})
     user_details = await websocket.receive_json()
     employee_id = user_details["employee_id"]
     name = user_details["name"]
@@ -112,7 +113,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
             face_landmarks = results.multi_face_landmarks[0]
             frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
-            detected_direction = face_service.check_head_direction(face_landmarks,True)
+            detected_direction = face_service.check_head_direction(face_landmarks)
             print(f"Detected direction: {detected_direction}")
             # print(f"Landmarks: {[(lm.x, lm.y) for lm in face_landmarks.landmark]}")
             # Check if the direction matches
@@ -129,7 +130,7 @@ async def websocket_endpoint(websocket: WebSocket):
             current_direction_idx += 1
 
         # Save all images and user data at once
-        user_id = user_service.save_user_and_images(employee_id, name, email, password, images)
+        user_id = await user_service.save_user_and_images(employee_id, name, email, password, images)
         await websocket.send_text(f"User data and images saved successfully with ID: {user_id}")
     except WebSocketDisconnect:
         print("WebSocket disconnected.")

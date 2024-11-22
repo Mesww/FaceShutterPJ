@@ -1,5 +1,5 @@
 import base64
-import datetime
+from datetime import datetime 
 import os
 from pathlib import Path
 import uuid
@@ -36,6 +36,7 @@ class Image_utills:
                     f"{timestamp}_{uuid.uuid5(uuid.NAMESPACE_DNS,filename).hex}.jpg"
                 )
             filepath = os.path.join(image_storage_path, random_filename)
+            print(f"Saving image to: {filepath}")
             cv2.imwrite(filepath, image)
             return filepath
         except Exception as e:

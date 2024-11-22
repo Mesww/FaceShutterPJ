@@ -1,6 +1,7 @@
+from datetime import datetime
 from backend.configs.db import connect_to_mongodb
 from backend.models.returnformat import Returnformat
-from backend.models.user_model import Faceimage, User, Userupdate
+from backend.models.user_model import Faceimage, RoleEnum, User, Userupdate
 from fastapi import HTTPException
 from bson import ObjectId
 
@@ -165,45 +166,41 @@ class UserService:
         except Exception as e:
             return Returnformat(400, str(e), None)
     
-    @staticmethod
-    async def save_user_to_db(employee_id, name, email, password, image_paths):
-        db = await connect_to_mongodb()  # Establish database connection
-        collection = db["users"]
-        user = {
-            "employee_id": employee_id,
-            "name": name,
-            "email": email,
-            "password": password,
-            "image_paths": image_paths  # List of image paths
-        }
-        result = await collection.insert_one(user)
-        return str(result.inserted_id)
     
     # Save user data and images to the server
     @staticmethod
     async def save_user_and_images(employee_id, name, email, password, images):
-        image_utills = Image_utills()
-        db = await connect_to_mongodb()  # Establish database connection
-        collection = db["users"]
-        # Save images to disk
-        saved_image_paths = []
-        for img_data in images:
-            direction = img_data["direction"]
-            frame = img_data["frame"]
+        try:
+            image_utills = Image_utills()
+            db = await connect_to_mongodb()  # Establish database connection
+            collection = db["users"]
+            # Save images to disk
+            saved_image_paths = []
+            for img_data in images:
+                direction = img_data["direction"]
+                frame = img_data["frame"]
 
-            # Generate a unique filename for each image
-            filepath =image_utills.save_image(image=frame, filename=f"{name}_{direction.replace(' ', '_').lower()}.jpg")
+                # Generate a unique filename for each image
+                filepath =image_utills.save_image(image=frame, filename=f"{name}_{direction.replace(' ', '_').lower()}.jpg")
 
-            # Append the path to the list
-            saved_image_paths.append({"path": filepath, "direction": direction})
-
-        # Save user data to MongoDB
-        user = {
-            "employee_id": employee_id,
-            "name": name,
-            "email": email,
-            "password": password,
-            "images": saved_image_paths
-        }
-        result = collection.insert_one(user)
-        return str(result.inserted_id)
+                # Append the path to the list
+                saved_image_paths.append({"path": filepath, "direction": direction})
+            
+            # Save user data to MongoDB
+            user = User(
+                employee_id= employee_id,
+                name= name,
+                email= email,
+                password= password,
+                images= saved_image_paths,
+                roles= RoleEnum.USER,
+                created_at= datetime.now(),
+                updated_at= None
+            )
+            user = user.model_dump()
+            user["roles"] = user["roles"].value
+            result = await collection.insert_one(user)
+            return str(result.inserted_id)
+        except Exception as e:
+            
+            raise HTTPException(status_code=400, detail=str(e))

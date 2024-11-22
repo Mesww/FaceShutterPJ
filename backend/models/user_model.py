@@ -12,8 +12,8 @@ class Faceimage(BaseModel):  # Move Faceimage class before User class
     """
     Faceimage model for face image data
     """
-    scan_direction: str
-    image_path: str
+    direction: str
+    path: str
 
 
 class User(BaseModel):
@@ -24,8 +24,8 @@ class User(BaseModel):
     email: Optional[str] =None
     employee_id: str
     tel: Optional[str] =None
-    faceimage: Optional[List[Faceimage]] = []  # Add faceimage field with empty list
-    roles: RoleEnum = RoleEnum.USER 
+    images: Optional[List[Faceimage]] = []  # Add faceimage field with empty list
+    roles: Optional[RoleEnum] = RoleEnum.USER  # Default to USER role
     create_at: datetime = Field(default_factory=datetime.now)  # Default to current time
     update_at: Optional[datetime] = None
     

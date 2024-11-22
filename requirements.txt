@@ -38,6 +38,7 @@ matplotlib==3.9.2
 mdurl==0.1.2
 mediapipe==0.10.18
 ml_dtypes==0.5.0
+motor==3.6.0
 mtcnn==1.0.0
 numpy==1.26.4
 opencv-contrib-python==4.10.0.84
@@ -52,6 +53,7 @@ pycparser==2.22
 pydantic==2.9.2
 pydantic_core==2.23.4
 Pygments==2.18.0
+pymongo==4.9.2
 PyMySQL==1.1.1
 pyparsing==3.2.0
 pysnmp==7.1.13

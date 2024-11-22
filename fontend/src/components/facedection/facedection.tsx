@@ -22,9 +22,8 @@ const CameraCapture: React.FC = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
   const [imageSrc, setImageSrc] = useState<string | null>(null);  // State to hold the image
-
+  const [scanDirections, setScanDirections] = useState<string[]>([]);
   const webcamRef = useRef<Webcam>(null);
-  const scanDirections = ["Front", "Turn left", "Turn right", "Look up", "Look down"];
   const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
 
   const sendImage = useCallback((ws: WebSocket) => {
@@ -54,6 +53,14 @@ const CameraCapture: React.FC = () => {
   const handleWebSocketMessage = useCallback((event: MessageEvent) => {
     try {
       const message = event.data;
+      if (message.startsWith("{")) {
+        const jsonData = JSON.parse(message);
+        console.log("Received JSON data:", jsonData);
+        // Handle the JSON data here
+        if(jsonData['scan_directions']){
+          setScanDirections(jsonData['scan_directions']);
+        }
+      }
         // Check if the message looks like base64 image data
     if (message.startsWith("/9j/") || message.includes("base64,")) {
       console.log("Received image data");
@@ -214,6 +221,7 @@ const CameraCapture: React.FC = () => {
           </button>
         </div>
       ) : (
+        (scanDirections.length === 0 ? <h1>No scan directions</h1> :
         <div>
           <h2 className="text-xl mb-4 font-semibold text-center">
             Current Direction: {instruction || scanDirections[currentDirectionIdx]}
@@ -245,7 +253,7 @@ const CameraCapture: React.FC = () => {
             </p>
           </div>
           {imageSrc ? <img src={imageSrc} alt="Captured" className="mx-auto mt-4 border rounded" />:<h1>No image</h1>}
-        </div>
+        </div>)
       )}
     </div>
   );
