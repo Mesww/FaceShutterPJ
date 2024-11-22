@@ -1,364 +1,252 @@
-import React, { useRef, useState, useEffect } from 'react';
+import { h1 } from 'framer-motion/client';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import Webcam from "react-webcam";
 
-interface FaceScanStatus {
-  status: 'initializing' | 'connected' | 'scanning' | 'complete' | 'error' | 'disconnected';
-  message?: string;
+interface UserDetails {
+  employee_id: string;
+  name: string;
+  email: string;
+  password: string;
 }
 
-const CameraCapture = () => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [name, setName] = useState<string>('');
-  const [employeeId, setEmployeeId] = useState<string>('');
-  const [scanStatus, setScanStatus] = useState<FaceScanStatus>({ status: 'initializing' });
-  const [currentInstruction, setCurrentInstruction] = useState<string>('');
-  const [processedImage, setProcessedImage] = useState<string | null>(null);
-  const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
-  const pendingInstructionRef = useRef<string | null>(null);
-  const [isVideoVisible, setIsVideoVisible] = useState(false);
-  const VITE_BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-  const WS_URL = VITE_BACKEND_URL.replace('http', 'ws');
+const CameraCapture: React.FC = () => {
+  const [websocket, setWebSocket] = useState<WebSocket | null>(null);
+  const [userDetails, setUserDetails] = useState<UserDetails>({
+    employee_id: "",
+    name: "",
+    email: "",
+    password: "",
+  });
+  const [scanning, setScanning] = useState(false);
+  const [instruction, setInstruction] = useState("");
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
+  const [imageSrc, setImageSrc] = useState<string | null>(null);  // State to hold the image
 
-  useEffect(() => {
-    return () => {
-      cleanupResources();
-    };
+  const webcamRef = useRef<Webcam>(null);
+  const scanDirections = ["Front", "Turn left", "Turn right", "Look up", "Look down"];
+  const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
+
+  const sendImage = useCallback((ws: WebSocket) => {
+    if (!webcamRef.current || !ws || ws.readyState !== WebSocket.OPEN) return null;
+
+    const imageSrc = webcamRef.current.getScreenshot();
+    if (!imageSrc) return null;
+
+    try {
+      // Convert base64 to binary
+      const byteCharacters = atob(imageSrc.split(",")[1]);
+      const byteNumbers = Array.from(byteCharacters).map((char) => char.charCodeAt(0));
+      const byteArray = new Uint8Array(byteNumbers);
+      ws.send(
+        JSON.stringify({
+          image: Array.from(byteArray), // Send as an array
+        })
+      );
+    } catch (error) {
+      console.error("Error sending image:", error);
+      setConnectionStatus('disconnected');
+    }
+
+    return imageSrc;
   }, []);
 
-  const cleanupResources = () => {
-    console.log('Cleaning up resources...');
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setIsVideoReady(false);
-    setIsVideoVisible(false);
-    pendingInstructionRef.current = null;
-    setScanStatus({status: 'initializing'});
-  };
-
-  const initializeVideoElement = () => {
-    return new Promise<void>((resolve) => {
-      setIsVideoVisible(true);
-      // Wait for next render cycle when video element will be in DOM
-      setTimeout(() => {
-        if (videoRef.current) {
-          console.log('Video element initialized');
-          resolve();
-        } else {
-          console.error('Failed to initialize video element');
-          setScanStatus({
-            status: 'error',
-            message: 'Failed to initialize video element'
-          });
-          resolve();
-        }
-      }, 100);
-    });
-  };
-
-  const startCamera = async () => {
-    console.log('Starting camera initialization...');
-    
-    // First ensure video element is in DOM
-    await initializeVideoElement();
-    
-    if (!videoRef.current) {
-      console.error('Video element still not available after initialization');
-      setScanStatus({
-        status: 'error',
-        message: 'Failed to initialize video element'
-      });
-      return false;
-    }
-
+  const handleWebSocketMessage = useCallback((event: MessageEvent) => {
     try {
-      // Stop any existing streams
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-
-      console.log('Requesting camera access...');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
-
-      streamRef.current = stream;
-      videoRef.current.srcObject = stream;
-
-      return new Promise<boolean>((resolve) => {
-        if (!videoRef.current) {
-          resolve(false);
-          return;
-        }
-
-         videoRef.current.onloadedmetadata = async () => {
-          console.log('Video metadata loaded');
-          try {
-            await videoRef.current?.play();
-            console.log('Video playback started');
-             setIsVideoReady(true);
-             console.log('Video ready state:', isVideoReady);
-             resolve(true);
-            
-          } catch (error) {
-            console.error('Error playing video:', error);
-            setScanStatus({
-              status: 'error',
-              message: 'Failed to start video playback'
-            });
-            resolve(false);
-          }
-        };
-
-        videoRef.current.onerror = () => {
-          console.error('Video element error occurred');
-          setScanStatus({
-            status: 'error',
-            message: 'Video initialization error'
-          });
-          resolve(false);
-        };
-      });
-
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      setScanStatus({
-        status: 'error',
-        message: 'Failed to access camera. Please ensure camera permissions are granted.'
-      });
-      return false;
-    }
-  };
-
-  const startFaceScan = async () => {
-    if (!name || !employeeId) {
-      alert('Please enter both name and employee ID');
-      return;
-    }
-
-    wsRef.current = new WebSocket(`${WS_URL}/ws/face-scan/${employeeId}`);
-    
-    wsRef.current.onopen = () => {
-      console.log('WebSocket connected, initializing video...');
-      setScanStatus({ status: 'connected' });
-      startCamera().then(success => {
-        console.log('Camera initialization result:', success);
-      });
-    };
-
-    wsRef.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      handleWebSocketMessage(data);
-    };
-
-    wsRef.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setScanStatus({ status: 'error', message: 'Connection error occurred' });
-      cleanupResources();
-    };
-
-    wsRef.current.onclose = () => {
-      console.log('WebSocket disconnected');
-      setScanStatus({ status: 'disconnected' });
-      cleanupResources();
-    };
-  };
-
-  const handleWebSocketMessage = async (data: any) => {
-    console.log('Received WebSocket message:', data.type);
-    
-    switch (data.type) {
-      case 'instruction':
-        console.log('Instruction received:', data.direction);
-        setCurrentInstruction(data.direction);
-        
-        if (!isVideoReady) {
-          console.log('Video not ready, starting camera...');
-          pendingInstructionRef.current = data.direction;
-          await startCamera();
-          captureAndSendFrame();
-
-        } else {
-          console.log('Video ready, capturing frame...');
-          captureAndSendFrame();
-        }
-        break;
-
-      case 'result':
-        if (data.status === 200) {
-          setProcessedImage(`data:image/jpeg;base64,${data.data.frame}`);
-          setScanStatus({ status: 'scanning', message: data.message });
-        } else {
-          setScanStatus({ status: 'error', message: data.message });
-        }
-        break;
-
-      case 'complete':
-        console.log('Face scanning complete');
-        setScanStatus({ status: 'complete', message: 'Face scanning complete!' });
-        // cleanupResources();
-
-        break;
-
-      case 'error':
-        setScanStatus({ status: 'error', message: data.message });
-        break;
-    }
-  };
-
-  const captureAndSendFrame = () => {
-    console.log('Attempting to capture and send frame...');
-    console.log('Video ready state:', isVideoReady);
-    console.log('Video ref exists:', !!videoRef.current);
-    console.log('Canvas ref exists:', !!canvasRef.current);
-    console.log('WebSocket ready state:', wsRef.current?.readyState);
-
-    if (!videoRef.current || !canvasRef.current || !wsRef.current) {
-      console.error('Required resources not ready');
-      return;
-    }
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    
-    if (video.videoWidth === 0 || video.videoHeight === 0) {
-      console.error('Video dimensions not available');
-      return;
-    }
-
-    try {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      const context = canvas.getContext('2d');
-      if (!context) {
-        console.error('Could not get canvas context');
-        return;
-      }
-
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const frame = canvas.toDataURL('image/jpeg', 0.8);
-
-      wsRef.current.send(JSON.stringify({
-        type: 'frame',
-        frame: frame,
-        name: name,
-        employee_id: employeeId
-      }));
+      const message = event.data;
+        // Check if the message looks like base64 image data
+    if (message.startsWith("/9j/") || message.includes("base64,")) {
+      console.log("Received image data");
+      let base64Image;
       
-      console.log('Frame captured and sent successfully');
-    } catch (error) {
-      console.error('Error capturing or sending frame:', error);
+      // If the message already includes the data URI prefix, use it directly
+      if (message.startsWith("data:image/jpeg;base64,")) {
+        base64Image = message;
+      } else {
+        // Otherwise, create the data URI
+        base64Image = `data:image/jpeg;base64,${message}`;
+      }
+      
+      setImageSrc(base64Image);
+      return;
     }
+      if (message.startsWith("Please move your head to:")) {
+        setInstruction(message.replace("Please move your head to: ", ""));
+        setConnectionStatus('connected');
+      }
+      else if (message.startsWith("Image captured for")) {
+        setCurrentDirectionIdx((prev) => prev + 1);
+      }
+      else if (message.startsWith("Incorrect direction!") || 
+               message.startsWith("No face detected")) {
+        console.log(message);
+       
+      }
+      else if (message.startsWith("User data and images saved successfully")) {
+        alert("Scan complete and data saved!");
+        setScanning(false);
+        setInstruction("");
+        setConnectionStatus('disconnected');
+      } 
+      else if (message.startsWith("image_data:")) {
+        const imageData = message.replace("image_data:", "");
+        console.log("Received base64 image data:", imageData); // Check the image data in the console
+  
+        const base64Image = `data:image/jpeg;base64,${imageData}`;
+        setImageSrc(base64Image);
+      }
+      else {
+        console.log("Received message:", message);
+      }
+    } catch (error) {
+      console.error("Error processing WebSocket message:", error);
+    }
+  }, [setImageSrc]);
+
+  useEffect(() => {
+    let imageInterval: NodeJS.Timeout;
+
+    if (scanning) {
+      const ws = new WebSocket("ws://localhost:8000/ws/scan");
+      setWebSocket(ws);
+      setConnectionStatus('connecting');
+
+      ws.onopen = () => {
+        setConnectionStatus('connected');
+        ws.send(JSON.stringify(userDetails));
+
+        imageInterval = setInterval(() => {
+          sendImage(ws);
+        }, 1000); 
+      };
+
+      ws.onmessage = handleWebSocketMessage;
+
+      ws.onclose = (event) => {
+        if (imageInterval) clearInterval(imageInterval);
+        setWebSocket(null);
+        setConnectionStatus('disconnected');
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        if (imageInterval) clearInterval(imageInterval);
+        setConnectionStatus('disconnected');
+      };
+
+      return () => {
+        if (imageInterval) clearInterval(imageInterval);
+        ws.close();
+      };
+    }
+  }, [scanning, userDetails, sendImage, handleWebSocketMessage]);
+
+  const handleStartScan = () => {
+    setScanning(true);
+    setCurrentDirectionIdx(0);
+  };
+
+  const handleInputChange = (field: keyof UserDetails, value: string) => {
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+
+    setUserDetails(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
-    <div className="p-4 max-w-md mx-auto">
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <input 
-            className="w-full p-2 border-2 rounded-lg"
-            type="text"
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={scanStatus.status === 'scanning'}
-          />
-          <input 
-            className="w-full p-2 border-2 rounded-lg"
-            type="text"
-            placeholder="Employee ID"
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            disabled={scanStatus.status === 'scanning'}
-          />
-        </div>
-
-        {scanStatus.status === 'initializing' && (
-          <button
-            onClick={startFaceScan}
-            className="w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600"
+    <div className="max-w-md mx-auto p-6 bg-white shadow-md rounded-lg">
+      <h1 className="text-2xl font-bold mb-6 text-center">3D Face Scan</h1>
+      {!scanning ? (
+        <div className="space-y-4">
+          <div>
+            <label className="block mb-1">Employee ID:</label>
+            <input
+              type="text"
+              value={userDetails.employee_id}
+              onChange={(e) => handleInputChange('employee_id', e.target.value)}
+              className={`w-full p-2 border rounded ${errors.employee_id ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            {errors.employee_id && <p className="text-red-500 text-sm mt-1">{errors.employee_id}</p>}
+          </div>
+          <div>
+            <label className="block mb-1">Name:</label>
+            <input
+              type="text"
+              value={userDetails.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              className={`w-full p-2 border rounded ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+          </div>
+          <div>
+            <label className="block mb-1">Email:</label>
+            <input
+              type="email"
+              value={userDetails.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              className={`w-full p-2 border rounded ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          </div>
+          <div>
+            <label className="block mb-1">Password:</label>
+            <input
+              type="password"
+              value={userDetails.password}
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              className={`w-full p-2 border rounded ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          </div>
+          <button 
+            onClick={handleStartScan}
+            className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition duration-300"
           >
-            Start Face Scan
+            Start Scanning
           </button>
-        )}
-
-        {isVideoVisible && (
-          <div className="space-y-4">
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <p className="text-center font-medium">{currentInstruction}</p>
-            </div>
-
-            <div className="relative">
-              <video 
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="w-full border rounded-lg"
-              />
-              {processedImage && (
-                <div className="absolute top-0 right-0 w-1/3 p-1">
-                  <img 
-                    src={processedImage}
-                    alt="Processed"
-                    className="w-full border rounded-lg"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="bg-gray-100 p-3 rounded-lg">
-              <p className="text-center">
-                Status: {scanStatus.status}
-                {scanStatus.message && ` - ${scanStatus.message}`}
-              </p>
-            </div>
+        </div>
+      ) : (
+        <div>
+          <h2 className="text-xl mb-4 font-semibold text-center">
+            Current Direction: {instruction || scanDirections[currentDirectionIdx]}
+          </h2>
+          <Webcam
+            ref={webcamRef}
+            audio={false}
+            screenshotFormat="image/jpeg"
+            width={640}
+            height={480}
+            className="mx-auto mb-4 border-2 border-gray-300 rounded"
+          />
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-600">
+              Progress: {currentDirectionIdx + 1} / {scanDirections.length}
+            </p>
+            <p className={`text-xs mt-2 ${
+              connectionStatus === 'connected' 
+                ? 'text-green-600' 
+                : connectionStatus === 'connecting'
+                ? 'text-yellow-600'
+                : 'text-red-600'
+            }`}>
+              {connectionStatus === 'connected' 
+                ? 'Connected and capturing images' 
+                : connectionStatus === 'connecting'
+                ? 'Connecting...'
+                : 'Disconnected. Attempting to reconnect...'}
+            </p>
           </div>
-        )}
-
-        {scanStatus.status === 'complete' && (
-          <div className="bg-green-100 p-3 rounded-lg">
-            <p className="text-center font-medium">Face scanning completed successfully!</p>
-            <button
-              onClick={() => {
-                cleanupResources();
-                setScanStatus({ status: 'initializing' });
-                setProcessedImage(null);
-              }}
-              className="w-full mt-2 bg-green-500 text-white p-2 rounded-lg hover:bg-green-600"
-            >
-              Start New Scan
-            </button>
-          </div>
-        )}
-
-        {scanStatus.status === 'error' && (
-          <div className="bg-red-100 p-3 rounded-lg">
-            <p className="text-center text-red-600">{scanStatus.message}</p>
-            <button
-              onClick={() => {
-                cleanupResources();
-                setScanStatus({ status: 'initializing' });
-              }}
-              className="w-full mt-2 bg-red-500 text-white p-2 rounded-lg hover:bg-red-600"
-            >
-              Try Again
-            </button>
-          </div>
-        )}
-
-        <canvas ref={canvasRef} style={{ display: 'none' }} />
-      </div>
+          {imageSrc ? <img src={imageSrc} alt="Captured" className="mx-auto mt-4 border rounded" />:<h1>No image</h1>}
+        </div>
+      )}
     </div>
   );
 };

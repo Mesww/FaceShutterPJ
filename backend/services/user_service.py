@@ -2,7 +2,9 @@ from backend.configs.db import connect_to_mongodb
 from backend.models.returnformat import Returnformat
 from backend.models.user_model import Faceimage, User, Userupdate
 from fastapi import HTTPException
-from bson import ObjectId  # Import ObjectId from BSON (MongoDB)
+from bson import ObjectId
+
+from backend.utils.image_utills import Image_utills  # Import ObjectId from BSON (MongoDB)
 
 class UserService:
     
@@ -87,18 +89,18 @@ class UserService:
     @staticmethod
     async def create_user_image_by_employee_id(request: User) -> Returnformat:
         try:
-            db = connect_to_mongodb()  # Establish database connection
+            db = await connect_to_mongodb()  # Establish database connection
             collection = db["users"]
             
             # Prepare user data for update
             user_data = request.model_dump()  # Pydantic models use dict() instead of model_dump()
             user_data["roles"] = request.roles.value  # Convert Enum to string  
             
-            new_user = collection.insert_one(user_data)
+            new_user = await collection.insert_one(user_data)
             
             
             # Fetch the updated document (optional but useful)
-            new_user = collection.find_one({"_id": new_user.inserted_id})
+            new_user = await collection.find_one({"_id": new_user.inserted_id})
             
             # Convert ObjectId to string for serialization
             new_user["_id"] = str(new_user["_id"])
@@ -110,13 +112,13 @@ class UserService:
     @staticmethod
     async def update_user_image_by_employee_id(employee_id: str, request: Faceimage) -> Returnformat:
         try:
-            db = connect_to_mongodb()
+            db = await connect_to_mongodb()
             collection = db["users"]
             
             faceimage_data = request.model_dump()
 
             # Find the user and their existing face images
-            user = collection.find_one({"employee_id": employee_id})
+            user = await collection.find_one({"employee_id": employee_id})
             if not user:
                 return Returnformat(400, "User not found", None)
 
@@ -126,7 +128,7 @@ class UserService:
             for existing_image in existing_faceimages:
                 if existing_image["scan_direction"] == faceimage_data["scan_direction"]:
                     # Update the existing face image instead of adding a new one
-                    updated_user = collection.update_one(
+                    updated_user = await collection.update_one(
                         {
                             "employee_id": employee_id,
                             "faceimage.scan_direction": faceimage_data["scan_direction"]
@@ -141,13 +143,13 @@ class UserService:
                     if updated_user.modified_count == 0:
                         return Returnformat(400, "Failed to update face image", None)
                     
-                    updated_user = collection.find_one({"employee_id": employee_id})
+                    updated_user = await collection.find_one({"employee_id": employee_id})
                     updated_user["_id"] = str(updated_user["_id"])
                     
                     return Returnformat(200, "Face image updated successfully", updated_user)
 
             # If no existing image with the same scan_direction, add the new one
-            updated_user = collection.update_one(
+            updated_user = await collection.update_one(
                 {"employee_id": employee_id},
                 {"$push": {"faceimage": faceimage_data}}
             )
@@ -155,10 +157,53 @@ class UserService:
             if updated_user.modified_count == 0:
                 return Returnformat(400, "Failed to add face image", None)
             
-            updated_user = collection.find_one({"employee_id": employee_id})
+            updated_user = await collection.find_one({"employee_id": employee_id})
             updated_user["_id"] = str(updated_user["_id"])
             
             return Returnformat(200, "Face image added successfully", updated_user)
             
         except Exception as e:
             return Returnformat(400, str(e), None)
+    
+    @staticmethod
+    async def save_user_to_db(employee_id, name, email, password, image_paths):
+        db = await connect_to_mongodb()  # Establish database connection
+        collection = db["users"]
+        user = {
+            "employee_id": employee_id,
+            "name": name,
+            "email": email,
+            "password": password,
+            "image_paths": image_paths  # List of image paths
+        }
+        result = await collection.insert_one(user)
+        return str(result.inserted_id)
+    
+    # Save user data and images to the server
+    @staticmethod
+    async def save_user_and_images(employee_id, name, email, password, images):
+        image_utills = Image_utills()
+        db = await connect_to_mongodb()  # Establish database connection
+        collection = db["users"]
+        # Save images to disk
+        saved_image_paths = []
+        for img_data in images:
+            direction = img_data["direction"]
+            frame = img_data["frame"]
+
+            # Generate a unique filename for each image
+            filepath =image_utills.save_image(image=frame, filename=f"{name}_{direction.replace(' ', '_').lower()}.jpg")
+
+            # Append the path to the list
+            saved_image_paths.append({"path": filepath, "direction": direction})
+
+        # Save user data to MongoDB
+        user = {
+            "employee_id": employee_id,
+            "name": name,
+            "email": email,
+            "password": password,
+            "images": saved_image_paths
+        }
+        result = collection.insert_one(user)
+        return str(result.inserted_id)

@@ -27,7 +27,7 @@ if not os.path.exists('saved_images'):
     os.makedirs('saved_images')
 
 # Open Webcam after getting the name
-cap = cv2.VideoCapture(1)  # Change to 0 if using the default camera
+cap = cv2.VideoCapture(0)  # Change to 0 if using the default camera
 
 # Helper function to crop the face from the frame
 def crop_face(frame, landmarks):

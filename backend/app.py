@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import datetime
 from pathlib import Path
 import cv2
 from dotenv import dotenv_values, load_dotenv
@@ -7,10 +8,12 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import numpy as np
 from backend.configs.config import SCAN_DIRECTION, ConnectionManager
 from backend.routes import  face_routes, user_routes 
-
+import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.services.face_service import Face_service
+from backend.services.user_service import UserService
+from backend.utils.image_utills import Image_utills
 
 pathenv = Path('./.env')
 load_dotenv(dotenv_path=pathenv)
@@ -63,71 +66,73 @@ app.include_router(
 )
 
 manager = ConnectionManager()
-@app.websocket("/ws/face-scan/{employee_id}")
-async def websocket_endpoint(websocket: WebSocket, employee_id: str):
-    await manager.connect(websocket, employee_id)
-    current_direction_index = 0
-    
-    try:
-        while current_direction_index < len(SCAN_DIRECTION):
-            # Send current direction instruction
-            await manager.send_message({
-                "type": "instruction",
-                "direction": SCAN_DIRECTION[current_direction_index]
-            }, employee_id)
-            
-            # Receive frame data
-            data = await websocket.receive_json()
-            
-            if data["type"] == "frame":
-                # Decode base64 image
-                img_data = base64.b64decode(data["frame"].split(',')[1])
-                nparr = np.frombuffer(img_data, np.uint8)
-                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                
-                # Process frame using face service
-                result = await Face_service.save_landmarks(
-                    SCAN_DIRECTION[current_direction_index],
-                    frame,
-                    name=data.get("name", "Unknown"),
-                    employee_id=data.get("employee_id", employee_id)
-                )
-                
-                # Send result back to client
-                await manager.send_message({
-                    "type": "result",
-                    "status": result.status,
-                    "message": result.message,
-                    "data": result.data
-                }, employee_id)
-                
-                if result.status == 200:
-                    current_direction_index += 1
-                    print(current_direction_index)
-                    await asyncio.sleep(3)
-                elif result.status >= 400:
-                    await manager.send_message({
-                        "type": "error",
-                        "message": result.message
-                    }, employee_id)
-                    manager.disconnect(employee_id)
-                    break
-            elif data["type"] == "complete":
-                break
-        await manager.send_message({
-            "type": "complete",
-            "message": "Face scan completed"
-        }, employee_id)
-    except WebSocketDisconnect:
-        manager.disconnect(employee_id)
-    except Exception as e:
-        await manager.send_message({
-            "type": "error",
-            "message": str(e)
-        }, employee_id)
-    finally:
-        manager.disconnect(employee_id)
 
+# MediaPipe Setup
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(
+    static_image_mode=False,
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5
+)
+
+
+@app.websocket("/ws/scan")
+async def websocket_endpoint(websocket: WebSocket):
+    face_service = Face_service()
+    user_service = UserService()
+    await websocket.accept()
+    scan_directions = ["Front", "Turn left", "Turn right", "Look up", "Look down"]
+    current_direction_idx = 0
+    images = []  # To store images temporarily
+
+    # Request user information
+    await websocket.send_text("Provide user details (employee_id, name, email, password):")
+    user_details = await websocket.receive_json()
+    employee_id = user_details["employee_id"]
+    name = user_details["name"]
+    email = user_details["email"]
+    password = user_details["password"]
+
+    try:
+        while current_direction_idx < len(scan_directions):
+            expected_direction = scan_directions[current_direction_idx]
+            await websocket.send_text(f"Please move your head to: {expected_direction}")
+            data = await websocket.receive_json()
+
+            # Decode the received image
+            frame_bytes = np.frombuffer(bytearray(data["image"]), dtype=np.uint8)
+            frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
+
+            # Detect face and landmarks
+            results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            if not results.multi_face_landmarks:
+                await websocket.send_text("No face detected. Please try again.")
+                continue
+
+            face_landmarks = results.multi_face_landmarks[0]
+            frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
+            detected_direction = face_service.check_head_direction(face_landmarks,True)
+            print(f"Detected direction: {detected_direction}")
+            # print(f"Landmarks: {[(lm.x, lm.y) for lm in face_landmarks.landmark]}")
+            # Check if the direction matches
+            encoded_frame = face_service.encode_image_to_base64(frame_with_landmarks)
+            await websocket.send_text(encoded_frame) 
+
+            if detected_direction != expected_direction:
+                await websocket.send_text(f"Incorrect direction! Detected: {detected_direction}")
+                continue
+            # Add the frame and direction to the images list
+            images.append({"frame": frame, "direction": expected_direction})
+
+            await websocket.send_text(f"Image captured for {expected_direction}")
+            current_direction_idx += 1
+
+        # Save all images and user data at once
+        user_id = user_service.save_user_and_images(employee_id, name, email, password, images)
+        await websocket.send_text(f"User data and images saved successfully with ID: {user_id}")
+    except WebSocketDisconnect:
+        print("WebSocket disconnected.")
 
 
 if __name__ == "__main__":

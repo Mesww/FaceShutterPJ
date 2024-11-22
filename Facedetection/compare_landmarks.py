@@ -34,7 +34,7 @@ def is_face_moving(prev_landmarks, curr_landmarks, threshold=0.02):
 with open('saved_landmarks.json', 'r') as json_file:
     scan_directions = json.load(json_file)
 
-cap = cv2.VideoCapture(1)  # Change to 0 if using the default camera
+cap = cv2.VideoCapture(0)  # Change to 0 if using the default camera
 
 # Load the saved images and prepare labels
 image_folder = 'saved_images'
