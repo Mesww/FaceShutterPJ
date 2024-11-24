@@ -11,6 +11,7 @@ import {
     ChevronRight,
     Menu
 } from 'lucide-react';
+import { isLogined } from '@/containers/userLogin';
 
 interface SidebarProps {
     isSidebarCollapsed: boolean;
@@ -22,7 +23,7 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    const menuItems = [
+    const menuItems = isLogined? [
         {
             path: '/users/UsersFacescan',
             title: 'สแกนใบหน้า',
@@ -47,6 +48,13 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
             icon: <Bell size={20} />,
             description: 'รับการแจ้งเตือนเมื่อมีการเปลี่ยนแปลง'
         }
+    ]:[
+        {
+            path: '/users/UsersFacescan',
+            title: 'สแกนใบหน้า',
+            icon: <Scan size={20} />,
+            description: 'บันทึกเวลาด้วยการสแกนใบหน้า'
+        }, 
     ];
 
     const handleNavigate = (path: string) => {

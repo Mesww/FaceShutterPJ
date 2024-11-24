@@ -3,15 +3,23 @@ export interface FaceScanPageProps {
  
   }
 
+export interface User{
+  employee_id: string;
+  name: string;
+  email: string;
+  password: string;
+  tel: string;
+}
   export interface UserData {
-    user: {
-      employee_id: string;
-      name: string;
-      email: string;
-      tel: string;
-    };
+    user: User;
     image: {
       filename: string;
       data: string;
     };
   }
+
+export interface Responsedata{
+  status: number;
+  message: string;
+  data:object|boolean|string|null;
+}

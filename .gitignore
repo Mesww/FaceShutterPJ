@@ -129,3 +129,4 @@ dist
 .venv
 /data/*
 /backend/images/*
+

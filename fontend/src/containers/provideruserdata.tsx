@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { UserData } from '../interfaces/users_facescan.interface';
 import { getuserdata } from './getUserdata';
+import { isLogined } from './userLogin';
 
 interface UserContextType {
   userData: UserData | null;
@@ -65,8 +66,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   // Initial load
   useEffect(() => {
-    localStorage.setItem('employee_id', '123');
-    fetchUserData();
+    if (isLogined) {
+      localStorage.setItem('employee_id', '123');
+      fetchUserData();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only fetch on mount
 

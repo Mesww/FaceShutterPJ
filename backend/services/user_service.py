@@ -30,6 +30,27 @@ class UserService:
         except Exception as e:
             return Returnformat(400, str(e), None)
     @staticmethod
+    async def get_is_user_by_employee_id(employee_id: str) -> Returnformat:
+        try:
+            db = await connect_to_mongodb()  # Establish database connection
+            collection = db["users"]
+            print(employee_id)
+            
+            # Correct way: "employee_id" should be the field name
+            query = {"employee_id": str(employee_id)}
+            user = await collection.find_one(filter=query)
+            print(F"Found {user}")
+            
+            if not user:
+                return Returnformat(400, "User not found", False)
+                
+            # Return success response with user data
+            return Returnformat(200, "User fetched successfully", True)
+        
+        except Exception as e:
+            return Returnformat(400, str(e), None)
+    
+    @staticmethod
     async def register_user(request: User) -> Returnformat:
         try:
             db = connect_to_mongodb()  # Establish database connection
@@ -166,10 +187,33 @@ class UserService:
         except Exception as e:
             return Returnformat(400, str(e), None)
     
+    # @staticmethod
+    # async def authorregis(employee_id: str, request: User) -> Returnformat:
+    #     try:
+    #         db = await connect_to_mongodb()  # Establish database connection
+    #         collection = db["users"]
+            
+    #         # Prepare user data for update
+    #         user_data = request.model_dump()  # Pydantic models use dict() instead of model_dump()
+    #         user_data["roles"] = request.roles.value  # Convert Enum to string  
+            
+    #         new_user = await collection.insert_one(user_data)
+            
+            
+    #         # Fetch the updated document (optional but useful)
+    #         new_user = await collection.find_one({"_id": new_user.inserted_id})
+            
+    #         # Convert ObjectId to string for serialization
+    #         new_user["_id"] = str(new_user["_id"])
+            
+    #         # Return success response with updated user data
+    #         return Returnformat(200, "User updated successfully", new_user)
+    #     except Exception as e:
+    #         return Returnformat(400, str(e), None)
     
     # Save user data and images to the server
     @staticmethod
-    async def save_user_and_images(employee_id, name, email, password, images):
+    async def save_user_and_images(employee_id, name, email, password, images,tel):
         try:
             image_utills = Image_utills()
             db = await connect_to_mongodb()  # Establish database connection
@@ -192,6 +236,7 @@ class UserService:
                 name= name,
                 email= email,
                 password= password,
+                tel= tel,
                 images= saved_image_paths,
                 roles= RoleEnum.USER,
                 created_at= datetime.now(),

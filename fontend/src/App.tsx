@@ -15,6 +15,7 @@ function App() {
   return (
 
     <Router>
+      
       <UserProvider>
         <Routes>
           <Route
@@ -40,6 +41,7 @@ function App() {
             ))}
           </Route>
         </Routes>
+      </UserProvider>
 
         {/* Amin Routes */}
         <Routes>
@@ -59,7 +61,6 @@ function App() {
             ))}
           </Route>
         </Routes>
-      </UserProvider>
     </Router>
   )
 }

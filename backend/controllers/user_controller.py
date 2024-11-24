@@ -56,11 +56,33 @@ class UserController:
     ):
         try:
             res = await UserService.get_user_by_employee_id(employee_id)
-            if res.status >= 400:
-                raise HTTPException(status_code=400, detail=res.message)
             return res
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+    @staticmethod
+    @router.get("/get_user_by_employee_id/{employee_id}")
+    async def get_is_user_by_employee_id(
+        employee_id: str,
+    ):
+        try:
+            res = await UserService.get_is_user_by_employee_id(employee_id)
+            return res
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        
+    # @staticmethod
+    # @router.post("/auth")
+    # async def authenticate_user(
+    #     employee_id: str = Form(...),
+    # ):
+    #     try:
+    #         res = await UserService.authenticate_user(employee_id)
+    #         if res.status >= 400:
+    #             raise HTTPException(status_code=400, detail=res.message)
+    #         return res
+    #     except Exception as e:
+    #         raise HTTPException(status_code=400, detail=str(e))
+        
 
 
 

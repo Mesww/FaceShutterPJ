@@ -2,7 +2,26 @@ import { BACKEND_URL } from "@/configs/backend";
 
 export const getuserdata = async (employee_id: string) => {
     try {
-        const response = await fetch(`${BACKEND_URL}/api/users/${employee_id}`, {
+        const response = await fetch(`${BACKEND_URL}/api/users/get_user_by_employee_id/${employee_id}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Registration failed');
+        }
+        return  await response.json();
+    } catch (error) {
+        console.error('Error:', error);
+        alert(error instanceof Error ? error.message : 'Registration failed');
+    }
+}
+
+export const getisuserdata = async (employee_id: string) => {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/users/get_is_user_by_employee_id/${employee_id}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',

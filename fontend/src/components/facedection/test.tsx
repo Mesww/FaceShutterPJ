@@ -160,8 +160,6 @@ const CameraCapture: React.FC = () => {
     setCurrentDirectionIdx(0);
   };
 
- 
-
   const handleInputChange = (field: keyof UserDetails, value: string) => {
     if (errors[field]) {
       setErrors(prev => {
@@ -244,7 +242,6 @@ const CameraCapture: React.FC = () => {
             height={480}
             className="mx-auto mb-4 border-2 border-gray-300 rounded"
           />
-          
           <div className="mt-4 text-center">
             <p className="text-sm text-gray-600">
               Progress: {currentDirectionIdx + 1} / {scanDirections.length}
