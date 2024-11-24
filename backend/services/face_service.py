@@ -455,7 +455,7 @@ class EnhancedFaceScanService:
         """
         Collect comprehensive face scans with various poses and expressions
         """
-        all_images = []
+        all_images:List[Dict] = []
         all_features = []
         quality_threshold = 0.8
 
@@ -487,6 +487,7 @@ class EnhancedFaceScanService:
         for image_data in all_images:
             features = self._extract_features(image_data["frame"])
             if features and self._verify_scan_quality(features, quality_threshold):
+                image_data["features"] = features
                 all_features.append({
                     "features": features,
                     "direction": image_data["direction"],

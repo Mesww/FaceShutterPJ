@@ -12,7 +12,7 @@ from backend.routes import face_routes, user_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.services.face_service import Face_service
+from backend.services.face_service import Face_service,EnhancedFaceScanService
 from backend.services.user_service import UserService
 from backend.utils.image_utills import Image_utills
 
@@ -252,68 +252,40 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.websocket("/ws/scan")
 async def websocket_endpoint(websocket: WebSocket):
-    face_service = Face_service()
+    face_service = EnhancedFaceScanService()
     user_service = UserService()
     await websocket.accept()
-    scan_directions = ["Front", "Turn left", "Turn right"]
-    current_direction_idx = 0
-    images = []  # To store images temporarily
+     # Get user details
+    
+   
+    await websocket.send_json({
+        "status": "request",
+        "message": "Provide user details",
+        "required_fields": ["employee_id", "name", "email", "tel", "password"]
+    })
 
-    # Request user information
-    await websocket.send_text(
-        "Provide user details (employee_id, name, email, password):"
-    )
-    await websocket.send_json({"scan_directions": scan_directions})
     user_details = await websocket.receive_json()
-    employee_id = user_details["employee_id"]
-    name = user_details["name"]
-    email = user_details["email"]
-    tel = user_details["tel"]
-    password = user_details["password"]
-
     try:
-        while current_direction_idx < len(scan_directions):
-            expected_direction = scan_directions[current_direction_idx]
-            await websocket.send_text(f"Please move your head to: {expected_direction}")
-            data = await websocket.receive_json()
-
-            # Decode the received image
-            frame_bytes = np.frombuffer(bytearray(data["image"]), dtype=np.uint8)
-            frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
-
-            # Detect face and landmarks
-            results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            if not results.multi_face_landmarks:
-                await websocket.send_text("No face detected. Please try again.")
-                continue
-
-            face_landmarks = results.multi_face_landmarks[0]
-            frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
-            detected_direction = face_service.check_head_direction(face_landmarks)
-            print(f"Detected direction: {detected_direction}")
-            # print(f"Landmarks: {[(lm.x, lm.y) for lm in face_landmarks.landmark]}")
-            # Check if the direction matches
-            encoded_frame = face_service.encode_image_to_base64(frame_with_landmarks)
-            await websocket.send_text(encoded_frame)
-
-            if detected_direction != expected_direction:
-                await websocket.send_text(
-                    f"Incorrect direction! Detected: {detected_direction}"
-                )
-                continue
-            # Add the frame and direction to the images list
-            images.append({"frame": frame, "direction": expected_direction})
-
-            await websocket.send_text(f"Image captured for {expected_direction}")
-            current_direction_idx += 1
-
-        # Save all images and user data at once
+         # Collect face scans
+        scan_results = await face_service.collect_face_scans(websocket)
+        
+        # Save user data and scans
         user_id = await user_service.save_user_and_images(
-            employee_id, name, email, password, images, tel
+            employee_id=user_details["employee_id"],
+            name=user_details["name"],
+            email=user_details["email"],
+            password=user_details["password"],
+            images=scan_results["images"],
+            tel=user_details["tel"]
         )
-        await websocket.send_text(
-            f"User data and images saved successfully with ID: {user_id}"
-        )
+        
+        await websocket.send_json({
+            "status": "success",
+            "message": f"Registration complete! User ID: {user_id}",
+            "scans_collected": len(scan_results["images"]),
+            "features_extracted": len(scan_results["features"])
+        })
+        
     except WebSocketDisconnect:
         print("WebSocket disconnected.")
 

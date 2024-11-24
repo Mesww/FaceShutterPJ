@@ -14,6 +14,7 @@ class Faceimage(BaseModel):  # Move Faceimage class before User class
     """
     direction: str
     path: str
+    feature: Optional[List[float]] = []  # Add feature field with empty list
 
 
 class User(BaseModel):

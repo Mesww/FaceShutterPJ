@@ -220,15 +220,17 @@ class UserService:
             collection = db["users"]
             # Save images to disk
             saved_image_paths = []
-            for img_data in images:
+            for img_data in images['images']:
                 direction = img_data["direction"]
                 frame = img_data["frame"]
-
+                feature = img_data["feature"]
                 # Generate a unique filename for each image
                 filepath =image_utills.save_image(image=frame, filename=f"{name}_{direction.replace(' ', '_').lower()}.jpg")
 
                 # Append the path to the list
-                saved_image_paths.append({"path": filepath, "direction": direction})
+                saved_image_paths.append({"path": filepath, "direction": direction,"feature":feature})
+
+                
             
             # Save user data to MongoDB
             user = User(
@@ -240,6 +242,7 @@ class UserService:
                 images= saved_image_paths,
                 roles= RoleEnum.USER,
                 created_at= datetime.now(),
+                
                 updated_at= None
             )
             user = user.model_dump()

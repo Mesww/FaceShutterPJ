@@ -69,18 +69,13 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       if (message.startsWith("{")) {
         const jsonData = JSON.parse(message);
         console.log("Received JSON data:", jsonData);
+        setInstruction(jsonData['message']);
         // Handle the JSON data here
-        if (jsonData['status'] === "progress") {
-          console.log("Progress:", jsonData['message']);
-          setInstruction(jsonData['message']);
-          setTotal_steps(jsonData['total_steps']);
-        }
-
+      
         if(jsonData['scan_directions']){
           setScanDirections(jsonData['scan_directions']);
         }
         else if (jsonData['status'] === 'pending') {
-          
           console.log("User data received, awaiting scan...");
           console.log("User data:", jsonData['message']);
 
@@ -89,6 +84,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         }else if (jsonData['status'] === 'success') {
           console.log("User data and images saved successfully");
           console.log("User data:", jsonData['message']);}
+          setIsScanning(false);
+          setInstruction("");
+          setUserDetails({ employee_id: "", name: "", email: "", password: "",tel: "" });
+          setConnectionStatus('disconnected');
       }
         // Check if the message looks like base64 image data
     if (message.startsWith("/9j/") || message.includes("base64,")) {
@@ -155,7 +154,19 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         setConnectionStatus('connected');
         setIsLoadings(false); 
         setLoadingMessage("กำลังสแกนใบหน้า...");
-        ws.send(JSON.stringify(userDetails));
+        ws.onmessage  = (event: MessageEvent) => 
+          {
+            const message = event.data;
+            if (message.startsWith("{")) {
+              const jsonData = JSON.parse(message);
+              console.log("Received JSON data:", jsonData);
+              if (jsonData['status'] === 'request') {
+                console.log("User data received, awaiting scan...");
+                console.log("User data:", jsonData['message']);
+                setUserDetails(jsonData['message']);
+              }
+            }
+          }
 
         imageInterval = setInterval(() => {
           sendImage(ws);
@@ -429,7 +440,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   <div className="absolute inset-0 flex items-end justify-center">
                     <div className="bg-black/60 text-white p-4 rounded-lg">
                       <p className="text-xl font-semibold text-center">
-                        {isAuthen ? instruction : scanDirections[currentDirectionIdx]}
+                        { instruction }
                       </p>
                     </div>
                   </div>
