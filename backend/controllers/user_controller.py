@@ -1,9 +1,11 @@
 import logging
 from typing import Optional
-from fastapi import APIRouter, File, Form, HTTPException, Depends, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Depends, Header, UploadFile
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.services.user_service import UserService
 from backend.models.user_model import  User, Userupdate
+import json
 
 # โมเดลสำหรับการลงทะเบียนผู้ใช้
 
@@ -11,6 +13,7 @@ from backend.models.user_model import  User, Userupdate
 router = APIRouter()
 
 class UserController:
+    security = HTTPBearer()
     @staticmethod
     @router.post("/register")
     async def register_user(
@@ -50,17 +53,25 @@ class UserController:
             raise HTTPException(status_code=400, detail=str(e))
     
     @staticmethod
-    @router.get("/get_user_by_employee_id/{employee_id}")
+    @router.get("/get_user_by_employee_id")
     async def get_user_by_employee_id(
-        employee_id: str,
+        credentials: HTTPAuthorizationCredentials = Depends(security)
     ):
         try:
-            res = await UserService.get_user_by_employee_id(employee_id)
+            print(f'Getting user... {credentials.credentials}')
+            userservice = UserService()
+            employee_id = userservice.extract_token( token=credentials.credentials)
+            print(employee_id['sub'])
+           
+            # print(employee_id)
+            # employee_id = int(employee_id["sub"])
+            # print(employee_id)
+            res = await userservice.get_user_by_employee_id(employee_id['sub'])
             return res
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
     @staticmethod
-    @router.get("/get_user_by_employee_id/{employee_id}")
+    @router.get("/get_is_user_by_employee_id/{employee_id}")
     async def get_is_user_by_employee_id(
         employee_id: str,
     ):

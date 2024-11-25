@@ -149,9 +149,11 @@ async def websocket_endpoint(websocket: WebSocket):
         )
         prev_landmarks = None
         blink_counter = 0
+        
         await websocket.send_json(
             {"data": {"status": "pending", "message": "Please face the camera."}}
         )
+        
         is_Chcek = False
         while True:
             data = await websocket.receive_json()
@@ -162,6 +164,7 @@ async def websocket_endpoint(websocket: WebSocket):
             frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
             frame = cv2.flip(frame, 1)
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
             results = face_mesh.process(rgb_frame)
             if results.multi_face_landmarks:
                 for face_landmarks in results.multi_face_landmarks:
@@ -187,10 +190,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     face_movement = face_service.is_face_moving(prev_landmarks, face_landmarks)
 
                     # Liveness Criteria
-                    if eye_aspect_ratio < 0.2:  # Blink detection
+                    if eye_aspect_ratio < 0.25:  # Blink detection
                         blink_counter += 1
 
-                    if blink_counter >= 2 and face_movement:
+                    if blink_counter >= 1 and face_movement:
                         is_live = True
 
                     prev_landmarks = face_landmarks  # Update for the next frame

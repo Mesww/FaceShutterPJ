@@ -1,5 +1,5 @@
 import Cookie from 'js-cookie';
-export const isLogined:boolean = (()=> {
+export const checkisLogined:boolean = (()=> {
     const token = Cookie.get('token');
     if (token) {
         return true;

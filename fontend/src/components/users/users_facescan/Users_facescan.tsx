@@ -5,7 +5,7 @@ import { FaceScanPageProps, Responsedata, User } from '@/interfaces/users_facesc
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
 import { Outlet } from 'react-router-dom';
-import { isLogined, setLogined } from '@/containers/userLogin.js';
+import { checkisLogined, setLogined } from '@/containers/userLogin.js';
 import { getisuserdata } from '@/containers/getUserdata.js';
 import RegisModal from './regis_modal.js';
 import Webcam from 'react-webcam';
@@ -304,7 +304,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
 
   // Map paths to titles and descriptions
-  const menuItems = isLogined ? [
+  const menuItems = checkisLogined ? [
     {
       path: "/UsersFacescan",
       title: "สแกนใบหน้า",
