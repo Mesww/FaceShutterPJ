@@ -240,19 +240,23 @@ class UserService:
         SECRET_KEY = self.config.get("SECRET_KEY", "RickAstley")
         print(SECRET_KEY)
         ALGORITHM = self.config.get("ALGORITHM", "HS256")
-        expiration_time = datetime.now() + timedelta(days=1)  # Token valid for 1 day
+        print(ALGORITHM)
+        expiration_time = (datetime.now() + timedelta(days=1)).timestamp()
         payload = {
             "sub": employee_id,
             "exp": expiration_time,
-            "iat": datetime.now(),
+            "iat": datetime.now().timestamp(),
         }
-        token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+        
+        token = jwt.encode(payload, key=SECRET_KEY, algorithm=ALGORITHM)
         return token
     def extract_token(self,token: str):
         try:
+            print(token)
             SECRET_KEY = self.config.get("SECRET_KEY", "RickAstley")
             print(SECRET_KEY)
             ALGORITHM = self.config.get("ALGORITHM", "HS256")
+            print(ALGORITHM)
             # Decode the JWT
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             return payload  # Return the payload if valid

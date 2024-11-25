@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { UserData } from '../interfaces/users_facescan.interface';
 import { getuserdata } from './getUserdata';
-import { isLogined } from './userLogin';
+import { checkisLogined } from './userLogin';
 
 interface UserContextType {
   userData: UserData | null;
@@ -21,7 +21,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
+  const [isLogined, setIsLogined] = useState<boolean>(false);
   // Get employee_id from localStorage or another auth source
   const getEmployeeId = () => {
     // Replace this with your actual auth logic
@@ -66,6 +66,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   // Initial load
   useEffect(() => {
+    setIsLogined(checkisLogined);
     if (isLogined) {
       localStorage.setItem('employee_id', '123');
       fetchUserData();
