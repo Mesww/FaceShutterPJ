@@ -36,8 +36,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
-  const [currentDirection, setCurrentDirection] = useState<string>('');
-  const [total_steps, setTotal_steps] = useState<number>(0);
   // send image to backend
   const sendImage = useCallback((ws: WebSocket) => {
     if (!webcamRef.current || !ws || ws.readyState !== WebSocket.OPEN) return null;

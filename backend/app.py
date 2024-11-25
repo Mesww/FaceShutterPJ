@@ -145,7 +145,7 @@ async def websocket_endpoint(websocket: WebSocket):
             static_image_mode=False,
             max_num_faces=1,
             refine_landmarks=True,
-            min_detection_confidence=0.5,
+            min_detection_confidence=0.4,
         )
         prev_landmarks = None
         blink_counter = 0
