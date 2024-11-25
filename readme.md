@@ -17,7 +17,7 @@ pip install -r requirements.txt
     gunicorn backend.main:app -w 4 -k uvicorn.workers.UvicornWorker
 
 .env need 
-MONGO_URI = database url
+MONGOURL = database url
 DB_NAME = database name
 
 ==============================================

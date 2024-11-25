@@ -38,6 +38,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
   const {isLogined,setIsLogined} = useUserData();
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   // send image to backend
   const sendImage = useCallback((ws: WebSocket) => {
     if (!webcamRef.current || !ws || ws.readyState !== WebSocket.OPEN) return null;
@@ -80,9 +82,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         else if (status === 'pending') {
           console.log("User data received, awaiting scan...");
           console.log("User data:", jsonData.data);
-        }else if (status === 'failed') {
+        } else if (status === 'failed') {
           console.error("Error:", messages);
-        }else if (status === 'success') {
+        } else if (status === 'success') {
           console.log("User data and images saved successfully");
           console.log("User data:", messages);
           console.log("User token:", jsonData.data.token);
@@ -90,51 +92,51 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           setIsScanning(false);
           setIsAuthen(false);
           setInstruction("");
-          setUserDetails({ employee_id: "", name: "", email: "", password: "",tel: "" });
+          setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
           setConnectionStatus('disconnected');
           setLogined(token)
           setIsLogined(true);
         }
       }
-        // Check if the message looks like base64 image data
-    if (message.startsWith("/9j/") || message.includes("base64,")) {
-      console.log("Received image data");
-      let base64Image;
-      
-      // If the message already includes the data URI prefix, use it directly
-      if (message.startsWith("data:image/jpeg;base64,")) {
-        base64Image = message;
-      } else {
-        // Otherwise, create the data URI
-        base64Image = `data:image/jpeg;base64,${message}`;
+      // Check if the message looks like base64 image data
+      if (message.startsWith("/9j/") || message.includes("base64,")) {
+        console.log("Received image data");
+        let base64Image;
+
+        // If the message already includes the data URI prefix, use it directly
+        if (message.startsWith("data:image/jpeg;base64,")) {
+          base64Image = message;
+        } else {
+          // Otherwise, create the data URI
+          base64Image = `data:image/jpeg;base64,${message}`;
+        }
+
+        setImageSrc(base64Image);
+        return;
       }
-      
-      setImageSrc(base64Image);
-      return;
-    }
       if (message.startsWith("Please move your head to:")) {
-            setInstruction(message.replace("Please move your head to: ", ""));
-            setConnectionStatus('connected');
+        setInstruction(message.replace("Please move your head to: ", ""));
+        setConnectionStatus('connected');
       }
       else if (message.startsWith("Image captured for")) {
         setCurrentDirectionIdx((prev) => prev + 1);
       }
-      else if (message.startsWith("Incorrect direction!") || 
-               message.startsWith("No face detected")) {
+      else if (message.startsWith("Incorrect direction!") ||
+        message.startsWith("No face detected")) {
         console.log(message);
-       
+
       }
       else if (message.startsWith("User data and images saved successfully")) {
         alert("Scan complete and data saved!");
         setIsScanning(false);
         setInstruction("");
-        setUserDetails({ employee_id: "", name: "", email: "", password: "",tel: "" });
+        setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
         setConnectionStatus('disconnected');
-      } 
+      }
       else if (message.startsWith("image_data:")) {
         const imageData = message.replace("image_data:", "");
         console.log("Received base64 image data:", imageData); // Check the image data in the console
-  
+
         const base64Image = `data:image/jpeg;base64,${imageData}`;
         setImageSrc(base64Image);
       }
@@ -159,13 +161,13 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
       ws.onopen = () => {
         setConnectionStatus('connected');
-        setIsLoadings(false); 
+        setIsLoadings(false);
         setLoadingMessage("กำลังสแกนใบหน้า...");
         ws.send(JSON.stringify(userDetails));
 
         imageInterval = setInterval(() => {
           sendImage(ws);
-        }, 1000); 
+        }, 1000);
       };
 
       ws.onmessage = handleWebSocketMessage;
@@ -186,7 +188,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         if (imageInterval) clearInterval(imageInterval);
         ws.close();
       };
-    }else if(isAuthen){
+    } else if (isAuthen) {
       setIsLoadings(true);
       setLoadingMessage("กำลังเชื่อมต่อเซิฟเวอร์...");
       const ws = new WebSocket("ws://localhost:8000/ws/auth");
@@ -194,22 +196,22 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       setConnectionStatus('connecting');
       ws.onopen = () => {
         setConnectionStatus('connected');
-        setIsLoadings(false); 
+        setIsLoadings(false);
         setLoadingMessage("กำลังสแกนใบหน้า...");
-        ws.send(JSON.stringify({employee_id: employeeId}));
+        ws.send(JSON.stringify({ employee_id: employeeId }));
 
         imageInterval = setInterval(() => {
           sendImage(ws);
-        }, 1000); 
+        }, 1000);
 
         ws.onmessage = handleWebSocketMessage;
-        
+
         ws.onclose = () => {
           if (imageInterval) clearInterval(imageInterval);
           setWebSocket(null);
           setConnectionStatus('disconnected');
         };
-        
+
         ws.onerror = (error) => {
           console.error("WebSocket error:", error);
           if (imageInterval) clearInterval(imageInterval);
@@ -227,28 +229,61 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   // Employee ID form submission
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // ตรวจสอบว่ามีการกรอก employee ID หรือไม่
+    if (!employeeId || employeeId.trim() === '') {
+      setErrors('กรุณากรอก Employee ID');
+      return;
+    }
+
+    // ตรวจสอบรูปแบบของ Employee ID
+    if (!/^\d{6,10}$/.test(employeeId)) {
+      setErrors('Employee ID must be 6-10 digits.');
+      return;
+    }
 
     const error = validateEmployeeId(employeeId);
 
     if (error) {
       setErrors(employeeId);
-      return; // Stop submission if there's an error
+      return;
     }
 
-    // Proceed with form submission
     console.log("Form submitted with Employee ID:", employeeId);
     const isUser: Responsedata = await getisuserdata(employeeId);
     console.log("User data:", isUser.data);
+
     if (!isUser.data) {
-      setIsRegister(true);
+      setShowConfirmDialog(true); // แสดง confirmation dialog แทนที่จะแสดง RegisModal ทันที
       return;
     }
     setIsAuthen(true);
   };
 
+  // เพิ่ม handlers สำหรับ confirmation dialog
+  const handleConfirmRegistration = () => {
+    setShowConfirmDialog(false);
+    setIsRegister(true);
+  };
+
+  const handleCancelRegistration = () => {
+    setShowConfirmDialog(false);
+    setEmployeeId("");
+  };
+
   // Handle camera switch
   const handleSwitchCamera = () => {
-   console.log('Switching camera...');
+    // Stop current video track
+    if (webcamRef.current && webcamRef.current.video) {
+      const mediaStream = webcamRef.current.video.srcObject as MediaStream;
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => {
+          track.stop();
+        });
+      }
+    }
+
+    // Toggle facing mode
+    setFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user');
   };
   const stopCamera = () => {
     if (webcamRef.current && webcamRef.current.video) {
@@ -299,7 +334,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
-// logging state changes
+  // logging state changes
   useEffect(() => {
     console.log('FaceScan State:', {
       isScanning,
@@ -312,13 +347,13 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
   const validateEmployeeId = (value: string) => {
     // Example validation: must be non-empty and numeric with 6-10 digits
-    if (!value) {
-      return "Employee ID is required.";
+    if (!value || value.trim() === '') {
+      return "กรุณากรอก Employee ID";
     }
     if (!/^\d{6,10}$/.test(value)) {
       return "Employee ID must be 6-10 digits.";
     }
-    return null; // No errors
+    return null;
   };
 
   const handleInputChange = (value: string) => {
@@ -327,13 +362,45 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     setEmployeeId(value);
   };
 
- 
-
-
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
-      {(isRegister && employeeId.trim() !== "") && (<RegisModal employeeId={employeeId} setIsRegister={setIsRegister} isRegister={isRegister} userDetails={userDetails} setUserDetails={setUserDetails} setIsScanning={setIsScanning} />)}
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">ยืนยันการลงทะเบียน</h3>
+            <p className="text-gray-600 mb-6">
+              ไม่พบข้อมูล Employee ID ของคุณในระบบ คุณต้องการลงทะเบียนใช่หรือไม่?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancelRegistration}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleConfirmRegistration}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                ยืนยัน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
+      {/* RegisModal - แสดงเมื่อ isRegister เป็น true */}
+      {(isRegister && employeeId.trim() !== "") && (
+        <RegisModal
+          employeeId={employeeId}
+          setIsRegister={setIsRegister}
+          isRegister={isRegister}
+          userDetails={userDetails}
+          setUserDetails={setUserDetails}
+          setIsScanning={setIsScanning}
+        />
+      )}
       {/* {isLoading && (<LoadingSpinner message={loadingmessage} />)} */}
       {/* Mobile Sidebar */}
 
@@ -360,7 +427,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         <div className="w-full p-2 md:p-4 bg-white">
           <form onSubmit={handleFormSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div className="bg-white rounded-lg shadow p-6">
-              <label className="block mb-1">Employee ID:</label>
+              <label className="block font-bold text-base mb-2"><span className="text-red-500 ml-1">*</span> Employee ID:</label>
               <input
                 type="text"
                 value={employeeId}
@@ -380,7 +447,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
               <p className="text-gray-600 mb-4">
                 บันทึกเวลาเข้างานด้วยการสแกนใบหน้า
               </p>
-            
+
               <button
                 type='submit'
                 disabled={isScanning}
@@ -422,7 +489,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                     audio={false}
                     screenshotFormat="image/jpeg"
                     className="absolute inset-0 w-full h-full object-cover"
-                    mirrored={true}
                   />
                   {/* <canvas ref={canvasRef} className="hidden" /> */}
 
@@ -433,10 +499,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="absolute inset-0 flex items-end justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center">
                     <div className="bg-black/60 text-white p-4 rounded-lg">
                       <p className="text-xl font-semibold text-center">
-                        {isAuthen ? instruction : scanDirections[currentDirectionIdx]}
+                        {instruction}
                       </p>
                     </div>
                   </div>
