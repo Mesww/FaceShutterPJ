@@ -61,12 +61,12 @@ class UserController:
             print(f'Getting user... {credentials.credentials}')
             userservice = UserService()
             employee_id = userservice.extract_token( token=credentials.credentials)
-            print(employee_id['sub'])
+            print(employee_id.get('sub'))
            
             # print(employee_id)
             # employee_id = int(employee_id["sub"])
             # print(employee_id)
-            res = await userservice.get_user_by_employee_id(employee_id['sub'])
+            res = await userservice.get_user_by_employee_id(employee_id.get('sub'))
             return res
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))

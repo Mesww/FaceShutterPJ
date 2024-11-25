@@ -9,6 +9,7 @@ import { checkisLogined, setLogined } from '@/containers/userLogin.js';
 import { getisuserdata } from '@/containers/getUserdata.js';
 import RegisModal from './regis_modal.js';
 import Webcam from 'react-webcam';
+import {  useUserData } from '@/containers/provideruserdata.js';
 // import { useUserData } from '@/containers/provideruserdata.js';
 
 const FaceScanPage: React.FC<FaceScanPageProps> = () => {
@@ -36,8 +37,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
-  const [currentDirection, setCurrentDirection] = useState<string>('');
-  const [total_steps, setTotal_steps] = useState<number>(0);
+  const {isLogined,setIsLogined} = useUserData();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   // send image to backend
@@ -95,6 +95,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
           setConnectionStatus('disconnected');
           setLogined(token)
+          setIsLogined(true);
         }
       }
       // Check if the message looks like base64 image data
@@ -145,7 +146,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
     }
-  }, [setImageSrc]);
+  }, [setImageSrc,setIsLogined]);
 
   //  websocket
   useEffect(() => {
@@ -304,7 +305,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
 
   // Map paths to titles and descriptions
-  const menuItems = checkisLogined ? [
+  const menuItems = isLogined ? [
     {
       path: "/UsersFacescan",
       title: "สแกนใบหน้า",
@@ -488,12 +489,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                     audio={false}
                     screenshotFormat="image/jpeg"
                     className="absolute inset-0 w-full h-full object-cover"
-                    mirrored={true} // ตั้งค่าให้ไม่ mirror ทั้งกล้องหน้าและหลัง
-                    videoConstraints={{
-                      facingMode: facingMode,
-                      width: { ideal: 1280 },
-                      height: { ideal: 720 }
-                    }}
+                    mirrored={true}
                   />
                   {/* <canvas ref={canvasRef} className="hidden" /> */}
 

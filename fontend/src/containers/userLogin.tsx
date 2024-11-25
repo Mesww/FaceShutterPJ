@@ -1,7 +1,8 @@
 import Cookie from 'js-cookie';
 export const checkisLogined:boolean = (()=> {
     const token = Cookie.get('token');
-    if (token) {
+    if (token !== undefined) {
+        console.log(token);
         return true;
     }
     return false;

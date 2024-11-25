@@ -34,7 +34,7 @@ class UserService:
 
             if not user:
                 return Returnformat(400, "User not found", None)
-
+            user["_id"] = str(user["_id"])
             # Return success response with user data
             return Returnformat(200, "User fetched successfully", user)
 
