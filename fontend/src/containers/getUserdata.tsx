@@ -1,11 +1,13 @@
 import { BACKEND_URL } from "@/configs/backend";
 
-export const getuserdata = async (employee_id: string) => {
+export const getuserdata = async (token: string) => {
+
     try {
         const response = await fetch(`${BACKEND_URL}/api/users/get_user_by_employee_id/${employee_id}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
         },
         });
         if (!response.ok) {

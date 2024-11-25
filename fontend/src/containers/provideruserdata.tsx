@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { UserData } from '../interfaces/users_facescan.interface';
 import { getuserdata } from './getUserdata';
 import { checkisLogined } from './userLogin';
+import Cookies from 'js-cookie';
 
 interface UserContextType {
   userData: UserData | null;
@@ -11,6 +12,8 @@ interface UserContextType {
   error: string | null;
   setProfileImage: React.Dispatch<React.SetStateAction<string | null>>;
   refreshUserData: () => Promise<void>;
+  isLogined:boolean;
+  setIsLogined: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -22,24 +25,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLogined, setIsLogined] = useState<boolean>(false);
-  // Get employee_id from localStorage or another auth source
-  const getEmployeeId = () => {
-    // Replace this with your actual auth logic
-    const employeeId = localStorage.getItem('employee_id') || "1234";
-    return employeeId;
-  };
 
   const fetchUserData = async () => {
     setIsLoading(true);
     setError(null);
-    
     try {
-      const employeeId = getEmployeeId();
-      if (!employeeId) {
-        throw new Error('No employee ID found');
+      const token = Cookies.get('token');
+      if (token === undefined) {
+        throw new Error('No token found');
       }
-
-      const data = await getuserdata(employeeId);
+      const data = await getuserdata(token);
       if (!data) {
         throw new Error('No user data received');
       }
@@ -66,13 +61,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   // Initial load
   useEffect(() => {
+    console.log(checkisLogined);
     setIsLogined(checkisLogined);
     if (isLogined) {
-      localStorage.setItem('employee_id', '123');
       fetchUserData();
+    }else{
+      setIsLogined(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only fetch on mount
+
 
   const value = {
     userData,
@@ -81,7 +79,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     isInitialized,
     error,
     setProfileImage,
-    refreshUserData
+    refreshUserData,
+    isLogined,
+    setIsLogined
   };
 
   return (
