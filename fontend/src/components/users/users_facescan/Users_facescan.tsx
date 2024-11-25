@@ -489,6 +489,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                     audio={false}
                     screenshotFormat="image/jpeg"
                     className="absolute inset-0 w-full h-full object-cover"
+                    mirrored={true}
                   />
                   {/* <canvas ref={canvasRef} className="hidden" /> */}
 
