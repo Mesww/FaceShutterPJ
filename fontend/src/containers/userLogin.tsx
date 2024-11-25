@@ -7,3 +7,8 @@ export const isLogined:boolean = (()=> {
     return false;
 })();
 
+
+export const setLogined = (token:string) => {
+    Cookie.set('token', token);
+    return true;
+}

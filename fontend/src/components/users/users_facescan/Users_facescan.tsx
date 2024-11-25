@@ -5,7 +5,7 @@ import { FaceScanPageProps, Responsedata, User } from '@/interfaces/users_facesc
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
 import { Outlet } from 'react-router-dom';
-import { isLogined } from '@/containers/userLogin.js';
+import { isLogined, setLogined } from '@/containers/userLogin.js';
 import { getisuserdata } from '@/containers/getUserdata.js';
 import RegisModal from './regis_modal.js';
 import Webcam from 'react-webcam';
@@ -68,27 +68,32 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       const message = event.data;
       if (message.startsWith("{")) {
         const jsonData = JSON.parse(message);
-        console.log("Received JSON data:", jsonData);
+        console.log("Received JSON data:", jsonData.data);
+        const status = jsonData.data.status;
+        const messages = jsonData.data.message;
         // Handle the JSON data here
-        if (jsonData['status'] === "progress") {
-          console.log("Progress:", jsonData['message']);
-          setInstruction(jsonData['message']);
-          setTotal_steps(jsonData['total_steps']);
+        if (status === "progress") {
+          console.log("Progress:", messages);
+          setInstruction(messages);
+          // setTotal_steps(jsonData['total_steps']);
         }
-
-        if(jsonData['scan_directions']){
-          setScanDirections(jsonData['scan_directions']);
-        }
-        else if (jsonData['status'] === 'pending') {
-          
+        else if (status === 'pending') {
           console.log("User data received, awaiting scan...");
-          console.log("User data:", jsonData['message']);
-
-        }else if (jsonData['status'] === 'failed') {
-          console.error("Error:", jsonData['message']);
-        }else if (jsonData['status'] === 'success') {
+          console.log("User data:", jsonData.data);
+        }else if (status === 'failed') {
+          console.error("Error:", messages);
+        }else if (status === 'success') {
           console.log("User data and images saved successfully");
-          console.log("User data:", jsonData['message']);}
+          console.log("User data:", messages);
+          console.log("User token:", jsonData.data.token);
+          const token = jsonData.data.token;
+          setIsScanning(false);
+          setIsAuthen(false);
+          setInstruction("");
+          setUserDetails({ employee_id: "", name: "", email: "", password: "",tel: "" });
+          setConnectionStatus('disconnected');
+          setLogined(token)
+        }
       }
         // Check if the message looks like base64 image data
     if (message.startsWith("/9j/") || message.includes("base64,")) {

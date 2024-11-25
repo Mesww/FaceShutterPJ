@@ -213,11 +213,13 @@ async def websocket_endpoint(websocket: WebSocket):
                         label_id, pred_confidence = recognizer.predict(gray_cropped_face)
                         print(f"Predicted label: {label_id}, Confidence: {pred_confidence:.2f}, Direction: {labels[label_id]}, Live: {is_live}")
                         if is_live and pred_confidence < 80:
+                            token = user_service.generate_token(user.employee_id)
                             await websocket.send_json(
                                 {
                                     "data": {
                                         "status": "success",
                                         "message": f"Hi : {user.name} {labels[label_id]} (Confidence: {pred_confidence:.2f})",
+                                        "token": token,
                                     }
                                 }
                             )
@@ -269,7 +271,7 @@ async def websocket_endpoint(websocket: WebSocket):
     name = user_details["name"]
     email = user_details["email"]
     tel = user_details["tel"]
-    password = user_details["password"]
+    password = ''
 
     try:
         while current_direction_idx < len(scan_directions):
