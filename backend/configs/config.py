@@ -7,6 +7,16 @@ SIMILARITY_THRESHOLD = 60.0
 
 SCAN_DIRECTION = ["Front", "Turn left", "Turn right", "Look up", "Look down"]
 
+DEFAULT_TIMEZONE = "Asia/Bangkok"
+
+# CHECKIN_TIME_START = "08:00:00"
+# CHECKIN_TIME_END = "09:00:00"
+CHECKIN_TIME_START = "16:00:00"
+CHECKIN_TIME_END = "17:00:00"
+
+CHECKOUT_TIME_START = "16:00:00"
+CHECKOUT_TIME_END = "17:00:00"
+
 # Store active connections
 class ConnectionManager:
     def __init__(self):

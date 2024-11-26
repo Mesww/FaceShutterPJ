@@ -37,7 +37,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
-  const {isLogined,setIsLogined} = useUserData();
+  const {isLogined,setIsLogined,userData} = useUserData();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   // send image to backend
@@ -336,6 +336,12 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
   // logging state changes
   useEffect(() => {
+
+    if (userData) {
+      // console.log('User data:', userData.employee_id);
+      setEmployeeId(userData.employee_id);
+      setUserDetails(userData);
+    }
     console.log('FaceScan State:', {
       isScanning,
       isLoadings,
@@ -343,7 +349,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       instruction,
 
     });
-  }, [isScanning, isLoadings, connectionStatus, instruction]);
+  }, [isScanning, isLoadings, connectionStatus, instruction,userData]);
 
   const validateEmployeeId = (value: string) => {
     // Example validation: must be non-empty and numeric with 6-10 digits
@@ -434,6 +440,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                 onChange={(e) => handleInputChange(e.target.value)}
                 className={`w-full p-2 border rounded ${errors ? 'border-red-500' : 'border-gray-300'
                   }`}
+                disabled={isLogined}
               />
               {errors && (
                 <p className="text-red-500 text-sm mt-1">{errors}</p>

@@ -8,7 +8,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import numpy as np
 from backend.configs.config import SCAN_DIRECTION, ConnectionManager
 from backend.models.user_model import User
-from backend.routes import face_routes, user_routes
+from backend.routes import face_routes, user_routes,history_routes,checkinout_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -61,6 +61,20 @@ app.include_router(
     prefix="/api/face",  # Base path for user-related routes
     tags=["face"],
 )
+
+app.include_router(
+    checkinout_routes.router,  # เพิ่มการรวม user_routes
+    prefix="/api/checkinout",  # Base path for user-related routes
+    tags=["checkinout"],
+)
+
+app.include_router(
+    history_routes.router,  # เพิ่มการรวม user_routes
+    prefix="/api/history",  # Base path for user-related routes
+    tags=["history"],
+)
+    
+
 
 manager = ConnectionManager()
 
@@ -217,6 +231,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         print(f"Predicted label: {label_id}, Confidence: {pred_confidence:.2f}, Direction: {labels[label_id]}, Live: {is_live}")
                         if is_live and pred_confidence < 80:
                             token = user_service.generate_token(user.employee_id)
+                            
                             await websocket.send_json(
                                 {
                                     "data": {
@@ -242,6 +257,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         print("Cropped face is empty.")
                 if is_Chcek:
                     break
+            
             else:
                 await websocket.send_json(
                     {
@@ -251,6 +267,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         }
                     }
                 )
+
+        
     except WebSocketDisconnect:
         print("WebSocket disconnected.")
 

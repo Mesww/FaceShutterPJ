@@ -1,9 +1,10 @@
 import { BACKEND_URL } from "@/configs/backend";
+import { Responsedata } from "@/interfaces/users_facescan.interface";
 
 export const getuserdata = async (token: string) => {
 
     try {
-        const response = await fetch(`${BACKEND_URL}/api/users/get_user_by_employee_id/${employee_id}`, {
+        const response = await fetch(`${BACKEND_URL}/api/users/get_user_by_employee_id`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -14,7 +15,8 @@ export const getuserdata = async (token: string) => {
             const errorData = await response.json();
             throw new Error(errorData.detail || 'Registration failed');
         }
-        return  await response.json();
+        const datas = await response.json(); 
+        return  datas.data;
     } catch (error) {
         console.error('Error:', error);
         alert(error instanceof Error ? error.message : 'Registration failed');
@@ -37,6 +39,31 @@ export const getisuserdata = async (employee_id: string) => {
     } catch (error) {
         console.error('Error:', error);
         alert(error instanceof Error ? error.message : 'Registration failed');
+    }
+}
+
+export const getcheckinorouttime = async (): Promise<Responsedata | undefined> => {
+    try {
+        const currentTime = new Date();
+        const hours = currentTime.getHours().toString().padStart(2, '0');
+        const minutes = currentTime.getMinutes().toString().padStart(2, '0');
+        const seconds = currentTime.getSeconds().toString().padStart(2, '0');
+        const time = `${hours}:${minutes}:${seconds}`;
+        const response = await fetch(`${BACKEND_URL}/api/checkinout/is_checkinorout_time_valid/${time}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Checkin or out time failed');
+        }
+        const data:Responsedata = await response.json();
+        return  data;
+    } catch (error) {
+        console.error('Error:', error);
+        alert(error instanceof Error ? error.message : 'Checkin or out time failed');
     }
 }
 

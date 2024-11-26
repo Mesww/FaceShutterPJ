@@ -10,14 +10,7 @@ export interface User{
   password: string;
   tel: string;
 }
-  export interface UserData {
-    user: User;
-    image: {
-      filename: string;
-      data: string;
-    };
-  }
-
+ 
 export interface Responsedata{
   status: number;
   message: string;
