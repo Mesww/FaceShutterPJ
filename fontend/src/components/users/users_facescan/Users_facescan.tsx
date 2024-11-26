@@ -9,7 +9,7 @@ import { checkisLogined, setLogined } from '@/containers/userLogin.js';
 import { getisuserdata } from '@/containers/getUserdata.js';
 import RegisModal from './regis_modal.js';
 import Webcam from 'react-webcam';
-import {  useUserData } from '@/containers/provideruserdata.js';
+import { useUserData } from '@/containers/provideruserdata.js';
 // import { useUserData } from '@/containers/provideruserdata.js';
 
 const FaceScanPage: React.FC<FaceScanPageProps> = () => {
@@ -37,33 +37,65 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
-  const {isLogined,setIsLogined} = useUserData();
+  const { isLogined, setIsLogined } = useUserData();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   // send image to backend
   const sendImage = useCallback((ws: WebSocket) => {
     if (!webcamRef.current || !ws || ws.readyState !== WebSocket.OPEN) return null;
-
+  
     const imageSrc = webcamRef.current.getScreenshot();
     if (!imageSrc) return null;
-
-    try {
-      // Convert base64 to binary
-      const byteCharacters = atob(imageSrc.split(",")[1]);
-      const byteNumbers = Array.from(byteCharacters).map((char) => char.charCodeAt(0));
-      const byteArray = new Uint8Array(byteNumbers);
-      ws.send(
-        JSON.stringify({
-          image: Array.from(byteArray), // Send as an array
-        })
+  
+    const canvas = document.createElement('canvas');
+    const video = webcamRef.current.video;
+    
+    if (!video) return null;
+  
+    // คำนวณขนาดและตำแหน่งของกรอบ
+    const frameSize = Math.min(video.videoWidth, video.videoHeight) * 0.5; // 50% ของขนาดวิดีโอ
+    const x = (video.videoWidth - frameSize) / 2;
+    const y = (video.videoHeight - frameSize) / 2;
+  
+    canvas.width = frameSize;
+    canvas.height = frameSize;
+    const ctx = canvas.getContext('2d');
+  
+    if (ctx) {
+      // สลับการวาดภาพถ้าใช้ front camera เพื่อให้ไม่ mirror
+      if (facingMode === 'user') {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+  
+      ctx.drawImage(
+        video, 
+        x, y, frameSize, frameSize,  // source rectangle
+        0, 0, frameSize, frameSize   // destination rectangle
       );
-    } catch (error) {
-      console.error("Error sending image:", error);
-      setConnectionStatus('disconnected');
+  
+      const croppedImageSrc = canvas.toDataURL('image/jpeg');
+  
+      try {
+        const byteCharacters = atob(croppedImageSrc.split(",")[1]);
+        const byteNumbers = Array.from(byteCharacters).map((char) => char.charCodeAt(0));
+        const byteArray = new Uint8Array(byteNumbers);
+        
+        ws.send(
+          JSON.stringify({
+            image: Array.from(byteArray),
+          })
+        );
+      } catch (error) {
+        console.error("Error sending image:", error);
+        setConnectionStatus('disconnected');
+      }
+  
+      return croppedImageSrc;
     }
-
-    return imageSrc;
-  }, []);
+  
+    return null;
+  }, [facingMode]);
   // Handle WebSocket messages
   const handleWebSocketMessage = useCallback((event: MessageEvent) => {
     try {
@@ -146,7 +178,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
     }
-  }, [setImageSrc,setIsLogined]);
+  }, [setImageSrc, setIsLogined]);
 
   //  websocket
   useEffect(() => {
@@ -494,10 +526,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   {/* <canvas ref={canvasRef} className="hidden" /> */}
 
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative w-64 h-64 border-2 border-blue-400 rounded-lg">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Scan size={48} className="text-blue-400 animate-pulse" />
-                      </div>
+                    <div className="relative w-80 h-80 border-4 border-blue-400 rounded-lg">
                     </div>
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center">
