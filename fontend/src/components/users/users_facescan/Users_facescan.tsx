@@ -5,7 +5,7 @@ import { FaceScanPageProps, Responsedata, User } from '@/interfaces/users_facesc
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
 import { Outlet } from 'react-router-dom';
-import {  getLogined,setLogined } from '@/containers/userLogin.js';
+import { checkisLogined, setLogined } from '@/containers/userLogin.js';
 import { getisuserdata } from '@/containers/getUserdata.js';
 import RegisModal from './regis_modal.js';
 import Webcam from 'react-webcam';
@@ -25,7 +25,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   });
   const [employeeId, setEmployeeId] = useState<string>('');
   // const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  
   const [loadingmessage, setLoadingMessage] = useState<string | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
@@ -37,11 +36,15 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [errors, setErrors] = useState<string | null>();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
+  // ============= Provider ===============  
+  const { isLogined, setIsLogined, userData, isCheckinorout } = useUserData();
+
+  const [login, setLogin] = useState<boolean>(false);
  // ============= Provider ===============  
   const {isLogined,setIsLogined,userData,isCheckinorout} = useUserData();
 
   const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
-
+  const {isLogined,setIsLogined} = useUserData();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   // send image to backend
@@ -156,7 +159,15 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           const translatedMessage = translateMessage(messages);
           setInstruction(translatedMessage);
           setErrors(translatedMessage);
-        } else if (status === 'success') {
+
+        } else if (status === 'stopped') {
+          setIsScanning(false);
+          setIsAuthen(false);
+          setInstruction("");
+          setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
+          setConnectionStatus('disconnected');
+        }
+         else if (status === 'success') {
           console.log("User data and images saved successfully");
           console.log("User data:", messages);
           console.log("User token:", jsonData.data.token);
@@ -168,6 +179,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           setConnectionStatus('disconnected');
           setLogined(token)
           setIsLogined(true);
+          setLogin(true);
         }
       }
       // Check if the message looks like base64 image data
@@ -218,12 +230,11 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
     }
-  }, [setImageSrc, setIsLogined]);
+  }, [setImageSrc,setIsLogined]);
 
   //  websocket
   useEffect(() => {
     let imageInterval: NodeJS.Timeout;
-
     if (isScanning) {
       setIsLoadings(true);
       setLoadingMessage("กำลังเชื่อมต่อเซิฟเวอร์...");
@@ -266,7 +277,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       const token = getLogined();
       const encodedToken = token ? btoa(token) : undefined;
       console.log(token);
-      const ws = new WebSocket("ws://localhost:8000/ws/auth",encodedToken ? [encodedToken] : undefined );
+      const token = getLogined();
+      const encodedToken = token ? btoa(token) : undefined;
+      console.log(token);
+      const ws = new WebSocket("ws://localhost:8000/ws/auth", encodedToken ? [encodedToken] : undefined,encodedToken ? [encodedToken] : undefined );
       setWebSocket(ws);
       setConnectionStatus('connecting');
       ws.onopen = () => {
@@ -298,8 +312,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           ws.close();
         };
       };
+
     }
-  }, [isAuthen, isScanning, userDetails, sendImage, handleWebSocketMessage, employeeId]);
+  }, [isAuthen, isScanning, userDetails, sendImage, handleWebSocketMessage, employeeId, isLogined, isCheckinorout]);
 
   // Employee ID form submission
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -380,7 +395,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
 
   // Map paths to titles and descriptions
-  const menuItems = isLogined ? [
+  const menuItems = isLogined|| login ? [
     {
       path: "/UsersFacescan",
       title: "สแกนใบหน้า",
@@ -424,7 +439,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       instruction,
 
     });
-  }, [isScanning, isLoadings, connectionStatus, instruction,userData]);
+  }, [isScanning, isLoadings, connectionStatus, instruction]);
 
   const validateEmployeeId = (value: string) => {
     // Example validation: must be non-empty and numeric with 6-10 digits
@@ -489,6 +504,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         <Sidebar
           isSidebarCollapsed={false}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
+          isLogined={isLogined||login}
         />
       </div>
 
@@ -497,6 +513,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         <Sidebar
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
+          isLogined={isLogined||login}
         />
       </div>
 
@@ -515,7 +532,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                 onChange={(e) => handleInputChange(e.target.value)}
                 className={`w-full p-2 border rounded ${errors ? 'border-red-500' : 'border-gray-300'
                   }`}
-                disabled={isLogined}
               />
               {errors && (
                 <p className="text-red-500 text-sm mt-1">{errors}</p>
@@ -539,7 +555,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   } text-white rounded-lg transition-colors flex items-center justify-center gap-2`}
               >
                 <Camera size={20} />
-                <span>{ isCheckinorout ?? "ยังไม่ถึงเวลาเข้าหรือออกงาน"  }</span>
+                <span>เริ่มสแกน</span>
               </button>
             </div>
           </form>
