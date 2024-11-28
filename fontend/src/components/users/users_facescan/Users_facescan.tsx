@@ -43,44 +43,44 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   // send image to backend
   const sendImage = useCallback((ws: WebSocket) => {
     if (!webcamRef.current || !ws || ws.readyState !== WebSocket.OPEN) return null;
-  
+
     const imageSrc = webcamRef.current.getScreenshot();
     if (!imageSrc) return null;
-  
+
     const canvas = document.createElement('canvas');
     const video = webcamRef.current.video;
-    
+
     if (!video) return null;
-  
+
     // คำนวณขนาดและตำแหน่งของกรอบ
-    const frameSize = Math.min(video.videoWidth, video.videoHeight) * 0.5; // 50% ของขนาดวิดีโอ
+    const frameSize = Math.min(video.videoWidth, video.videoHeight) * 0.7;
     const x = (video.videoWidth - frameSize) / 2;
     const y = (video.videoHeight - frameSize) / 2;
-  
+
     canvas.width = frameSize;
     canvas.height = frameSize;
     const ctx = canvas.getContext('2d');
-  
+
     if (ctx) {
       // สลับการวาดภาพถ้าใช้ front camera เพื่อให้ไม่ mirror
       if (facingMode === 'user') {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
       }
-  
+
       ctx.drawImage(
-        video, 
+        video,
         x, y, frameSize, frameSize,  // source rectangle
         0, 0, frameSize, frameSize   // destination rectangle
       );
-  
+
       const croppedImageSrc = canvas.toDataURL('image/jpeg');
-  
+
       try {
         const byteCharacters = atob(croppedImageSrc.split(",")[1]);
         const byteNumbers = Array.from(byteCharacters).map((char) => char.charCodeAt(0));
         const byteArray = new Uint8Array(byteNumbers);
-        
+
         ws.send(
           JSON.stringify({
             image: Array.from(byteArray),
@@ -90,10 +90,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         console.error("Error sending image:", error);
         setConnectionStatus('disconnected');
       }
-  
+
       return croppedImageSrc;
     }
-  
+
     return null;
   }, [facingMode]);
   // Handle WebSocket messages
@@ -105,6 +105,39 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         console.log("Received JSON data:", jsonData.data);
         const status = jsonData.data.status;
         const messages = jsonData.data.message;
+        const translateMessage = (originalMessage: string): string => {
+          const translations: { [key: string]: string } = {
+            // Authentication errors
+            "Invalid credentials": "ข้อมูลประจำตัวไม่ถูกต้อง",
+            "User not found": "ไม่พบผู้ใช้งาน",
+            "Incorrect password": "รหัสผ่านไม่ถูกต้อง",
+
+            // Face scanning errors
+            "Face not detected": "ไม่พบใบหน้า กรุณาวางหน้าให้ชัดเจน",
+            "Multiple faces detected": "พบใบหน้ามากกว่า 1 ใบ กรุณาถ่ายเดี่ยว",
+            "Poor lighting conditions": "แสงไม่เพียงพอ กรุณาปรับแสง",
+            "Face too close": "ใบหน้าใกล้กล้องเกินไป กรุณาถอยห่าง",
+            "Face too far": "ใบหน้าห่างจากกล้องเกินไป กรุณาเข้าใกล้",
+
+            // Default case
+            "default": "กรุณาวางใบหน้าให้อยู่ในกรอบ"
+          };
+
+          // Check if there's an exact match first
+          if (translations[originalMessage]) {
+            return translations[originalMessage];
+          }
+
+          // If no exact match, check for partial matches
+          for (const [key, value] of Object.entries(translations)) {
+            if (originalMessage.includes(key)) {
+              return value;
+            }
+          }
+
+          // If no match found, return the original message or a default error message
+          return translations['default'];
+        };
         // Handle the JSON data here
         if (status === "progress") {
           console.log("Progress:", messages);
@@ -116,6 +149,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           console.log("User data:", jsonData.data);
         } else if (status === 'failed') {
           console.error("Error:", messages);
+          const translatedMessage = translateMessage(messages);
+          setInstruction(translatedMessage);
+          setErrors(translatedMessage);
         } else if (status === 'success') {
           console.log("User data and images saved successfully");
           console.log("User data:", messages);
@@ -526,7 +562,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   {/* <canvas ref={canvasRef} className="hidden" /> */}
 
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative w-80 h-80 border-4 border-blue-400 rounded-lg">
+                    <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl 
+                          before:absolute before:inset-0 before:border-2 before:border-dashed before:border-white 
+                          before:pointer-events-none before:rounded-lg">
+                      {/* เพิ่มเส้นขอบ dashed ด้านใน */}
                     </div>
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -536,6 +575,16 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                       </p>
                     </div>
                   </div>
+                  {/* Inside the webcam scanning area */}
+                  {instruction && (
+                    <div className={`absolute inset-0 flex items-center justify-center ${errors ? 'text-red-500' : 'text-white'}`}>
+                      <div className={`bg-black/60 p-4 rounded-lg ${errors ? 'bg-red-500/60' : 'bg-black/60'}`}>
+                        <p className="text-xl font-semibold text-center">
+                          {instruction}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </>
                 )
               </div>
