@@ -5,7 +5,7 @@ import { FaceScanPageProps, Responsedata, User } from '@/interfaces/users_facesc
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
 import { Outlet } from 'react-router-dom';
-import { checkisLogined, setLogined } from '@/containers/userLogin.js';
+import { getLogined, setLogined } from '@/containers/userLogin.js';
 import { getisuserdata } from '@/containers/getUserdata.js';
 import RegisModal from './regis_modal.js';
 import Webcam from 'react-webcam';
@@ -42,11 +42,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const { isLogined, setIsLogined, userData, isCheckinorout } = useUserData();
 
   const [login, setLogin] = useState<boolean>(false);
- // ============= Provider ===============  
-  const {isLogined,setIsLogined,userData,isCheckinorout} = useUserData();
 
   const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
-  const {isLogined,setIsLogined} = useUserData();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   // send image to backend
@@ -279,10 +276,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       const token = getLogined();
       const encodedToken = token ? btoa(token) : undefined;
       console.log(token);
-      const token = getLogined();
-      const encodedToken = token ? btoa(token) : undefined;
-      console.log(token);
-      const ws = new WebSocket("ws://localhost:8000/ws/auth", encodedToken ? [encodedToken] : undefined,encodedToken ? [encodedToken] : undefined );
+  
+      const ws = new WebSocket("ws://localhost:8000/ws/auth", encodedToken ? [encodedToken] : undefined );
       setWebSocket(ws);
       setConnectionStatus('connecting');
       ws.onopen = () => {
@@ -441,7 +436,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       instruction,
 
     });
-  }, [isScanning, isLoadings, connectionStatus, instruction, userData,userData]);
+  }, [isScanning, isLoadings, connectionStatus, instruction, userData]);
 
   const validateEmployeeId = (value: string) => {
     // Example validation: must be non-empty and numeric with 6-10 digits
@@ -535,7 +530,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                 className={`w-full p-2 border rounded ${errors ? 'border-red-500' : 'border-gray-300'
                   }`}
                 disabled={isLogined|| login}
-                disabled={isLogined}
               />
               {errors && (
                 <p className="text-red-500 text-sm mt-1">{errors}</p>
