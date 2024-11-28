@@ -49,10 +49,11 @@ class CheckInOut_Service:
         try:
             db= await connect_to_mongodb()
             today_collection = db['checkinouttoday']
-            record = await today_collection.find_one({"employee_id": employee_id, "date": datetime.utcnow().strftime("%Y-%m-%d")})
             timezone = pytz.timezone(DEFAULT_TIMEZONE)
+            record = await today_collection.find_one({"employee_id": employee_id, "date": datetime.now(tz=timezone).strftime("%Y-%m-%d")})
             if not record:
-                raise HTTPException(status_code=404, detail="No check-in record found for today.")
+                data = CheckInOutToday(employee_id=employee_id, date=datetime.now(tz=timezone).strftime("%Y-%m-%d"),check_out_time=datetime.now(tz=timezone).strftime("%H:%M:%S"),status="OutComplete")
+                return await CheckInOut_Service.check_in(data=data)
 
             # Update the check-out time
             updated_time = datetime.now(tz=timezone).strftime("%H:%M:%S")
@@ -95,6 +96,24 @@ class CheckInOut_Service:
             if record and record["check_out_time"]:
                 is_checked = True
                 message = "User already checked out today"
+            return Returnformat(status="success", message=message, data=is_checked).to_json()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    @staticmethod
+    async def is_already_checked_in_out(employee_id: str):
+        try:
+            db= await connect_to_mongodb()
+            is_checked = False
+            message = "User has not checked in or out today"
+            
+            today_collection = db['checkinouttoday']
+            timezone = pytz.timezone(DEFAULT_TIMEZONE)
+            record = await today_collection.find_one({"employee_id": employee_id, "date": datetime.now(tz=timezone).strftime("%Y-%m-%d")})
+            if not record:
+                return Returnformat(status="success", message=message, data=is_checked).to_json()
+            if record and record['status'] == "Complete" or record['status'] == "OutComplete":
+                is_checked = True
+                message = "User already checked in or out today"
             return Returnformat(status="success", message=message, data=is_checked).to_json()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
