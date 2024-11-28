@@ -1,7 +1,5 @@
 import cv2
-import numpy as np
 import os
-import json
 import time
 import mediapipe as mp
 
@@ -10,13 +8,15 @@ mp_face_mesh = mp.solutions.face_mesh
 mp_drawing = mp.solutions.drawing_utils
 face_mesh = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.5)
 
-# Scan status and directions for capturing data from different angles
-scan_directions = ["Front", "Turn left", "Turn right", "Look up", "Look down"]
+# Scan status and directions for capturing data from specific angles
+scan_directions = ["Front", "Turn left", "Turn right"]
 current_direction_idx = 0
 scanned_images = []
+images_per_direction = 20  # Number of images per direction
+image_count = 0  # Counter for images saved in the current direction
 
 # Delay time for saving data per frame
-delay_time = 3  # Delay time in seconds
+delay_time = 0.25  # Delay time in seconds
 last_saved_time = time.time()
 
 # Get user input for the person's name before opening the webcam
@@ -43,28 +43,16 @@ def crop_face(frame, landmarks):
     return cropped_face
 
 def check_head_direction(face_landmarks):
-    # Get coordinates of specific landmarks (e.g., nose, eyes, and mouth)
-    nose_x = face_landmarks.landmark[1].x  # Use index 1 for NOSE_TIP
-    nose_y = face_landmarks.landmark[1].y  # Use index 1 for NOSE_TIP
-    left_eye_y = face_landmarks.landmark[33].y  # Use index 33 for left eye
-    right_eye_y = face_landmarks.landmark[263].y  # Use index 263 for right eye
-    left_mouth_y = face_landmarks.landmark[61].y  # Use index 61 for left mouth
-    right_mouth_y = face_landmarks.landmark[291].y  # Use index 291 for right mouth
-    
-    # Threshold values to allow for more flexible detection
+    # Get coordinates of specific landmarks
+    nose_x = face_landmarks.landmark[1].x  # Nose tip (index 1)
     threshold_x = 0.03  # Horizontal threshold for detecting left/right
-    threshold_y = 0.03  # Vertical threshold for detecting up/down
 
-    # Check head direction based on horizontal (left/right) and vertical (up/down) positions
-    if nose_x < face_landmarks.landmark[33].x - threshold_x or nose_x < face_landmarks.landmark[61].x - threshold_x:
+    # Determine the head direction
+    if nose_x < 0.5 - threshold_x:
         return "left"
-    elif nose_x > face_landmarks.landmark[263].x + threshold_x or nose_x > face_landmarks.landmark[291].x + threshold_x:
+    elif nose_x > 0.5 + threshold_x:
         return "right"
-    elif nose_y < min(left_eye_y, right_eye_y, left_mouth_y, right_mouth_y) - threshold_y:
-        return "up"
-    else:
-        return "center"
-
+    return "center"
 
 while cap.isOpened():
     success, frame = cap.read()
@@ -82,7 +70,7 @@ while cap.isOpened():
     results = face_mesh.process(rgb_frame)
 
     # Show instruction for the user to move their head to the specified direction
-    instruction_text = f"Please move your head to: {scan_directions[current_direction_idx]}"
+    instruction_text = f"Please move your head to: {scan_directions[current_direction_idx]} ({image_count}/{images_per_direction})"
     cv2.putText(frame, instruction_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     # Draw face landmarks (if a face is detected)
@@ -95,43 +83,36 @@ while cap.isOpened():
             head_direction = check_head_direction(face_landmarks)
             expected_direction = scan_directions[current_direction_idx]
 
-            # If the direction is incorrect, show a warning message and skip saving.
-            if (expected_direction == "Turn left" and head_direction != "left") or \
-               (expected_direction == "Turn right" and head_direction != "right") or \
-               (expected_direction == "Front" and head_direction != "center") or \
-               (expected_direction == "Look up" and head_direction != "up") :
+            # Validate head direction
+            if (expected_direction == "Front" and head_direction != "center") or \
+               (expected_direction == "Turn left" and head_direction != "left") or \
+               (expected_direction == "Turn right" and head_direction != "right"):
                 warning_text = "Incorrect direction! Please turn correctly."
                 cv2.putText(frame, warning_text, (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
                 continue  # Skip saving if direction is incorrect
 
-            # Check delay time before saving data
+            # Save image after the delay
             if time.time() - last_saved_time >= delay_time:
-                # Countdown before capturing image
-                countdown_time = 3
-                
-                for i in range(countdown_time, 0, -1):
-                    countdown_text = f"Capturing in {i}..."
-                    cv2.putText(frame, countdown_text, (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 3)
-                    cv2.imshow('3D Face Detection - Save Images', frame)
-                    cv2.waitKey(1000)  
-
-                # Save the cropped face image with a name based on the person's name and current direction in a dedicated folder
-                cropped_face = crop_face(frame, face_landmarks.landmark)  
-                
-                filename = f"saved_images/{person_name.replace(' ', '_')}_{scan_directions[current_direction_idx].replace(' ', '_').lower()}.jpg"
+                cropped_face = crop_face(frame, face_landmarks.landmark)
+                filename = f"saved_images/{person_name.replace(' ', '_')}_{scan_directions[current_direction_idx].replace(' ', '_').lower()}_{image_count + 1}.jpg"
                 cv2.imwrite(filename, cropped_face)
-                scanned_images.append(cropped_face)  
+                scanned_images.append(cropped_face)
+                print(f"Saved: {filename}")
 
-                current_direction_idx += 1  
-                if current_direction_idx >= len(scan_directions):
-                    with open('saved_landmarks.json', 'w') as json_file:
-                        json.dump(scan_directions, json_file)
-                    print("Successfully saved images from all directions")
-                    break
-                
+                image_count += 1  # Increment the counter
                 last_saved_time = time.time()
 
-    # Show the frame with landmarks 
+                # If 20 images are saved for the current direction, move to the next
+                if image_count >= images_per_direction:
+                    image_count = 0  # Reset the counter for the next direction
+                    current_direction_idx += 1
+                    if current_direction_idx >= len(scan_directions):
+                        print("Successfully saved 20 images for all directions!")
+                        cap.release()
+                        cv2.destroyAllWindows()
+                        exit()
+
+    # Show the frame with landmarks
     cv2.imshow('3D Face Detection - Save Images', frame)
 
     # Press 'q' to exit the program

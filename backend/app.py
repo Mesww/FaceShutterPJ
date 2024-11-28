@@ -8,7 +8,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import numpy as np
 from backend.configs.config import SCAN_DIRECTION, ConnectionManager
 from backend.models.user_model import User
-from backend.routes import face_routes, user_routes
+from backend.routes import face_routes, user_routes,history_routes,checkinout_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -62,6 +62,20 @@ app.include_router(
     tags=["face"],
 )
 
+app.include_router(
+    checkinout_routes.router,  # เพิ่มการรวม user_routes
+    prefix="/api/checkinout",  # Base path for user-related routes
+    tags=["checkinout"],
+)
+
+app.include_router(
+    history_routes.router,  # เพิ่มการรวม user_routes
+    prefix="/api/history",  # Base path for user-related routes
+    tags=["history"],
+)
+    
+
+
 manager = ConnectionManager()
 
 # MediaPipe Setup
@@ -79,10 +93,10 @@ async def websocket_endpoint(websocket: WebSocket):
     face_service = Face_service()
     user_service = UserService()
     await websocket.accept()
-    try:
-        employee_id = await websocket.receive_json()
-        employee_id = employee_id["employee_id"]
+    headers = websocket.headers
+    encoded_token = headers.get('sec-websocket-protocol')
 
+<<<<<<< HEAD
         await websocket.send_json(
             {
                 "data": {
@@ -215,7 +229,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         gray_cropped_face = cv2.cvtColor(cropped_face, cv2.COLOR_BGR2GRAY)
                         label_id, pred_confidence = recognizer.predict(gray_cropped_face)
                         print(f"Predicted label: {label_id}, Confidence: {pred_confidence:.2f}, Direction: {labels[label_id]}, Live: {is_live}")
-                        if is_live and pred_confidence < 80:
+                        if is_live and pred_confidence < 85:
                             token = user_service.generate_token(user.employee_id)
                             await websocket.send_json(
                                 {
@@ -253,6 +267,26 @@ async def websocket_endpoint(websocket: WebSocket):
                 )
     except WebSocketDisconnect:
         print("WebSocket disconnected.")
+=======
+    token = None
+    employee_id = None
+    if encoded_token:
+        try:
+            # Decode the base64 token
+            import base64
+            token = base64.b64decode(encoded_token).decode('utf-8')
+            employee_id = user_service.extract_token(token).get('sub')
+        except:
+            token = None
+            employee_id = None
+    
+    print("token,employee : ",token,employee_id)    
+    if token and employee_id:
+        print("Checkinout_ws")
+        await face_service.checkinout_ws(websocket,employee_id=employee_id)
+    else:
+        await face_service.login_ws(websocket)        
+>>>>>>> e5d000b70a857b5a660cf58230ef8cd9cb55a4e5
 
 
 @app.websocket("/ws/scan")

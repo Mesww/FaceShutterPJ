@@ -264,7 +264,24 @@ class UserService:
             raise HTTPException(status_code=401, detail="Token has expired")
         except jwt.InvalidTokenError:
             raise HTTPException(status_code=401, detail="Invalid token")
+    
+    def verify_token(self,token: str):
+        try:
+            SECRET_KEY = self.config.get("SECRET_KEY", "RickAstley")
+            print(SECRET_KEY)
+            ALGORITHM = self.config.get("ALGORITHM", "HS256")
+            print(ALGORITHM)
+            # Decode the JWT
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            if payload:
+                return True  # Return the payload if valid
+            return False
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Token has expired")
+        except jwt.InvalidTokenError:
+            raise HTTPException(status_code=401, detail="Invalid token")
         
+    
     # Save user data and images to the server
     @staticmethod
     async def save_user_and_images(employee_id, name, email, password, images, tel):

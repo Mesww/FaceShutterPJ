@@ -1,11 +1,11 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { UserData } from '../interfaces/users_facescan.interface';
-import { getuserdata } from './getUserdata';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { User } from '../interfaces/users_facescan.interface';
+import { getcheckinorouttime, getuserdata } from './getUserdata';
 import { checkisLogined } from './userLogin';
 import Cookies from 'js-cookie';
 
 interface UserContextType {
-  userData: UserData | null;
+  userData: User | null;
   profileImage: string | null;
   isLoading: boolean;
   isInitialized: boolean;
@@ -14,6 +14,8 @@ interface UserContextType {
   refreshUserData: () => Promise<void>;
   isLogined:boolean;
   setIsLogined: React.Dispatch<React.SetStateAction<boolean>>;
+  fetchCheckinoroutTime: () => Promise<void>;
+  isCheckinorout: string | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -21,10 +23,12 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [userData, setUserData] = useState<User | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLogined, setIsLogined] = useState<boolean>(false);
+
+  const [isCheckinorout, setIsCheckinorout] = useState<string | null>(null);
 
   const fetchUserData = async () => {
     setIsLoading(true);
@@ -54,6 +58,27 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const fetchCheckinoroutTime = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getcheckinorouttime();
+      if (!data) {
+        throw new Error('No checkinorout time received');
+      }
+      setIsCheckinorout(data.data as string);
+      console.log(isCheckinorout);
+      
+    } catch (error) {
+      console.error('Error fetching checkinorout time:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch checkinorout time');
+      setIsCheckinorout(null);
+    } finally {
+      setIsLoading(false);
+      setIsInitialized(true);
+    }
+  },[isCheckinorout]);
+
   // Expose refresh function
   const refreshUserData = async () => {
     await fetchUserData();
@@ -62,15 +87,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   // Initial load
   useEffect(() => {
     console.log(checkisLogined);
-    setIsLogined(checkisLogined);
-    if (isLogined) {
+    console.log(isLogined);
+    fetchCheckinoroutTime();
+    if (checkisLogined) {
+      setIsLogined(checkisLogined);
+      console.log('fetching user data');
       fetchUserData();
     }else{
       setIsLogined(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only fetch on mount
+  }, [isLogined, setIsLogined, fetchCheckinoroutTime]); // Only fetch on mount
 
+ 
 
   const value = {
     userData,
@@ -81,7 +109,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setProfileImage,
     refreshUserData,
     isLogined,
-    setIsLogined
+    setIsLogined,
+    fetchCheckinoroutTime,
+    isCheckinorout
   };
 
   return (

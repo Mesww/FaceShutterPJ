@@ -5,7 +5,7 @@ import { FaceScanPageProps, Responsedata, User } from '@/interfaces/users_facesc
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
 import { Outlet } from 'react-router-dom';
-import { checkisLogined, setLogined } from '@/containers/userLogin.js';
+import {  getLogined,setLogined } from '@/containers/userLogin.js';
 import { getisuserdata } from '@/containers/getUserdata.js';
 import RegisModal from './regis_modal.js';
 import Webcam from 'react-webcam';
@@ -25,6 +25,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   });
   const [employeeId, setEmployeeId] = useState<string>('');
   // const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  
   const [loadingmessage, setLoadingMessage] = useState<string | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
@@ -36,8 +37,11 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [errors, setErrors] = useState<string | null>();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
+ // ============= Provider ===============  
+  const {isLogined,setIsLogined,userData,isCheckinorout} = useUserData();
+
   const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
-  const { isLogined, setIsLogined } = useUserData();
+
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   // send image to backend
@@ -259,7 +263,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     } else if (isAuthen) {
       setIsLoadings(true);
       setLoadingMessage("กำลังเชื่อมต่อเซิฟเวอร์...");
-      const ws = new WebSocket("ws://localhost:8000/ws/auth");
+      const token = getLogined();
+      const encodedToken = token ? btoa(token) : undefined;
+      console.log(token);
+      const ws = new WebSocket("ws://localhost:8000/ws/auth",encodedToken ? [encodedToken] : undefined );
       setWebSocket(ws);
       setConnectionStatus('connecting');
       ws.onopen = () => {
@@ -404,6 +411,12 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
   // logging state changes
   useEffect(() => {
+
+    if (userData) {
+      // console.log('User data:', userData.employee_id);
+      setEmployeeId(userData.employee_id);
+      setUserDetails(userData);
+    }
     console.log('FaceScan State:', {
       isScanning,
       isLoadings,
@@ -411,7 +424,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       instruction,
 
     });
-  }, [isScanning, isLoadings, connectionStatus, instruction]);
+  }, [isScanning, isLoadings, connectionStatus, instruction,userData]);
 
   const validateEmployeeId = (value: string) => {
     // Example validation: must be non-empty and numeric with 6-10 digits
@@ -502,6 +515,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                 onChange={(e) => handleInputChange(e.target.value)}
                 className={`w-full p-2 border rounded ${errors ? 'border-red-500' : 'border-gray-300'
                   }`}
+                disabled={isLogined}
               />
               {errors && (
                 <p className="text-red-500 text-sm mt-1">{errors}</p>
@@ -518,14 +532,14 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
               <button
                 type='submit'
-                disabled={isScanning}
+                disabled={isScanning || (isLogined && isCheckinorout === null)}
                 className={`w-full px-4 py-2 ${isScanning
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700'
                   } text-white rounded-lg transition-colors flex items-center justify-center gap-2`}
               >
                 <Camera size={20} />
-                <span>เริ่มสแกน</span>
+                <span>{ isCheckinorout ?? "ยังไม่ถึงเวลาเข้าหรือออกงาน"  }</span>
               </button>
             </div>
           </form>
