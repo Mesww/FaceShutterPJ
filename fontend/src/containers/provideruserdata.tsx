@@ -15,6 +15,7 @@ interface UserContextType {
   isLogined:boolean;
   setIsLogined: React.Dispatch<React.SetStateAction<boolean>>;
   fetchCheckinoroutTime: () => Promise<void>;
+  isCheckinorout: string | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -109,7 +110,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     refreshUserData,
     isLogined,
     setIsLogined,
-    fetchCheckinoroutTime
+    fetchCheckinoroutTime,
+    isCheckinorout
   };
 
   return (
