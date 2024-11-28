@@ -108,6 +108,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       const message = event.data;
       if (message.startsWith("{")) {
         const jsonData = JSON.parse(message);
+        if (jsonData.data === undefined) {
+          console.log("Received JSON data:", jsonData);
+          return;
+        }
         console.log("Received JSON data:", jsonData.data);
         const status = jsonData.data.status;
         const messages = jsonData.data.message;
@@ -126,7 +130,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
             "Face too far": "ใบหน้าห่างจากกล้องเกินไป กรุณาเข้าใกล้",
 
             // Default case
-            "default": "กรุณาวางใบหน้าให้อยู่ในกรอบ"
+            "default": "กรุณาวางใบหน้าให้อยู่ในกรอบ" 
           };
 
           // Check if there's an exact match first
@@ -231,13 +235,19 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     }
   }, [setImageSrc,  setIsLogined,setLogin]);
 
-  //  websocket
   useEffect(() => {
     let imageInterval: NodeJS.Timeout;
-    if (isScanning) {
+
+    const setupWebSocket = (url: string, token?: string) => {
       setIsLoadings(true);
       setLoadingMessage("กำลังเชื่อมต่อเซิฟเวอร์...");
-      const ws = new WebSocket("ws://localhost:8000/ws/scan");
+
+      // Create WebSocket with token in query parameter instead of subprotocol
+      const wsUrl = token 
+        ? `${url}?token=${encodeURIComponent(token)}`
+        : url;
+      console.log(wsUrl);
+      const ws = new WebSocket(wsUrl);
       setWebSocket(ws);
       setConnectionStatus('connecting');
 
@@ -245,73 +255,59 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         setConnectionStatus('connected');
         setIsLoadings(false);
         setLoadingMessage("กำลังสแกนใบหน้า...");
-        ws.send(JSON.stringify(userDetails));
+        
+        // Send initial data
+        if (isScanning) {
+          ws.send(JSON.stringify(userDetails));
+        } else if (isAuthen && employeeId) {
+          ws.send(JSON.stringify({ employee_id: employeeId }));
+        }
 
+        // Start sending images
         imageInterval = setInterval(() => {
-          sendImage(ws);
+          if (ws.readyState === WebSocket.OPEN) {
+            sendImage(ws);
+          }
         }, 1000);
       };
 
       ws.onmessage = handleWebSocketMessage;
 
-      ws.onclose = () => {
-        if (imageInterval) clearInterval(imageInterval);
-        setWebSocket(null);
-        setConnectionStatus('disconnected');
+      ws.onclose = (event) => {
+        console.log("WebSocket closed:", event.code, event.reason);
+        cleanup();
       };
 
       ws.onerror = (error) => {
         console.error("WebSocket error:", error);
-        if (imageInterval) clearInterval(imageInterval);
-        setConnectionStatus('disconnected');
+        cleanup();
+        // Optionally show error to user
+        setErrors("การเชื่อมต่อล้มเหลว กรุณาลองใหม่อีกครั้ง");
       };
+    };
+
+    const cleanup = () => {
+      if (imageInterval) {
+        clearInterval(imageInterval);
+      }
+      if (websocket) {
+        websocket.close();
+      }
+      setWebSocket(null);
+      setConnectionStatus('disconnected');
+    };
+
+    if (isScanning || isAuthen) {
+      const baseUrl = "ws://localhost:8000/ws";
+      const path = isScanning ? '/scan' : '/auth';
+      const token = isAuthen ? getLogined() : undefined;
+      setupWebSocket(`${baseUrl}${path}`, token);
 
       return () => {
-        if (imageInterval) clearInterval(imageInterval);
-        ws.close();
+        cleanup();
       };
-    } else if (isAuthen) {
-      setIsLoadings(true);
-      setLoadingMessage("กำลังเชื่อมต่อเซิฟเวอร์...");
-      const token = getLogined();
-      const encodedToken = token ? btoa(token) : undefined;
-      console.log(token);
-  
-      const ws = new WebSocket("ws://localhost:8000/ws/auth", encodedToken ? [encodedToken] : undefined );
-      setWebSocket(ws);
-      setConnectionStatus('connecting');
-      ws.onopen = () => {
-        setConnectionStatus('connected');
-        setIsLoadings(false);
-        setLoadingMessage("กำลังสแกนใบหน้า...");
-        ws.send(JSON.stringify({ employee_id: employeeId }));
-
-        imageInterval = setInterval(() => {
-          sendImage(ws);
-        }, 1000);
-
-        ws.onmessage = handleWebSocketMessage;
-
-        ws.onclose = () => {
-          if (imageInterval) clearInterval(imageInterval);
-          setWebSocket(null);
-          setConnectionStatus('disconnected');
-        };
-
-        ws.onerror = (error) => {
-          console.error("WebSocket error:", error);
-          if (imageInterval) clearInterval(imageInterval);
-          setConnectionStatus('disconnected');
-        };
-
-        return () => {
-          if (imageInterval) clearInterval(imageInterval);
-          ws.close();
-        };
-      };
-
     }
-  }, [isAuthen, isScanning, userDetails, sendImage, handleWebSocketMessage, employeeId, isLogined, isCheckinorout]);
+  }, [isAuthen, isScanning, userDetails, employeeId, sendImage, handleWebSocketMessage, websocket]);
 
   // Employee ID form submission
   const handleFormSubmit = async (e: React.FormEvent) => {

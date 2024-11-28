@@ -129,6 +129,7 @@ async def websocket_endpoint(websocket: WebSocket):
     )
     await websocket.send_json({"scan_directions": scan_directions})
     user_details = await websocket.receive_json()
+    print('receive user_details : ',user_details)
     employee_id = user_details["employee_id"]
     name = user_details["name"]
     email = user_details["email"]
@@ -139,6 +140,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while current_direction_idx < len(scan_directions):
             expected_direction = scan_directions[current_direction_idx]
             await websocket.send_text(f"Please move your head to: {expected_direction}")
+            
             data = await websocket.receive_json()
 
             # Decode the received image
@@ -165,6 +167,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     f"Incorrect direction! Detected: {detected_direction}"
                 )
                 continue
+            
             # Add the frame and direction to the images list
             images.append({"frame": frame, "direction": expected_direction})
 

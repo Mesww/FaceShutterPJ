@@ -67,6 +67,26 @@ export const getcheckinorouttime = async (): Promise<Responsedata | undefined> =
     }
 }
 
+export const getisCheckin = async (token: string,checkinorout:string) => {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/checkinout/${checkinorout === 'checkin' ? 'is_already_checked_in_today':'is_already_checked_out_today'}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Checkin failed');
+        }
+        return  await response.json();
+    } catch (error) {
+        console.error('Error:', error);
+        alert(error instanceof Error ? error.message : 'Checkin failed');
+    }       
+}
+
 /**
  * Edits user data.
  * 

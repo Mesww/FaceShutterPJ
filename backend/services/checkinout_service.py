@@ -10,6 +10,7 @@ from backend.models.returnformat import Returnformat
 class CheckInOut_Service:
     @staticmethod
     async def is_checkinorout_time_valid(time:str):
+        print(time)
         if CheckInOut_Service.is_valid_checkin_time(time):
             return Returnformat(status="success", message="Time is valid", data="checkin").to_json() 
         elif CheckInOut_Service.is_valid_checkout_time(time):
@@ -50,6 +51,7 @@ class CheckInOut_Service:
             db= await connect_to_mongodb()
             today_collection = db['checkinouttoday']
             timezone = pytz.timezone(DEFAULT_TIMEZONE)
+            print(employee_id)
             record = await today_collection.find_one({"employee_id": employee_id, "date": datetime.now(tz=timezone).strftime("%Y-%m-%d")})
             if not record:
                 data = CheckInOutToday(employee_id=employee_id, date=datetime.now(tz=timezone).strftime("%Y-%m-%d"),check_out_time=datetime.now(tz=timezone).strftime("%H:%M:%S"),status="OutComplete")
@@ -117,6 +119,7 @@ class CheckInOut_Service:
             return Returnformat(status="success", message=message, data=is_checked).to_json()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+   
     @staticmethod
     async def get_today_records():
        try: 

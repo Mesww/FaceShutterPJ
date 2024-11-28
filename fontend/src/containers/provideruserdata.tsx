@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User } from '../interfaces/users_facescan.interface';
-import { getcheckinorouttime, getuserdata } from './getUserdata';
+import { getcheckinorouttime, getisCheckin, getuserdata } from './getUserdata';
 import { checkisLogined } from './userLogin';
 import Cookies from 'js-cookie';
 
@@ -57,14 +57,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setIsInitialized(true);
     }
   };
-
+  
   const fetchCheckinoroutTime = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
+      const token = Cookies.get('token');
       const data = await getcheckinorouttime();
       if (!data) {
         throw new Error('No checkinorout time received');
+      }
+      console.log(isCheckinorout);
+      if (isCheckinorout && token !== undefined) {
+       const isCheckin =  await getisCheckin(token,isCheckinorout);
+       console.log(isCheckin);
       }
       setIsCheckinorout(data.data as string);
       console.log(isCheckinorout);
