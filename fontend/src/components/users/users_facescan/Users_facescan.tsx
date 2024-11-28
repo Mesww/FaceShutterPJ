@@ -10,6 +10,11 @@ import { getisuserdata } from '@/containers/getUserdata.js';
 import RegisModal from './regis_modal.js';
 import Webcam from 'react-webcam';
 import { useUserData } from '@/containers/provideruserdata.js';
+import Swal from 'sweetalert2'
+// import withReactContent from 'sweetalert2-react-content'
+// const MySwal = withReactContent(Swal)
+
+
 // import { useUserData } from '@/containers/provideruserdata.js';
 
 const FaceScanPage: React.FC<FaceScanPageProps> = () => {
@@ -26,7 +31,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [employeeId, setEmployeeId] = useState<string>('');
   // const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
-  
+
   const [loadingmessage, setLoadingMessage] = useState<string | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
@@ -111,39 +116,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         console.log("Received JSON data:", jsonData.data);
         const status = jsonData.data.status;
         const messages = jsonData.data.message;
-        const translateMessage = (originalMessage: string): string => {
-          const translations: { [key: string]: string } = {
-            // Authentication errors
-            "Invalid credentials": "ข้อมูลประจำตัวไม่ถูกต้อง",
-            "User not found": "ไม่พบผู้ใช้งาน",
-            "Incorrect password": "รหัสผ่านไม่ถูกต้อง",
 
-            // Face scanning errors
-            "Face not detected": "ไม่พบใบหน้า กรุณาวางหน้าให้ชัดเจน",
-            "Multiple faces detected": "พบใบหน้ามากกว่า 1 ใบ กรุณาถ่ายเดี่ยว",
-            "Poor lighting conditions": "แสงไม่เพียงพอ กรุณาปรับแสง",
-            "Face too close": "ใบหน้าใกล้กล้องเกินไป กรุณาถอยห่าง",
-            "Face too far": "ใบหน้าห่างจากกล้องเกินไป กรุณาเข้าใกล้",
-
-            // Default case
-            "default": "กรุณาวางใบหน้าให้อยู่ในกรอบ"
-          };
-
-          // Check if there's an exact match first
-          if (translations[originalMessage]) {
-            return translations[originalMessage];
-          }
-
-          // If no exact match, check for partial matches
-          for (const [key, value] of Object.entries(translations)) {
-            if (originalMessage.includes(key)) {
-              return value;
-            }
-          }
-
-          // If no match found, return the original message or a default error message
-          return translations['default'];
-        };
         // Handle the JSON data here
         if (status === "progress") {
           console.log("Progress:", messages);
@@ -155,10 +128,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           console.log("User data:", jsonData.data);
         } else if (status === 'failed') {
           console.error("Error:", messages);
-          const translatedMessage = translateMessage(messages);
-          setInstruction(translatedMessage);
-          setErrors(translatedMessage);
-
+          setInstruction("กรุณาวางใบหน้าให้อยู่ในกรอบ");
         } else if (status === 'stopped') {
           setIsScanning(false);
           setIsAuthen(false);
@@ -166,7 +136,70 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
           setConnectionStatus('disconnected');
         }
-         else if (status === 'success') {
+        if (status === 'alreadycheckedin') {
+          Swal.fire({
+            icon: 'info',
+            title: 'Already Checked In',
+            text: 'You have already checked in today',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3085d6',
+          });
+          console.log("User data and images saved successfully");
+          console.log("User data:", messages);
+          console.log("User token:", jsonData.data.token);
+          const token = jsonData.data.token;
+          setIsScanning(false);
+          setIsAuthen(false);
+          setInstruction("");
+          setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
+          setConnectionStatus('disconnected');
+          setLogined(token)
+          setIsLogined(true);
+          setLogin(true);
+        }
+        else if (status === 'alreadycheckedout') {
+          Swal.fire({
+            icon: 'info',
+            title: 'Already Checked Out',
+            text: 'You have already checked out today',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3085d6',
+          });
+          console.log("User data and images saved successfully");
+          console.log("User data:", messages);
+          console.log("User token:", jsonData.data.token);
+          const token = jsonData.data.token;
+          setIsScanning(false);
+          setIsAuthen(false);
+          setInstruction("");
+          setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
+          setConnectionStatus('disconnected');
+          setLogined(token)
+          setIsLogined(true);
+          setLogin(true);
+        }
+        else if (status === 'alreadycheckedinout') {
+          Swal.fire({
+            icon: 'info',
+            title: 'Check-in/out Completed',
+            text: 'You have already checked in/out today',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3085d6',
+          });
+          console.log("User data and images saved successfully");
+          console.log("User data:", messages);
+          console.log("User token:", jsonData.data.token);
+          const token = jsonData.data.token;
+          setIsScanning(false);
+          setIsAuthen(false);
+          setInstruction("");
+          setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
+          setConnectionStatus('disconnected');
+          setLogined(token)
+          setIsLogined(true);
+          setLogin(true);
+        }
+        else if (status === 'success') {
           console.log("User data and images saved successfully");
           console.log("User data:", messages);
           console.log("User token:", jsonData.data.token);
@@ -229,7 +262,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
     }
-  }, [setImageSrc,  setIsLogined,setLogin]);
+  }, [setImageSrc, setIsLogined, setLogin]);
 
   //  websocket
   useEffect(() => {
@@ -276,8 +309,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       const token = getLogined();
       const encodedToken = token ? btoa(token) : undefined;
       console.log(token);
-  
-      const ws = new WebSocket("ws://localhost:8000/ws/auth", encodedToken ? [encodedToken] : undefined );
+
+      const ws = new WebSocket("ws://localhost:8000/ws/auth", encodedToken ? [encodedToken] : undefined);
       setWebSocket(ws);
       setConnectionStatus('connecting');
       ws.onopen = () => {
@@ -392,7 +425,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
 
   // Map paths to titles and descriptions
-  const menuItems = isLogined|| login ? [
+  const menuItems = isLogined || login ? [
     {
       path: "/UsersFacescan",
       title: "สแกนใบหน้า",
@@ -501,7 +534,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         <Sidebar
           isSidebarCollapsed={false}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
-          isLogined={isLogined||login}
+          isLogined={isLogined || login}
         />
       </div>
 
@@ -510,7 +543,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         <Sidebar
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
-          isLogined={isLogined||login}
+          isLogined={isLogined || login}
         />
       </div>
 
@@ -529,7 +562,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                 onChange={(e) => handleInputChange(e.target.value)}
                 className={`w-full p-2 border rounded ${errors ? 'border-red-500' : 'border-gray-300'
                   }`}
-                disabled={isLogined|| login}
+                disabled={isLogined || login}
               />
               {errors && (
                 <p className="text-red-500 text-sm mt-1">{errors}</p>
@@ -553,7 +586,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   } text-white rounded-lg transition-colors flex items-center justify-center gap-2`}
               >
                 <Camera size={20} />
-                {isLogined||login
+                {isLogined || login
                   ? (isCheckinorout ?? "ยังไม่ถึงเวลาเข้าหรือออกงาน")
                   : (isCheckinorout ?? "Login")}
               </button>
@@ -592,29 +625,22 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   {/* <canvas ref={canvasRef} className="hidden" /> */}
 
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl 
-                          before:absolute before:inset-0 before:border-2 before:border-dashed before:border-white 
-                          before:pointer-events-none before:rounded-lg">
-                      {/* เพิ่มเส้นขอบ dashed ด้านใน */}
+                    <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl">
                     </div>
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="bg-black/60 text-white p-4 rounded-lg">
-                      <p className="text-xl font-semibold text-center">
+                  <div className="absolute inset-0 flex items-start justify-center mt-5">
+                    <div className="text-white p-4 rounded-lg">
+                      <p
+                        className="text-2xl font-semibold text-center"
+                        style={{
+                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
+                        }}
+                      >
                         {instruction}
                       </p>
                     </div>
                   </div>
-                  {/* Inside the webcam scanning area */}
-                  {instruction && (
-                    <div className={`absolute inset-0 flex items-center justify-center ${errors ? 'text-red-500' : 'text-white'}`}>
-                      <div className={`bg-black/60 p-4 rounded-lg ${errors ? 'bg-red-500/60' : 'bg-black/60'}`}>
-                        <p className="text-xl font-semibold text-center">
-                          {instruction}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+
                 </>
                 )
               </div>

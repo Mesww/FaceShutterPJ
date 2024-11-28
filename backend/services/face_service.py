@@ -192,7 +192,7 @@ class Face_service:
                 await websocket.send_json(
                     {
                         "data": {
-                            "status": "failed",
+                            "status": "alreadycheckedinout",
                             "message": "User already checked in or out today.",
                         }
                     }
@@ -210,7 +210,7 @@ class Face_service:
                         await websocket.send_json(
                             {
                                 "data": {
-                                    "status": "failed",
+                                    "status": "alreadycheckedin",
                                     "message": "User already checked in today.",
                                 }
                             }
@@ -228,7 +228,7 @@ class Face_service:
                         await websocket.send_json(
                             {
                                 "data": {
-                                    "status": "failed",
+                                    "status": "alreadycheckedout",
                                     "message": "User already checked out today.",
                                 }
                             }
