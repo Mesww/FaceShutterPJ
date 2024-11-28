@@ -11,19 +11,20 @@ import {
     ChevronRight,
     Menu
 } from 'lucide-react';
-import { checkisLogined } from '@/containers/userLogin';
+
 
 interface SidebarProps {
     isSidebarCollapsed: boolean;
     setIsSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+    isLogined:boolean;
 }
 
-const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) => {
+const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed,isLogined }: SidebarProps) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-    const menuItems = checkisLogined? [
+ // ============= Provider ===============  
+    const menuItems = isLogined? [
         {
             path: '/users/UsersFacescan',
             title: 'สแกนใบหน้า',

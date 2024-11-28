@@ -42,6 +42,13 @@ class Checkinout_controller:
         return await CheckInOut_Service.is_checkinorout_time_valid(time)
     
     @staticmethod
+    @router.get("/is_already_checked_in_out_today")
+    async def is_already_checked_in_out_today( credentials: HTTPAuthorizationCredentials = Depends(security)):
+        userservice = UserService()
+        employee_id = userservice.extract_token( token=credentials.credentials)
+        return await CheckInOut_Service.is_already_checked_in_out(employee_id=employee_id.get('sub'))
+    
+    @staticmethod
     @router.get("/is_already_checked_in_today")
     async def is_already_checked_in_today( credentials: HTTPAuthorizationCredentials = Depends(security)):
         userservice = UserService()

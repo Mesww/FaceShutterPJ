@@ -176,42 +176,79 @@ class Face_service:
                     }
                 )
                 return
+            checklogined = await CheckInOut_Service.is_already_checked_in_out(employee_id)
+           
             user, label, pred_confidence = await self.face_scan_ws(
                 websocket, employee_id
             )
+            
             timezone = pytz.timezone(DEFAULT_TIMEZONE)
             check_in_time = datetime.now(tz=timezone).strftime("%H:%M:%S")
             checkorcheckout = await CheckInOut_Service.is_checkinorout_time_valid(
                 check_in_time
             )
             print(checkorcheckout)
-            if checkorcheckout["data"] == "checkin":
-                data = CheckInOutToday(
-                    employee_id=user.employee_id,
-                    check_in_time=check_in_time,
-                    date=datetime.now(tz=timezone).strftime("%Y-%m-%d"),
-                )
-                print(data)
-                checkin = await CheckInOut_Service.check_in(data)
-                await websocket.send_json({
-                   "data": Returnformat(
-                        status="success", message=checkin["message"], data=checkin["id"]
-                    ).to_json()}
-                )
-            elif checkorcheckout["data"] == "checkout":
-                checkout = await CheckInOut_Service.check_out(employee_id)
+            if checklogined["data"]:
                 await websocket.send_json(
-                 {"data":  Returnformat(
-                        status="success", message=checkout["message"], data=checkout
-                    ).to_json()}
+                    {
+                        "data": {
+                            "status": "failed",
+                            "message": "User already checked in or out today.",
+                        }
+                    }
                 )
-            elif checkorcheckout["data"] == None:
-                await websocket.send_json({
-                    "data":
-                    Returnformat(
-                        status="error", message="Invalid time", data=checkorcheckout["data"]
-                    ).to_json()}
+            else:
+                if checkorcheckout["data"] == "checkin":
+                    data = CheckInOutToday(
+                        employee_id=user.employee_id,
+                        check_in_time=check_in_time,
+                        date=datetime.now(tz=timezone).strftime("%Y-%m-%d"),
+                    )
+                    print(data)
+                    ischeckin = await CheckInOut_Service.is_already_checked_in(user.employee_id)
+                    if ischeckin["data"]:
+                        await websocket.send_json(
+                            {
+                                "data": {
+                                    "status": "failed",
+                                    "message": "User already checked in today.",
+                                }
+                            }
+                        )
+                    else:
+                        checkin = await CheckInOut_Service.check_in(data)
+                        await websocket.send_json({
+                        "data": Returnformat(
+                                status="success", message=checkin["message"], data=checkin["id"]
+                            ).to_json()}
+                        )
+                elif checkorcheckout["data"] == "checkout":
+                    ischeckout = await CheckInOut_Service.is_already_checked_out(user.employee_id)
+                    if ischeckout["data"]:
+                        await websocket.send_json(
+                            {
+                                "data": {
+                                    "status": "failed",
+                                    "message": "User already checked out today.",
+                                }
+                            }
+                        )
+                        
+                    else:
+                        checkout = await CheckInOut_Service.check_out(employee_id)
+                        await websocket.send_json(
+                        {"data":  Returnformat(
+                                status="success", message="Check-out complete", data=checkout
+                            ).to_json()}
+                        )
+                elif checkorcheckout["data"] == None:
+                    await websocket.send_json({
+                        "data":
+                        Returnformat(
+                            status="error", message="Invalid time", data=checkorcheckout["data"]
+                        ).to_json()}
                 )
+            
             token = user_service.generate_token(user.employee_id)
             await websocket.send_json(
                 {
