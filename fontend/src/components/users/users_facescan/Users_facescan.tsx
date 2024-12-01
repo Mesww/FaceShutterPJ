@@ -10,6 +10,7 @@ import { getisuserdata } from '@/containers/getUserdata.js';
 import RegisModal from './regis_modal.js';
 import Webcam from 'react-webcam';
 import { useUserData } from '@/containers/provideruserdata.js';
+import Swal from 'sweetalert2';
 // import { useUserData } from '@/containers/provideruserdata.js';
 
 const FaceScanPage: React.FC<FaceScanPageProps> = () => {
@@ -21,7 +22,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [instruction, setInstruction] = useState("");
   const [errors, setErrors] = useState<string | null>();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  
+  const [imageCount, setImageCount] = useState<number>(0);
+  const [currentDirection, setCurrentDirection] = useState<string>("");
+
   // User States
   const [userDetails, setUserDetails] = useState<User>({
     employee_id: "",
@@ -43,16 +46,21 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [websocket, setWebSocket] = useState<WebSocket | null>(null);
 
   // Provider Data
-  const { 
-    isLogined, 
-    setIsLogined, 
-    userData, 
+  const {
+    isLogined,
+    setIsLogined,
+    userData,
     isCheckinroute,
     disableCheckinorout,
     disableCheckinorouttext,
-    fetchCheckinoroutTime 
+    fetchCheckinoroutTime
   } = useUserData();
 
+  const directionInstructions: Record<string, string> = {
+    "Front": "กรุณาหันหน้าตรง",
+    "Turn left": "กรุณาหันหน้าไปทางซ้าย",
+    "Turn right": "กรุณาหันหน้าไปทางขวา"
+  };
   // WebSocket Message Handler
   const handleWebSocketMessage = useCallback((event: MessageEvent) => {
     try {
@@ -65,10 +73,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           console.log("Received JSON data:", jsonData);
           return;
         }
-
         const status = jsonData.data.status;
         const messages = jsonData.data.message;
-        let translatedMessage = '';
         switch (status) {
           case "progress":
             setInstruction(messages);
@@ -77,55 +83,80 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
             console.log("User data received, awaiting scan...");
             break;
           case "failed":
-            translatedMessage = translateMessage(messages);
-            setInstruction(translatedMessage);
-            setErrors(translatedMessage);
+            console.error("Error:", messages);
+            setInstruction("กรุณาวางใบหน้าให้อยู่ในกรอบ");
             break;
           case "stopped":
             handleScanStop();
+            break;
+          case "alreadycheckedin":
+            Swal.fire({
+              icon: 'info',
+              title: 'Already Checked In',
+              text: 'You have already checked in today',
+              confirmButtonText: 'OK',
+              confirmButtonColor: '#3085d6',
+            });
+            handleScanSuccess(jsonData.data.token);
+            break;
+          case "alreadycheckedout":
+            Swal.fire({
+              icon: 'info',
+              title: 'Already Checked Out',
+              text: 'You have already checked out today',
+              confirmButtonText: 'OK',
+              confirmButtonColor: '#3085d6',
+            });
+            handleScanSuccess(jsonData.data.token);
+            break;
+          case "alreadycheckedinout":
+            Swal.fire({
+              icon: 'info',
+              title: 'Check-in/out Completed',
+              text: 'You have already checked in/out today',
+              confirmButtonText: 'OK',
+              confirmButtonColor: '#3085d6',
+            });
+            handleScanSuccess(jsonData.data.token);
             break;
           case "success":
             handleScanSuccess(jsonData.data.token);
             break;
         }
       }
-
-      // Handle image data
-      // if (message.startsWith("/9j/") || message.includes("base64,")) {
-      //   handleImageData(message);
-      // }
-
-      // Handle instructions
+      // Handle image count and direction instructions
       if (message.startsWith("Please move your head to:")) {
-        handleHeadMovementInstruction(message);
+        const direction = message.replace("Please move your head to: ", "");
+
+        const specificInstruction = directionInstructions[direction] || direction;
+        handleHeadMovementInstruction(specificInstruction);
+        // Reset image count when direction changes
+        setImageCount(0);
+        setCurrentDirection(direction);
       }
-      else if (message.startsWith("User data and images saved successfully with ID:")){
+      // Handle incorrect direction message
+      else if (message.startsWith("ทิศทางผิด!")) {
+        const errorDetails = message.replace("ทิศทางผิด! ", "");
+        setInstruction(errorDetails);
+      }
+      // Existing other message handlers...
+      else if (message.startsWith("Image ")) {
+        const match = message.match(/Image (\d+) captured for (\w+)/);
+        if (match) {
+          const count = parseInt(match[1]);
+          const direction = match[2];
+          setImageCount(count);
+          setCurrentDirection(direction);
+        }
+      }
+      else if (message.startsWith("User data and images saved successfully")) {
         handleScanStop();
       }
-
-
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setIsLogined, fetchCheckinoroutTime]);
-
-  // Message Handler Helpers
-  const translateMessage = (originalMessage: string): string => {
-    const translations: { [key: string]: string } = {
-      "Invalid credentials": "ข้อมูลประจำตัวไม่ถูกต้อง",
-      "User not found": "ไม่พบผู้ใช้งาน",
-      "Incorrect password": "รหัสผ่านไม่ถูกต้อง",
-      "Face not detected": "ไม่พบใบหน้า กรุณาวางหน้าให้ชัดเจน",
-      "Multiple faces detected": "พบใบหน้ามากกว่า 1 ใบ กรุณาถ่ายเดี่ยว",
-      "Poor lighting conditions": "แสงไม่เพียงพอ กรุณาปรับแสง",
-      "Face too close": "ใบหน้าใกล้กล้องเกินไป กรุณาถอยห่าง",
-      "Face too far": "ใบหน้าห่างจากกล้องเกินไป กรุณาเข้าใกล้",
-      "default": "กรุณาวางใบหน้าให้อยู่ในกรอบ"
-    };
-
-    return translations[originalMessage] || translations["default"];
-  };
 
   const handleScanStop = () => {
     setIsScanning(false);
@@ -144,13 +175,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     handleScanStop();
     fetchCheckinoroutTime();
   };
-
-  // const handleImageData = (message: string) => {
-  //   const base64Image = message.startsWith("data:image/jpeg;base64,") 
-  //     ? message 
-  //     : `data:image/jpeg;base64,${message}`;
-  //   setImageSrc(base64Image);
-  // };
 
   const handleHeadMovementInstruction = (message: string) => {
     setInstruction(message.replace("Please move your head to: ", ""));
@@ -230,7 +254,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         setConnectionStatus('connected');
         setIsLoadings(false);
         setLoadingMessage("กำลังสแกนใบหน้า...");
-        
+
         if (isScanning) {
           ws.send(JSON.stringify(userDetails));
         } else if (isAuthen && employeeId) {
@@ -260,13 +284,13 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     }
 
     return cleanup;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthen, isScanning, userDetails, employeeId, sendImage, handleWebSocketMessage]);
 
   // Form Handling
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!employeeId || employeeId.trim() === '') {
       setErrors('กรุณากรอก Employee ID');
       return;
@@ -284,7 +308,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     }
 
     const isUser: Responsedata = await getisuserdata(employeeId);
-    
+
     if (!isUser.data) {
       setShowConfirmDialog(true);
       return;
@@ -429,7 +453,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         <Sidebar
           isSidebarCollapsed={false}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
-          isLogined={isLogined||login}
+          isLogined={isLogined || login}
         />
       </div>
 
@@ -438,7 +462,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         <Sidebar
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
-          isLogined={isLogined||login}
+          isLogined={isLogined || login}
         />
       </div>
 
@@ -457,7 +481,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                 onChange={(e) => handleInputChange(e.target.value)}
                 className={`w-full p-2 border rounded ${errors ? 'border-red-500' : 'border-gray-300'
                   }`}
-                disabled={isLogined|| login}
+                disabled={isLogined || login}
               />
               {errors && (
                 <p className="text-red-500 text-sm mt-1">{errors}</p>
@@ -481,8 +505,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   } text-white rounded-lg transition-colors flex items-center justify-center gap-2`}
               >
                 <Camera size={20} />
-                {isLogined||login
-                  ? ( !disableCheckinorout ? ( isCheckinroute ?? "ยังไม่ถึงเวลาเข้าหรือออกงาน"): disableCheckinorouttext)
+                {isLogined || login
+                  ? (!disableCheckinorout ? (isCheckinroute ?? "ยังไม่ถึงเวลาเข้าหรือออกงาน") : disableCheckinorouttext)
                   : (isCheckinroute ?? "Login")}
               </button>
             </div>
@@ -520,29 +544,35 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   {/* <canvas ref={canvasRef} className="hidden" /> */}
 
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl 
-                          before:absolute before:inset-0 before:border-2 before:border-dashed before:border-white 
-                          before:pointer-events-none before:rounded-lg">
-                      {/* เพิ่มเส้นขอบ dashed ด้านใน */}
+                    <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl">
                     </div>
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="bg-black/60 text-white p-4 rounded-lg">
-                      <p className="text-xl font-semibold text-center">
-                        {instruction}
+
+                  {/* Updated instruction display */}
+                  <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
+                    <div className="text-white text-center">
+                      {/* Current direction and image count */}
+                      {currentDirection && imageCount < 10 && (
+                        <p
+                          className="text-xl font-semibold mb-2"
+                          style={{
+                            textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
+                          }}
+                        >
+                          {`${currentDirection} - Image ${imageCount}/10`}
+                        </p>
+                      )}
+                      {/* Main instruction */}
+                      <p
+                        className="text-2xl font-semibold"
+                        style={{
+                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
+                        }}
+                      >
+                        {imageCount === 10 ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
                       </p>
                     </div>
                   </div>
-                  {/* Inside the webcam scanning area */}
-                  {instruction && (
-                    <div className={`absolute inset-0 flex items-center justify-center ${errors ? 'text-red-500' : 'text-white'}`}>
-                      <div className={`bg-black/60 p-4 rounded-lg ${errors ? 'bg-red-500/60' : 'bg-black/60'}`}>
-                        <p className="text-xl font-semibold text-center">
-                          {instruction}
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </>
                 )
               </div>
