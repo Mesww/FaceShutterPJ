@@ -2,6 +2,7 @@ import asyncio
 import base64
 import datetime
 from pathlib import Path
+import time
 import cv2
 from dotenv import dotenv_values, load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -138,6 +139,12 @@ async def websocket_endpoint(websocket: WebSocket):
     scan_directions = ["Front", "Turn left", "Turn right"]
     current_direction_idx = 0
     images = []  # To store images temporarily
+    images_per_direction = 20  # Number of images per direction
+    image_count = 0  # Counter for images saved in the current direction
+
+    # Delay time for saving data per frame
+    delay_time = 0.25  # Delay time in seconds
+    last_saved_time = time.time()
 
     # Request user information
     await websocket.send_text(
@@ -156,39 +163,46 @@ async def websocket_endpoint(websocket: WebSocket):
         while current_direction_idx < len(scan_directions):
             expected_direction = scan_directions[current_direction_idx]
             await websocket.send_text(f"Please move your head to: {expected_direction}")
+            image_count = 0  # ตัวนับจำนวนภาพในทิศทางปัจจุบัน
             
-            data = await websocket.receive_json()
+             # ส่งข้อความขอให้ผู้ใช้ส่งข้อมูลภาพ
+            while image_count < images_per_direction:  # เก็บภาพจนกว่าจะครบ 20 ภาพ
+                
+                data = await websocket.receive_json()
 
-            # Decode the received image
-            frame_bytes = np.frombuffer(bytearray(data["image"]), dtype=np.uint8)
-            frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
+                # Decode the received image
+                frame_bytes = np.frombuffer(bytearray(data["image"]), dtype=np.uint8)
+                frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
 
-            # Detect face and landmarks
-            results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            if not results.multi_face_landmarks:
-                await websocket.send_text("No face detected. Please try again.")
-                continue
+                # Detect face and landmarks
+                results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                if not results.multi_face_landmarks:
+                    await websocket.send_text("No face detected. Please try again.")
+                    continue
 
-            face_landmarks = results.multi_face_landmarks[0]
-            frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
-            detected_direction = face_service.check_head_direction(face_landmarks)
-            print(f"Detected direction: {detected_direction}")
-            # print(f"Landmarks: {[(lm.x, lm.y) for lm in face_landmarks.landmark]}")
-            # Check if the direction matches
-            encoded_frame = face_service.encode_image_to_base64(frame_with_landmarks)
-            await websocket.send_text(encoded_frame)
+                face_landmarks = results.multi_face_landmarks[0]
+                frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
+                detected_direction = face_service.check_head_direction(face_landmarks)
+                print(f"Detected direction: {detected_direction}")
 
-            if detected_direction != expected_direction:
-                await websocket.send_text(
-                    f"Incorrect direction! Detected: {detected_direction}"
-                )
-                continue
-            
-            # Add the frame and direction to the images list
-            images.append({"frame": frame, "direction": expected_direction})
+                # Check if the direction matches
+                encoded_frame = face_service.encode_image_to_base64(frame_with_landmarks)
+                await websocket.send_text(encoded_frame)
 
-            await websocket.send_text(f"Image captured for {expected_direction}")
-            current_direction_idx += 1
+                if detected_direction != expected_direction:
+                    await websocket.send_text(
+                        f"Incorrect direction! Detected: {detected_direction}"
+                    )
+                    continue
+
+                # Add the frame and direction to the images list
+                images.append({"frame": frame, "direction": expected_direction})
+
+                image_count += 1  # เพิ่มตัวนับภาพ
+
+                await websocket.send_text(f"Image {image_count} captured for {expected_direction}")
+
+            current_direction_idx += 1  # เปลี่ยนไปทิศทางถัดไป
 
         # Save all images and user data at once
         user_id = await user_service.save_user_and_images(
@@ -197,9 +211,9 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.send_text(
             f"User data and images saved successfully with ID: {user_id}"
         )
+
     except WebSocketDisconnect:
         print("WebSocket disconnected.")
-
 
 if __name__ == "__main__":
     import uvicorn
