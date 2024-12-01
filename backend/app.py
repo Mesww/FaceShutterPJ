@@ -139,7 +139,7 @@ async def websocket_endpoint(websocket: WebSocket):
     scan_directions = ["Front", "Turn left", "Turn right"]
     current_direction_idx = 0
     images = []  # To store images temporarily
-    images_per_direction = 20  # Number of images per direction
+    images_per_direction =10  # Number of images per direction
     image_count = 0  # Counter for images saved in the current direction
 
     # Delay time for saving data per frame
@@ -203,7 +203,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_text(f"Image {image_count} captured for {expected_direction}")
 
             current_direction_idx += 1  # เปลี่ยนไปทิศทางถัดไป
-
+        print("All images captured successfully.")
+        print("Saving user data and images...",len(images))
         # Save all images and user data at once
         user_id = await user_service.save_user_and_images(
             employee_id, name, email, password, images, tel

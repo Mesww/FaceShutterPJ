@@ -39,9 +39,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   // Camera States
   const webcamRef = useRef<Webcam>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [scanDirections, setScanDirections] = useState<string[]>([]);
-  const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
+  // const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [websocket, setWebSocket] = useState<WebSocket | null>(null);
 
   // Provider Data
@@ -93,21 +91,23 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       }
 
       // Handle image data
-      if (message.startsWith("/9j/") || message.includes("base64,")) {
-        handleImageData(message);
-      }
+      // if (message.startsWith("/9j/") || message.includes("base64,")) {
+      //   handleImageData(message);
+      // }
 
       // Handle instructions
       if (message.startsWith("Please move your head to:")) {
         handleHeadMovementInstruction(message);
       }
-      else if (message.startsWith("Image captured for")) {
-        setCurrentDirectionIdx(prev => prev + 1);
+      else if (message.startsWith("User data and images saved successfully with ID:")){
+        handleScanStop();
       }
+
 
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setIsLogined, fetchCheckinoroutTime]);
 
   // Message Handler Helpers
@@ -145,12 +145,12 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     fetchCheckinoroutTime();
   };
 
-  const handleImageData = (message: string) => {
-    const base64Image = message.startsWith("data:image/jpeg;base64,") 
-      ? message 
-      : `data:image/jpeg;base64,${message}`;
-    setImageSrc(base64Image);
-  };
+  // const handleImageData = (message: string) => {
+  //   const base64Image = message.startsWith("data:image/jpeg;base64,") 
+  //     ? message 
+  //     : `data:image/jpeg;base64,${message}`;
+  //   setImageSrc(base64Image);
+  // };
 
   const handleHeadMovementInstruction = (message: string) => {
     setInstruction(message.replace("Please move your head to: ", ""));
@@ -260,6 +260,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     }
 
     return cleanup;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthen, isScanning, userDetails, employeeId, sendImage, handleWebSocketMessage]);
 
   // Form Handling

@@ -1,3 +1,4 @@
+import asyncio
 import base64
 from datetime import datetime 
 import os
@@ -26,18 +27,25 @@ class Image_utills:
             raise ValueError("Failed to convert image to base64")
     
     @staticmethod
-    def save_image(image: np.ndarray, filename: str) -> str:
+    async def save_image(image: np.ndarray, filename: str) -> str:
         """Save image to file"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             base_dir = Path(__file__).resolve().parent.parent
             image_storage_path = os.path.join(base_dir, 'images')
             random_filename = (
-                    f"{timestamp}_{uuid.uuid5(uuid.NAMESPACE_DNS,filename).hex}.jpg"
+                    f"{timestamp}_{uuid.uuid4().hex}.jpg"
                 )
             filepath = os.path.join(image_storage_path, random_filename)
             print(f"Saving image to: {filepath}")
-            cv2.imwrite(filepath, image)
+            
+            # Save the image synchronously since cv2.imwrite is not async
+            success = cv2.imwrite(filepath, image)
+            
+            if not success:
+                raise ValueError("Failed to write image file")
+                
+            print(f"Successfully saved image to: {filepath}")
             return filepath
         except Exception as e:
             print(f"Error in save_image: {str(e)}")

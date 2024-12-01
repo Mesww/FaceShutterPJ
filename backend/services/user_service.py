@@ -296,7 +296,7 @@ class UserService:
                 frame = img_data["frame"]
 
                 # Generate a unique filename for each image
-                filepath = image_utills.save_image(
+                filepath = await image_utills.save_image(
                     image=frame,
                     filename=f"{name}_{direction.replace(' ', '_').lower()}.jpg",
                 )
