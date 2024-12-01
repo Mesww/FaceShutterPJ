@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User } from '../interfaces/users_facescan.interface';
 import { getcheckinorouttime, getisCheckin, getuserdata } from './getUserdata';
-import { checkisLogined } from './userLogin';
+import { checkisLogined, removeLogined } from './userLogin';
 import Cookies from 'js-cookie';
 
 interface UserContextType {
@@ -15,7 +15,9 @@ interface UserContextType {
   isLogined:boolean;
   setIsLogined: React.Dispatch<React.SetStateAction<boolean>>;
   fetchCheckinoroutTime: () => Promise<void>;
-  isCheckinorout: string | null;
+  isCheckinroute: string | null;
+  disableCheckinorout: boolean;
+  disableCheckinorouttext: string | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -27,15 +29,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLogined, setIsLogined] = useState<boolean>(false);
-
-  const [isCheckinorout, setIsCheckinorout] = useState<string | null>(null);
-
+  
+  const [isCheckinroute, setIsCheckinroute] = useState<string | null>(null);
+  const [disableCheckinorout, setDisableCheckinorout] = useState<boolean>(false);
+  const [disableCheckinorouttext, setDisableCheckinorouttext] = useState<string | null>(null);
+  
   const fetchUserData = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const token = Cookies.get('token');
-      if (token === undefined) {
+      if (token === undefined || token === '' || token === null || token === 'undefined') {
+        removeLogined()
         throw new Error('No token found');
       }
       const data = await getuserdata(token);
@@ -67,23 +72,32 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (!data) {
         throw new Error('No checkinorout time received');
       }
-      console.log(isCheckinorout);
-      if (isCheckinorout && token !== undefined) {
-       const isCheckin =  await getisCheckin(token,isCheckinorout);
-       console.log(isCheckin);
+      // console.log(isCheckinroute);
+      // console.log(data);
+      setIsCheckinroute(data.data as string);
+      // console.log(isCheckinroute);
+
+      if (isCheckinroute && token !== undefined) {
+       const isCheckin =  await getisCheckin(token,isCheckinroute);
+       console.log("IsCheckin",isCheckin);
+       if (isCheckin.data === undefined) {
+        setDisableCheckinorout(false);
+       }
+       
+       setDisableCheckinorout(isCheckin.data as boolean);
+       setDisableCheckinorouttext(isCheckin.message as string);
       }
-      setIsCheckinorout(data.data as string);
-      console.log(isCheckinorout);
+      // console.log('Disable: ',disableCheckinorout);
       
     } catch (error) {
       console.error('Error fetching checkinorout time:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch checkinorout time');
-      setIsCheckinorout(null);
+      setIsCheckinroute(null);
     } finally {
       setIsLoading(false);
       setIsInitialized(true);
     }
-  },[isCheckinorout]);
+  },[isCheckinroute,setDisableCheckinorout,setDisableCheckinorouttext]);
 
   // Expose refresh function
   const refreshUserData = async () => {
@@ -117,7 +131,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     isLogined,
     setIsLogined,
     fetchCheckinoroutTime,
-    isCheckinorout
+    isCheckinroute,
+    disableCheckinorout,
+    disableCheckinorouttext
   };
 
   return (

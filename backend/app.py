@@ -5,6 +5,7 @@ from pathlib import Path
 import cv2
 from dotenv import dotenv_values, load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import jwt
 import numpy as np
 from backend.configs.config import SCAN_DIRECTION, ConnectionManager
 from backend.models.user_model import User
@@ -20,6 +21,8 @@ pathenv = Path("./.env")
 load_dotenv(dotenv_path=pathenv)
 config = dotenv_values()
 FONTEND_URL = config.get("FRONTEND_URL", "http://localhost:5173")
+SECRET_KEY = config.get("SECRET_KEY","RickAstley")
+ALGORITHM = config.get("ALGORITHM", "HS256")
 
 app = FastAPI()
 
@@ -88,31 +91,44 @@ face_mesh = mp_face_mesh.FaceMesh(
 )
 
 
+from fastapi import WebSocket, WebSocketDisconnect
+from typing import Optional
+
+active_connections = {} 
+
 @app.websocket("/ws/auth")
 async def websocket_endpoint(websocket: WebSocket):
     face_service = Face_service()
     user_service = UserService()
-    await websocket.accept()
-    headers = websocket.headers
-    encoded_token = headers.get('sec-websocket-protocol')
-    token = None
+
+    # Extract token from query parameters
+    token: Optional[str] = websocket.query_params.get("token")
     employee_id = None
-    if encoded_token:
+
+    if token:
         try:
-            # Decode the base64 token
-            import base64
-            token = base64.b64decode(encoded_token).decode('utf-8')
-            employee_id = user_service.extract_token(token).get('sub')
-        except:
+            # Decode the JWT token
+            decoded_token = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
+            employee_id = decoded_token.get('sub')
+        except jwt.ExpiredSignatureError:
+            print("Token has expired.")
+        except jwt.InvalidTokenError as e:
+            print(f"Invalid token: {e}")
+        except Exception as e:
+            print(f"Unexpected error decoding token: {e}")
             token = None
             employee_id = None
     
-    print("token,employee : ",token,employee_id)    
+    print("token,employee : ", token, employee_id)
+    
+    await websocket.accept()
+
     if token and employee_id:
         print("Checkinout_ws")
-        await face_service.checkinout_ws(websocket,employee_id=employee_id)
+        await face_service.checkinout_ws(websocket, employee_id=employee_id)
     else:
-        await face_service.login_ws(websocket)        
+        print("Login")
+        await face_service.login_ws(websocket)
 
 @app.websocket("/ws/scan")
 async def websocket_endpoint(websocket: WebSocket):

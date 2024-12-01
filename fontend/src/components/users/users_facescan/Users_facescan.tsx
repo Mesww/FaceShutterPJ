@@ -13,9 +13,16 @@ import { useUserData } from '@/containers/provideruserdata.js';
 // import { useUserData } from '@/containers/provideruserdata.js';
 
 const FaceScanPage: React.FC<FaceScanPageProps> = () => {
-  // State
+  // Core States
   const [isScanning, setIsScanning] = useState(false);
   const [isLoadings, setIsLoadings] = useState(false);
+  const [loadingmessage, setLoadingMessage] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
+  const [instruction, setInstruction] = useState("");
+  const [errors, setErrors] = useState<string | null>();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // User States
   const [userDetails, setUserDetails] = useState<User>({
     employee_id: "",
     name: "",
@@ -24,29 +31,133 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     tel: "",
   });
   const [employeeId, setEmployeeId] = useState<string>('');
-  // const [capturedImage, setCapturedImage] = useState<string | null>(null);
-
-  
-  const [loadingmessage, setLoadingMessage] = useState<string | null>(null);
-  const webcamRef = useRef<Webcam>(null);
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
-  const [imageSrc, setImageSrc] = useState<string | null>(null);  // State to hold the image
-  const [scanDirections, setScanDirections] = useState<string[]>([]);
-  const [instruction, setInstruction] = useState("");
-  const [websocket, setWebSocket] = useState<WebSocket | null>(null);
   const [isAuthen, setIsAuthen] = useState(false);
-  const [errors, setErrors] = useState<string | null>();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
-  // ============= Provider ===============  
-  const { isLogined, setIsLogined, userData, isCheckinorout } = useUserData();
-
   const [login, setLogin] = useState<boolean>(false);
-
-  const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Camera States
+  const webcamRef = useRef<Webcam>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
-  // send image to backend
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [scanDirections, setScanDirections] = useState<string[]>([]);
+  const [currentDirectionIdx, setCurrentDirectionIdx] = useState(0);
+  const [websocket, setWebSocket] = useState<WebSocket | null>(null);
+
+  // Provider Data
+  const { 
+    isLogined, 
+    setIsLogined, 
+    userData, 
+    isCheckinroute,
+    disableCheckinorout,
+    disableCheckinorouttext,
+    fetchCheckinoroutTime 
+  } = useUserData();
+
+  // WebSocket Message Handler
+  const handleWebSocketMessage = useCallback((event: MessageEvent) => {
+    try {
+      const message = event.data;
+      console.log(message);
+
+      if (message.startsWith("{")) {
+        const jsonData = JSON.parse(message);
+        if (jsonData.data === undefined) {
+          console.log("Received JSON data:", jsonData);
+          return;
+        }
+
+        const status = jsonData.data.status;
+        const messages = jsonData.data.message;
+        let translatedMessage = '';
+        switch (status) {
+          case "progress":
+            setInstruction(messages);
+            break;
+          case "pending":
+            console.log("User data received, awaiting scan...");
+            break;
+          case "failed":
+            translatedMessage = translateMessage(messages);
+            setInstruction(translatedMessage);
+            setErrors(translatedMessage);
+            break;
+          case "stopped":
+            handleScanStop();
+            break;
+          case "success":
+            handleScanSuccess(jsonData.data.token);
+            break;
+        }
+      }
+
+      // Handle image data
+      if (message.startsWith("/9j/") || message.includes("base64,")) {
+        handleImageData(message);
+      }
+
+      // Handle instructions
+      if (message.startsWith("Please move your head to:")) {
+        handleHeadMovementInstruction(message);
+      }
+      else if (message.startsWith("Image captured for")) {
+        setCurrentDirectionIdx(prev => prev + 1);
+      }
+
+    } catch (error) {
+      console.error("Error processing WebSocket message:", error);
+    }
+  }, [setIsLogined, fetchCheckinoroutTime]);
+
+  // Message Handler Helpers
+  const translateMessage = (originalMessage: string): string => {
+    const translations: { [key: string]: string } = {
+      "Invalid credentials": "ข้อมูลประจำตัวไม่ถูกต้อง",
+      "User not found": "ไม่พบผู้ใช้งาน",
+      "Incorrect password": "รหัสผ่านไม่ถูกต้อง",
+      "Face not detected": "ไม่พบใบหน้า กรุณาวางหน้าให้ชัดเจน",
+      "Multiple faces detected": "พบใบหน้ามากกว่า 1 ใบ กรุณาถ่ายเดี่ยว",
+      "Poor lighting conditions": "แสงไม่เพียงพอ กรุณาปรับแสง",
+      "Face too close": "ใบหน้าใกล้กล้องเกินไป กรุณาถอยห่าง",
+      "Face too far": "ใบหน้าห่างจากกล้องเกินไป กรุณาเข้าใกล้",
+      "default": "กรุณาวางใบหน้าให้อยู่ในกรอบ"
+    };
+
+    return translations[originalMessage] || translations["default"];
+  };
+
+  const handleScanStop = () => {
+    setIsScanning(false);
+    setIsAuthen(false);
+    setInstruction("");
+    setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
+    setConnectionStatus('disconnected');
+  };
+
+  const handleScanSuccess = (token: string) => {
+    if (token) {
+      setLogined(token);
+      setIsLogined(true);
+      setLogin(true);
+    }
+    handleScanStop();
+    fetchCheckinoroutTime();
+  };
+
+  const handleImageData = (message: string) => {
+    const base64Image = message.startsWith("data:image/jpeg;base64,") 
+      ? message 
+      : `data:image/jpeg;base64,${message}`;
+    setImageSrc(base64Image);
+  };
+
+  const handleHeadMovementInstruction = (message: string) => {
+    setInstruction(message.replace("Please move your head to: ", ""));
+    setConnectionStatus('connected');
+  };
+
+  // Image Processing
   const sendImage = useCallback((ws: WebSocket) => {
     if (!webcamRef.current || !ws || ws.readyState !== WebSocket.OPEN) return null;
 
@@ -55,10 +166,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
     const canvas = document.createElement('canvas');
     const video = webcamRef.current.video;
-
     if (!video) return null;
 
-    // คำนวณขนาดและตำแหน่งของกรอบ
     const frameSize = Math.min(video.videoWidth, video.videoHeight) * 0.7;
     const x = (video.videoWidth - frameSize) / 2;
     const y = (video.videoHeight - frameSize) / 2;
@@ -68,7 +177,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     const ctx = canvas.getContext('2d');
 
     if (ctx) {
-      // สลับการวาดภาพถ้าใช้ front camera เพื่อให้ไม่ mirror
       if (facingMode === 'user') {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
@@ -76,22 +184,16 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
       ctx.drawImage(
         video,
-        x, y, frameSize, frameSize,  // source rectangle
-        0, 0, frameSize, frameSize   // destination rectangle
+        x, y, frameSize, frameSize,
+        0, 0, frameSize, frameSize
       );
 
       const croppedImageSrc = canvas.toDataURL('image/jpeg');
 
       try {
         const byteCharacters = atob(croppedImageSrc.split(",")[1]);
-        const byteNumbers = Array.from(byteCharacters).map((char) => char.charCodeAt(0));
-        const byteArray = new Uint8Array(byteNumbers);
-
-        ws.send(
-          JSON.stringify({
-            image: Array.from(byteArray),
-          })
-        );
+        const byteArray = new Uint8Array(Array.from(byteCharacters).map(char => char.charCodeAt(0)));
+        ws.send(JSON.stringify({ image: Array.from(byteArray) }));
       } catch (error) {
         console.error("Error sending image:", error);
         setConnectionStatus('disconnected');
@@ -99,171 +201,42 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
       return croppedImageSrc;
     }
-
     return null;
   }, [facingMode]);
-  // Handle WebSocket messages
-  const handleWebSocketMessage = useCallback((event: MessageEvent) => {
-    try {
-      const message = event.data;
-      if (message.startsWith("{")) {
-        const jsonData = JSON.parse(message);
-        if (jsonData.data === undefined) {
-          console.log("Received JSON data:", jsonData);
-          return;
-        }
-        console.log("Received JSON data:", jsonData.data);
-        const status = jsonData.data.status;
-        const messages = jsonData.data.message;
-        const translateMessage = (originalMessage: string): string => {
-          const translations: { [key: string]: string } = {
-            // Authentication errors
-            "Invalid credentials": "ข้อมูลประจำตัวไม่ถูกต้อง",
-            "User not found": "ไม่พบผู้ใช้งาน",
-            "Incorrect password": "รหัสผ่านไม่ถูกต้อง",
 
-            // Face scanning errors
-            "Face not detected": "ไม่พบใบหน้า กรุณาวางหน้าให้ชัดเจน",
-            "Multiple faces detected": "พบใบหน้ามากกว่า 1 ใบ กรุณาถ่ายเดี่ยว",
-            "Poor lighting conditions": "แสงไม่เพียงพอ กรุณาปรับแสง",
-            "Face too close": "ใบหน้าใกล้กล้องเกินไป กรุณาถอยห่าง",
-            "Face too far": "ใบหน้าห่างจากกล้องเกินไป กรุณาเข้าใกล้",
-
-            // Default case
-            "default": "กรุณาวางใบหน้าให้อยู่ในกรอบ" 
-          };
-
-          // Check if there's an exact match first
-          if (translations[originalMessage]) {
-            return translations[originalMessage];
-          }
-
-          // If no exact match, check for partial matches
-          for (const [key, value] of Object.entries(translations)) {
-            if (originalMessage.includes(key)) {
-              return value;
-            }
-          }
-
-          // If no match found, return the original message or a default error message
-          return translations['default'];
-        };
-        // Handle the JSON data here
-        if (status === "progress") {
-          console.log("Progress:", messages);
-          setInstruction(messages);
-          // setTotal_steps(jsonData['total_steps']);
-        }
-        else if (status === 'pending') {
-          console.log("User data received, awaiting scan...");
-          console.log("User data:", jsonData.data);
-        } else if (status === 'failed') {
-          console.error("Error:", messages);
-          const translatedMessage = translateMessage(messages);
-          setInstruction(translatedMessage);
-          setErrors(translatedMessage);
-
-        } else if (status === 'stopped') {
-          setIsScanning(false);
-          setIsAuthen(false);
-          setInstruction("");
-          setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
-          setConnectionStatus('disconnected');
-        }
-         else if (status === 'success') {
-          console.log("User data and images saved successfully");
-          console.log("User data:", messages);
-          console.log("User token:", jsonData.data.token);
-          const token = jsonData.data.token;
-          setIsScanning(false);
-          setIsAuthen(false);
-          setInstruction("");
-          setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
-          setConnectionStatus('disconnected');
-          setLogined(token)
-          setIsLogined(true);
-          setLogin(true);
-        }
-      }
-      // Check if the message looks like base64 image data
-      if (message.startsWith("/9j/") || message.includes("base64,")) {
-        console.log("Received image data");
-        let base64Image;
-
-        // If the message already includes the data URI prefix, use it directly
-        if (message.startsWith("data:image/jpeg;base64,")) {
-          base64Image = message;
-        } else {
-          // Otherwise, create the data URI
-          base64Image = `data:image/jpeg;base64,${message}`;
-        }
-
-        setImageSrc(base64Image);
-        return;
-      }
-      if (message.startsWith("Please move your head to:")) {
-        setInstruction(message.replace("Please move your head to: ", ""));
-        setConnectionStatus('connected');
-      }
-      else if (message.startsWith("Image captured for")) {
-        setCurrentDirectionIdx((prev) => prev + 1);
-      }
-      else if (message.startsWith("Incorrect direction!") ||
-        message.startsWith("No face detected")) {
-        console.log(message);
-
-      }
-      else if (message.startsWith("User data and images saved successfully")) {
-        alert("Scan complete and data saved!");
-        setIsScanning(false);
-        setInstruction("");
-        setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
-        setConnectionStatus('disconnected');
-      }
-      else if (message.startsWith("image_data:")) {
-        const imageData = message.replace("image_data:", "");
-        console.log("Received base64 image data:", imageData); // Check the image data in the console
-
-        const base64Image = `data:image/jpeg;base64,${imageData}`;
-        setImageSrc(base64Image);
-      }
-      else {
-        console.log("Received message:", message);
-      }
-    } catch (error) {
-      console.error("Error processing WebSocket message:", error);
-    }
-  }, [setImageSrc,  setIsLogined,setLogin]);
-
+  // WebSocket Setup and Cleanup
   useEffect(() => {
     let imageInterval: NodeJS.Timeout;
 
+    const cleanup = () => {
+      if (imageInterval) clearInterval(imageInterval);
+      if (websocket) websocket.close();
+      setWebSocket(null);
+      setConnectionStatus('disconnected');
+    };
+
     const setupWebSocket = (url: string, token?: string) => {
+      cleanup();
       setIsLoadings(true);
       setLoadingMessage("กำลังเชื่อมต่อเซิฟเวอร์...");
 
-      // Create WebSocket with token in query parameter instead of subprotocol
-      const wsUrl = token 
-        ? `${url}?token=${encodeURIComponent(token)}`
-        : url;
-      console.log(wsUrl);
+      const wsUrl = token ? `${url}?token=${encodeURIComponent(token)}` : url;
       const ws = new WebSocket(wsUrl);
       setWebSocket(ws);
       setConnectionStatus('connecting');
 
       ws.onopen = () => {
+        console.log("WebSocket connected");
         setConnectionStatus('connected');
         setIsLoadings(false);
         setLoadingMessage("กำลังสแกนใบหน้า...");
         
-        // Send initial data
         if (isScanning) {
           ws.send(JSON.stringify(userDetails));
         } else if (isAuthen && employeeId) {
           ws.send(JSON.stringify({ employee_id: employeeId }));
         }
 
-        // Start sending images
         imageInterval = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             sendImage(ws);
@@ -272,29 +245,11 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       };
 
       ws.onmessage = handleWebSocketMessage;
-
-      ws.onclose = (event) => {
-        console.log("WebSocket closed:", event.code, event.reason);
+      ws.onclose = () => cleanup();
+      ws.onerror = () => {
         cleanup();
-      };
-
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        cleanup();
-        // Optionally show error to user
         setErrors("การเชื่อมต่อล้มเหลว กรุณาลองใหม่อีกครั้ง");
       };
-    };
-
-    const cleanup = () => {
-      if (imageInterval) {
-        clearInterval(imageInterval);
-      }
-      if (websocket) {
-        websocket.close();
-      }
-      setWebSocket(null);
-      setConnectionStatus('disconnected');
     };
 
     if (isScanning || isAuthen) {
@@ -302,47 +257,60 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       const path = isScanning ? '/scan' : '/auth';
       const token = isAuthen ? getLogined() : undefined;
       setupWebSocket(`${baseUrl}${path}`, token);
-
-      return () => {
-        cleanup();
-      };
     }
-  }, [isAuthen, isScanning, userDetails, employeeId, sendImage, handleWebSocketMessage, websocket]);
 
-  // Employee ID form submission
+    return cleanup;
+  }, [isAuthen, isScanning, userDetails, employeeId, sendImage, handleWebSocketMessage]);
+
+  // Form Handling
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // ตรวจสอบว่ามีการกรอก employee ID หรือไม่
+    
     if (!employeeId || employeeId.trim() === '') {
       setErrors('กรุณากรอก Employee ID');
       return;
     }
 
-    // ตรวจสอบรูปแบบของ Employee ID
     if (!/^\d{6,10}$/.test(employeeId)) {
       setErrors('Employee ID must be 6-10 digits.');
       return;
     }
 
     const error = validateEmployeeId(employeeId);
-
     if (error) {
-      setErrors(employeeId);
+      setErrors(error);
       return;
     }
 
-    console.log("Form submitted with Employee ID:", employeeId);
     const isUser: Responsedata = await getisuserdata(employeeId);
-    console.log("User data:", isUser.data);
-
+    
     if (!isUser.data) {
-      setShowConfirmDialog(true); // แสดง confirmation dialog แทนที่จะแสดง RegisModal ทันที
+      setShowConfirmDialog(true);
       return;
     }
     setIsAuthen(true);
   };
 
-  // เพิ่ม handlers สำหรับ confirmation dialog
+  // Camera Controls
+  const handleSwitchCamera = () => {
+    stopCamera();
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
+  const stopCamera = () => {
+    if (webcamRef.current?.video) {
+      const mediaStream = webcamRef.current.video.srcObject as MediaStream;
+      mediaStream?.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const handleClose = () => {
+    stopCamera();
+    setIsScanning(false);
+    setIsAuthen(false);
+  };
+
+  // Registration Handlers
   const handleConfirmRegistration = () => {
     setShowConfirmDialog(false);
     setIsRegister(true);
@@ -353,42 +321,25 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     setEmployeeId("");
   };
 
-  // Handle camera switch
-  const handleSwitchCamera = () => {
-    // Stop current video track
-    if (webcamRef.current && webcamRef.current.video) {
-      const mediaStream = webcamRef.current.video.srcObject as MediaStream;
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((track) => {
-          track.stop();
-        });
-      }
+  // Validation
+  const validateEmployeeId = (value: string): string | null => {
+    if (!value || value.trim() === '') {
+      return "กรุณากรอก Employee ID";
     }
-
-    // Toggle facing mode
-    setFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user');
-  };
-  const stopCamera = () => {
-    if (webcamRef.current && webcamRef.current.video) {
-      const mediaStream = webcamRef.current.video.srcObject as MediaStream;
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((track) => {
-          track.stop();
-        });
-      }
+    if (!/^\d{6,10}$/.test(value)) {
+      return "Employee ID must be 6-10 digits.";
     }
-  }
-  // Handle close
-  const handleClose = () => {
-    stopCamera();
-    setIsScanning(false);
-    setIsAuthen(false);
-    // setCapturedImage(null);
+    return null;
   };
 
+  const handleInputChange = (value: string) => {
+    const error = validateEmployeeId(value);
+    setErrors(error);
+    setEmployeeId(value);
+  };
 
-  // Map paths to titles and descriptions
-  const menuItems = isLogined|| login ? [
+  // Menu Configuration
+  const menuItems = (isLogined || login) ? [
     {
       path: "/UsersFacescan",
       title: "สแกนใบหน้า",
@@ -413,15 +364,11 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     path: "/UsersFacescan",
     title: "สแกนใบหน้า",
     description: "บันทึกเวลาด้วยการสแกนใบหน้า",
-  },];
+  }];
 
-  const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
-
-  // logging state changes
+  // Data Sync Effect
   useEffect(() => {
-
     if (userData) {
-      // console.log('User data:', userData.employee_id);
       setEmployeeId(userData.employee_id);
       setUserDetails(userData);
     }
@@ -430,26 +377,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       isLoadings,
       connectionStatus,
       instruction,
-
     });
   }, [isScanning, isLoadings, connectionStatus, instruction, userData]);
 
-  const validateEmployeeId = (value: string) => {
-    // Example validation: must be non-empty and numeric with 6-10 digits
-    if (!value || value.trim() === '') {
-      return "กรุณากรอก Employee ID";
-    }
-    if (!/^\d{6,10}$/.test(value)) {
-      return "Employee ID must be 6-10 digits.";
-    }
-    return null;
-  };
-
-  const handleInputChange = (value: string) => {
-    const errors = validateEmployeeId(value);
-    setErrors(errors);
-    setEmployeeId(value);
-  };
+  const currentMenuItem = menuItems.find(item => window.location.pathname.includes(item.path));
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -542,16 +473,16 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
               <button
                 type='submit'
-                disabled={isScanning || (isLogined && isCheckinorout === null)}
-                className={`w-full px-4 py-2 ${isScanning
+                disabled={isScanning || (isLogined && isCheckinroute === null) || disableCheckinorout}
+                className={`w-full px-4 py-2 ${isScanning || (isLogined && isCheckinroute === null) || disableCheckinorout
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700'
                   } text-white rounded-lg transition-colors flex items-center justify-center gap-2`}
               >
                 <Camera size={20} />
                 {isLogined||login
-                  ? (isCheckinorout ?? "ยังไม่ถึงเวลาเข้าหรือออกงาน")
-                  : (isCheckinorout ?? "Login")}
+                  ? ( !disableCheckinorout ? ( isCheckinroute ?? "ยังไม่ถึงเวลาเข้าหรือออกงาน"): disableCheckinorouttext)
+                  : (isCheckinroute ?? "Login")}
               </button>
             </div>
           </form>

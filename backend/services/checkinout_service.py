@@ -34,15 +34,19 @@ class CheckInOut_Service:
             db= await connect_to_mongodb()
             today_collection = db['checkinouttoday']
             print('Checking in...2')
+            print("employee_id : ",data.employee_id)
             # Check if the user already checked in today
-            existing = await today_collection.find_one({"employee_id": data.employee_id, "date": data.date})
+            timezone = pytz.timezone(DEFAULT_TIMEZONE)
+            existing = await today_collection.find_one({"employee_id": data.employee_id})
             print('Existing: ',existing)
+            
             if existing:
-                raise HTTPException(status_code=400, detail="User already checked in today.")
+                return {"message": "User already checked in today", "status": "error","id": str(existing["_id"])}
+                # raise HTTPException(status_code=400, detail="User already checked in today.")
             print(data.model_dump())
             # Insert check-in record
             result = await today_collection.insert_one(data.model_dump())
-            return {"message": "Check-in successful", "id": str(result.inserted_id)}
+            return {"message": "Check-in successful", "id": str(result.inserted_id), "status": "success"}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     @staticmethod
@@ -52,20 +56,25 @@ class CheckInOut_Service:
             today_collection = db['checkinouttoday']
             timezone = pytz.timezone(DEFAULT_TIMEZONE)
             print(employee_id)
-            record = await today_collection.find_one({"employee_id": employee_id, "date": datetime.now(tz=timezone).strftime("%Y-%m-%d")})
+            record = await today_collection.find_one({"employee_id": employee_id})
             if not record:
                 data = CheckInOutToday(employee_id=employee_id, date=datetime.now(tz=timezone).strftime("%Y-%m-%d"),check_out_time=datetime.now(tz=timezone).strftime("%H:%M:%S"),status="OutComplete")
                 return await CheckInOut_Service.check_in(data=data)
-
+            if record["check_out_time"]:
+                return {"message": "User already checked out today", "status": "error"}
+                # raise HTTPException(status_code=400, detail="User already checked out today.")
+            
             # Update the check-out time
             updated_time = datetime.now(tz=timezone).strftime("%H:%M:%S")
             result = await today_collection.update_one(
                 {"_id": record["_id"]},
                 {"$set": {"check_out_time": updated_time, "status": "Complete"}}
             )
+            print(result.modified_count)
             if result.modified_count == 0:
-                raise HTTPException(status_code=500, detail="Check-out failed.")
-            return {"message": "Check-out successful", "check_out_time": updated_time}
+                return {"message": "Check-out failed", "check_out_time": updated_time, "status": "error"}
+                # raise HTTPException(status_code=500, detail="Check-out failed.")
+            return {"message": "Check-out successful", "check_out_time": updated_time, "status": "success"}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     

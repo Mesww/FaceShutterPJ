@@ -9,13 +9,13 @@ SCAN_DIRECTION = ["Front", "Turn left", "Turn right", "Look up", "Look down"]
 
 DEFAULT_TIMEZONE = "Asia/Bangkok"
 
-CHECKIN_TIME_START = "12:00:00"
-CHECKIN_TIME_END = "12:59:00"
+CHECKIN_TIME_START = "13:00:00"
+CHECKIN_TIME_END = "13:59:00"
 # CHECKIN_TIME_START = "16:00:00"
 # CHECKIN_TIME_END = "17:00:00"
 
-CHECKOUT_TIME_START = "15:00:00"
-CHECKOUT_TIME_END = "16:59:00"
+CHECKOUT_TIME_START = "14:00:00"
+CHECKOUT_TIME_END = "14:59:00"
 
 # Store active connections
 class ConnectionManager:

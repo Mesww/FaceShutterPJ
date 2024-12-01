@@ -30,6 +30,7 @@ from datetime import datetime
 
 
 class Face_service:
+    
     base_dir = Path(__file__).resolve().parent.parent
     image_storage_path = os.path.join(base_dir, "images")
 
@@ -115,40 +116,63 @@ class Face_service:
         try:
             user_service = UserService()
             timezone = pytz.timezone(DEFAULT_TIMEZONE)
+            await websocket.receive_json()
+            
             check_in_time = datetime.now(tz=timezone).strftime("%H:%M:%S")
+            # print("Check in time: ",datetime.now(tz=timezone).strftime("%H:%M:%S"))
+            
             checkorcheckout = await CheckInOut_Service.is_checkinorout_time_valid(
-                employee_id
+                check_in_time
             )
 
             user, label, pred_confidence = await self.face_scan_ws(
                 websocket, employee_id
             )
-
+            # print("Check: ",checkorcheckout)
+            
             if checkorcheckout["data"] == "checkin":
                 data = CheckInOutToday(
                     employee_id=user.employee_id,
                     check_in_time=check_in_time,
                     date=datetime.now(tz=timezone).strftime("%Y-%m-%d"),
                 )
-                print(data)
+                # print(data)
                 checkin = await CheckInOut_Service.check_in(data)
-                await websocket.send_json(
-                    Returnformat(
-                        status="success", message=checkin["message"], data=checkin["id"]
-                    ).to_json()
-                )
+                if checkin["status"] == "error":
+                   await websocket.send_json(
+                    {"data":Returnformat(
+                        status=checkin["status"], message=checkin["message"], data=checkin["id"]
+                    ).to_json()}
+                   )
+                   await websocket.close()
+                else:
+                    await websocket.send_json({
+                        "data":Returnformat(
+                            status=checkin["status"], message=checkin["message"], data=checkin["id"]
+                        ).to_json()
+                        }
+                    )
             elif checkorcheckout["data"] == "checkout":
                 checkout = await CheckInOut_Service.check_out(employee_id)
+                if checkout["status"] == "error":
+                   await websocket.send_json(
+                    {"data":Returnformat(
+                        status=checkout["status"], message=checkout["message"], data=checkout
+                    ).to_json()}
+                   )
+                   await websocket.close()
+                else:   
+                    await websocket.send_json(
+                    {"data":Returnformat(
+                        status=checkout["status"], message=checkout["message"], data=checkout
+                    ).to_json()}
+                    )
+            else:
                 await websocket.send_json(
-                    Returnformat(
-                        status="success", message=checkout["message"], data=checkout
-                    ).to_json()
+                    {"data": Returnformat(
+                        status="error", message="Invalid time", data=checkorcheckout["data"]
+                    ).to_json()}
                 )
-            await websocket.send_json(
-                Returnformat(
-                    status="error", message="Invalid time", data=checkorcheckout["data"]
-                ).to_json()
-            )
         except WebSocketDisconnect:
             print("WebSocket disconnected.")
 
@@ -183,11 +207,14 @@ class Face_service:
             )
             
             timezone = pytz.timezone(DEFAULT_TIMEZONE)
+            # print("Check in time: ",datetime.now(tz=timezone).strftime("%H:%M:%S"))
             check_in_time = datetime.now(tz=timezone).strftime("%H:%M:%S")
+
             checkorcheckout = await CheckInOut_Service.is_checkinorout_time_valid(
                 check_in_time
             )
-            print(checkorcheckout)
+            # print("Check: ",checkorcheckout)
+            # print(checkorcheckout)
             if checklogined["data"]:
                 await websocket.send_json(
                     {
@@ -198,14 +225,17 @@ class Face_service:
                     }
                 )
             else:
+                # print("Check: ",checkorcheckout)
                 if checkorcheckout["data"] == "checkin":
                     data = CheckInOutToday(
                         employee_id=user.employee_id,
                         check_in_time=check_in_time,
                         date=datetime.now(tz=timezone).strftime("%Y-%m-%d"),
                     )
-                    print(data)
+                    # print("Checkin",data)
                     ischeckin = await CheckInOut_Service.is_already_checked_in(user.employee_id)
+                    # print(ischeckin["data"])
+                    
                     if ischeckin["data"]:
                         await websocket.send_json(
                             {
@@ -321,6 +351,7 @@ class Face_service:
         is_Chcek = False
         while True:
             data = await websocket.receive_json()
+            # print("data: ",data)
             if not data["image"]:
                 continue
 
