@@ -19,7 +19,7 @@ export const getuserdata = async (token: string) => {
         return  datas.data;
     } catch (error) {
         console.error('Error:', error);
-        alert(error instanceof Error ? error.message : 'Registration failed');
+        // alert(error instanceof Error ? error.message : 'Registration failed');
     }
 }
 
@@ -38,7 +38,7 @@ export const getisuserdata = async (employee_id: string) => {
         return  await response.json();
     } catch (error) {
         console.error('Error:', error);
-        alert(error instanceof Error ? error.message : 'Registration failed');
+        // alert(error instanceof Error ? error.message : 'Registration failed');
     }
 }
 
@@ -63,7 +63,7 @@ export const getcheckinorouttime = async (): Promise<Responsedata | undefined> =
         return  data;
     } catch (error) {
         console.error('Error:', error);
-        alert(error instanceof Error ? error.message : 'Checkin or out time failed');
+        // alert(error instanceof Error ? error.message : 'Checkin or out time failed');
     }
 }
 
@@ -83,7 +83,7 @@ export const getisCheckin = async (token: string,checkinorout:string) => {
         return  await response.json();
     } catch (error) {
         console.error('Error:', error);
-        alert(error instanceof Error ? error.message : 'Checkin failed');
+        // alert(error instanceof Error ? error.message : 'Checkin failed');
     }       
 }
 
@@ -122,6 +122,6 @@ export const edituserdata = async (employee_id: string, name: string, email: str
         return await response.json();
     } catch (error) {
         console.error('Error:', error);
-        alert(error instanceof Error ? error.message : 'Registration failed');
+        // alert(error instanceof Error ? error.message : 'Registration failed');
     }
 }

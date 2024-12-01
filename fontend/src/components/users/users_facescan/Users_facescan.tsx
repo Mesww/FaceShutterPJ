@@ -517,7 +517,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                     className="absolute inset-0 w-full h-full object-cover"
                     mirrored={true}
                   />
-                  {/* <canvas ref={canvasRef} className="hidden" /> */}
 
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl 

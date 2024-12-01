@@ -4,101 +4,32 @@ import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
 import { useUserData } from '../../../containers/provideruserdata';
 import { edituserdata } from '@/containers/getUserdata.js'; // Import the edituserdata function
+import LoadingSpinner from '@/components/loading/loading.js';
+import Webcam from 'react-webcam';
 
 const EditProfilePage: React.FC = () => {
-  const { userData, profileImage, isLoading, setProfileImage,refreshUserData } = useUserData();
+  const { userData, profileImage, isLoading, setProfileImage,refreshUserData,isLogined } = useUserData();
   const [isScanning, setIsScanning] = useState(false);
   const [facingMode, setFacingMode] = useState("user");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-
+  const webcamRef = useRef<Webcam>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
+  const [instruction, setInstruction] = useState("");
+  const [isLoadings, setIsLoadings] = useState(false);
+  const [loadingmessage, setLoadingmessage] = useState("");
   // State for form fields
-  const [name, setName] = useState(userData?.user.name || '');
-  const [email, setEmail] = useState(userData?.user.email || '');
-  const [phone, setPhone] = useState(userData?.user.tel || '');
+  const [name, setName] = useState(userData?.name || '');
+  const [email, setEmail] = useState(userData?.email || '');
+  const [phone, setPhone] = useState(userData?.tel || '');
+  // console.log(userData);
 
-  const base64ToFile = async (base64String: string): Promise<File> => {
-    // Remove data URL prefix
-    const base64Content = base64String.split(',')[1];
-    // Convert base64 to blob
-    const byteCharacters = atob(base64Content);
-    const byteArrays = [];
-    
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-      const slice = byteCharacters.slice(offset, offset + 512);
-      const byteNumbers = new Array(slice.length);
-      
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
-      
-      const byteArray = new Uint8Array(byteNumbers);
-      byteArrays.push(byteArray);
-    }
-    
-    const blob = new Blob(byteArrays, { type: 'image/jpeg' });
-    return new File([blob], 'profile.jpg', { type: 'image/jpeg' });
-  };
-
-
-  const startCamera = async () => {
-    try {
-      if (streamRef.current) {
-        stopCamera();
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode },
-        audio: false
-      });
-
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      alert("ไม่สามารถเข้าถึงกล้องได้ กรุณาตรวจสอบการอนุญาตการใช้งานกล้อง");
-      setIsScanning(false);
-    }
-  };
 
   const stopCamera = () => {
-    if (streamRef.current) {
-      const tracks = streamRef.current.getTracks();
-      tracks.forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  const switchCamera = () => {
-    setFacingMode(prevMode => prevMode === "user" ? "environment" : "user");
-  };
-
-  const capturePhoto = async () => {
-    if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
-        const imageData = canvas.toDataURL('image/jpeg');
-        setProfileImage(imageData);
-        try {
-          const file = await base64ToFile(imageData);
-          setImageFile(file);
-        } catch (error) {
-          console.error('Error converting image:', error);
-        }
-        handleClose();
-      }
+    if (webcamRef.current?.video) {
+      const mediaStream = webcamRef.current.video.srcObject as MediaStream;
+      mediaStream?.getTracks().forEach(track => track.stop());
     }
   };
 
@@ -107,22 +38,11 @@ const EditProfilePage: React.FC = () => {
     setIsScanning(false);
   };
 
-  useEffect(() => {
-    if (isScanning) {
-      void startCamera();
-    }
-    return () => {
-      if (streamRef.current) {
-        stopCamera();
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanning, facingMode]);
-
+  
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
-      await edituserdata(userData?.user.employee_id || '', name, email, phone, imageFile);
+      await edituserdata(userData?.employee_id || '', name, email, phone, imageFile);
       await refreshUserData();
       alert('Profile updated successfully');
     } catch (error) {
@@ -131,72 +51,70 @@ const EditProfilePage: React.FC = () => {
     }
   };
 
-  const CloseButton = () => (
-    <button
-      onClick={handleClose}
-      className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors pointer-events-auto z-50"
-      style={{ touchAction: 'manipulation' }}
-      aria-label="ปิดกล้อง"
-    >
-      <X size={32} />
-    </button>
-  );
+  
+    // Camera Controls
+  const handleSwitchCamera = () => {
+      stopCamera();
+      setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
 
-  const SwitchCameraButton = () => (
-    <button
-      onClick={switchCamera}
-      className="absolute top-4 left-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors pointer-events-auto z-50"
-      style={{ touchAction: 'manipulation' }}
-      aria-label="สลับกล้อง"
-    >
-      <FlipHorizontal size={24} />
-    </button>
-  );
 
-  const ScanningOverlay = () => (
-    <div className="fixed inset-0 bg-gray-900 z-50 pointer-events-auto">
-      <CloseButton />
-      <SwitchCameraButton />
+  const ScanningOverlay = () =>  (
+    <div className="fixed inset-0 bg-gray-900 z-50">
+      <button
+        onClick={handleClose}
+        className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
+      >
+        <X size={32} />
+      </button>
 
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-      />
+      <button
+        onClick={handleSwitchCamera}
+        className="absolute top-4 left-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
+      >
+        <FlipHorizontal size={24} />
+      </button>
 
-      <div className="relative h-screen flex flex-col z-10">
-        <div className="h-20" />
+      <div className="relative h-screen">
+        {isLoadings && (
+          <LoadingSpinner message={loadingmessage} />
+        )}
+        (
+        <>
+          <Webcam
+            ref={webcamRef}
+            audio={false}
+            screenshotFormat="image/jpeg"
+            className="absolute inset-0 w-full h-full object-cover"
+            mirrored={true}
+          />
 
-        <div className="flex-1 flex flex-col items-center px-4">
-          <div className="relative w-full max-w-lg max-h-[60vh] aspect-[3/4]">
-            <div className="absolute inset-0 border-2 border-white/30 rounded-3xl">
-              <div className="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-blue-400 rounded-tl-3xl" />
-              <div className="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-blue-400 rounded-tr-3xl" />
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-l-4 border-b-4 border-blue-400 rounded-bl-3xl" />
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-r-4 border-b-4 border-blue-400 rounded-br-3xl" />
-            </div>
-
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Scan size={64} className="text-blue-400 animate-pulse" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl 
+                  before:absolute before:inset-0 before:border-2 before:border-dashed before:border-white 
+                  before:pointer-events-none before:rounded-lg">
+              {/* เพิ่มเส้นขอบ dashed ด้านใน */}
             </div>
           </div>
-
-          <div className="text-center text-white space-y-2 mt-4">
-            <p className="text-lg font-medium">กรุณาวางใบหน้าให้อยู่ในกรอบ</p>
-            <p className="text-sm text-gray-300">ให้แน่ใจว่าใบหน้าของคุณอยู่ในที่ที่มีแสงสว่างเพียงพอ</p>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-black/60 text-white p-4 rounded-lg">
+              <p className="text-xl font-semibold text-center">
+                {instruction}
+              </p>
+            </div>
           </div>
-        </div>
-
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent">
-          <button
-            onClick={capturePhoto}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-          >
-            <Camera size={24} />
-            <span>ถ่ายภาพ</span>
-          </button>
-        </div>
+          {/* Inside the webcam scanning area */}
+          {instruction && (
+            <div className={`absolute inset-0 flex items-center justify-center ${errors ? 'text-red-500' : 'text-white'}`}>
+              <div className={`bg-black/60 p-4 rounded-lg ${errors ? 'bg-red-500/60' : 'bg-black/60'}`}>
+                <p className="text-xl font-semibold text-center">
+                  {instruction}
+                </p>
+              </div>
+            </div>
+          )}
+        </>
+        )
       </div>
     </div>
   );
@@ -227,6 +145,13 @@ const EditProfilePage: React.FC = () => {
 
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
+
+  useEffect(() => {
+    setIsLoadings(isLoading);
+    setLoadingmessage("กำลังโหลดข้อมูล...");
+    console.log('isLoadings:',isLoadings);
+  }, [isLoading, isLoadings]);
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
 
@@ -235,6 +160,7 @@ const EditProfilePage: React.FC = () => {
         <Sidebar
           isSidebarCollapsed={false}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
+          isLogined={isLogined}
         />
       </div>
 
@@ -243,6 +169,7 @@ const EditProfilePage: React.FC = () => {
         <Sidebar
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
+          isLogined={isLogined}
         />
       </div>
 
@@ -250,10 +177,8 @@ const EditProfilePage: React.FC = () => {
       <div className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
          {isLoading? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              </div>
-            ) : ( <Header name={userData!.user.name} currentMenuItem={currentMenuItem} />)}
+              <LoadingSpinner message={loadingmessage} />
+            ) : ( <Header name={name} currentMenuItem={currentMenuItem} />)}
 
         <div className="w-full p-2 md:p-4 bg-white">
           <div className="p-4 md:p-6 bg-white rounded-lg shadow">
@@ -263,9 +188,7 @@ const EditProfilePage: React.FC = () => {
             </div>
 
             {isLoading? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              </div>
+             <LoadingSpinner message={loadingmessage} />
             ) : (
               <>
                 <div className="mb-6 flex flex-col items-center">

@@ -12,7 +12,7 @@ interface UserContextType {
   error: string | null;
   setProfileImage: React.Dispatch<React.SetStateAction<string | null>>;
   refreshUserData: () => Promise<void>;
-  isLogined:boolean;
+  isLogined: boolean;
   setIsLogined: React.Dispatch<React.SetStateAction<boolean>>;
   fetchCheckinoroutTime: () => Promise<void>;
   isCheckinroute: string | null;
@@ -29,18 +29,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLogined, setIsLogined] = useState<boolean>(false);
-  
   const [isCheckinroute, setIsCheckinroute] = useState<string | null>(null);
   const [disableCheckinorout, setDisableCheckinorout] = useState<boolean>(false);
   const [disableCheckinorouttext, setDisableCheckinorouttext] = useState<string | null>(null);
-  
+
   const fetchUserData = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const token = Cookies.get('token');
-      if (token === undefined || token === '' || token === null || token === 'undefined') {
-        removeLogined()
+      if (!token || token === 'undefined') {
+        removeLogined();
         throw new Error('No token found');
       }
       const data = await getuserdata(token);
@@ -62,63 +61,56 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setIsInitialized(true);
     }
   };
-  
+
   const fetchCheckinoroutTime = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
     try {
       const token = Cookies.get('token');
       const data = await getcheckinorouttime();
       if (!data) {
         throw new Error('No checkinorout time received');
       }
-      // console.log(isCheckinroute);
-      // console.log(data);
-      setIsCheckinroute(data.data as string);
-      // console.log(isCheckinroute);
 
-      if (isCheckinroute && token !== undefined) {
-       const isCheckin =  await getisCheckin(token,isCheckinroute);
-       console.log("IsCheckin",isCheckin);
-       if (isCheckin.data === undefined) {
-        setDisableCheckinorout(false);
-       }
-       
-       setDisableCheckinorout(isCheckin.data as boolean);
-       setDisableCheckinorouttext(isCheckin.message as string);
+      setIsCheckinroute(data.data as string);
+
+      if (data.data && token) {
+        const isCheckin = await getisCheckin(token, data.data);
+        setDisableCheckinorout(isCheckin.data ?? false);
+        setDisableCheckinorouttext(isCheckin.message ?? null);
       }
-      // console.log('Disable: ',disableCheckinorout);
-      
     } catch (error) {
       console.error('Error fetching checkinorout time:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch checkinorout time');
       setIsCheckinroute(null);
-    } finally {
-      setIsLoading(false);
-      setIsInitialized(true);
     }
-  },[isCheckinroute,setDisableCheckinorout,setDisableCheckinorouttext]);
+  }, []);
 
-  // Expose refresh function
   const refreshUserData = async () => {
     await fetchUserData();
   };
 
-  // Initial load
+  // Initial data fetch
   useEffect(() => {
-    console.log(checkisLogined);
-    console.log(isLogined);
-    fetchCheckinoroutTime();
-    if (checkisLogined) {
-      setIsLogined(checkisLogined);
-      console.log('fetching user data');
-      fetchUserData();
-    }else{
-      setIsLogined(false);
-    }
-  }, [isLogined, setIsLogined, fetchCheckinoroutTime]); // Only fetch on mount
+    const initializeData = async () => {
+      await fetchCheckinoroutTime();
+      
+      const isUserLoggedIn = checkisLogined;
+      setIsLogined(isUserLoggedIn);
+      
+      if (isUserLoggedIn) {
+        await fetchUserData();
+      }
+    };
 
- 
+    initializeData();
+  }, []); // Empty dependency array for initialization only
+
+  // Handle login state changes
+  useEffect(() => {
+    if (isLogined) {
+      console.log('User logged in, fetching user data');
+      fetchUserData();
+    }
+  }, [isLogined]); // Only re-run if login state changes
 
   const value = {
     userData,
@@ -143,7 +135,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Custom hook with better error handling
 // eslint-disable-next-line react-refresh/only-export-components
 export const useUserData = () => {
   const context = useContext(UserContext);
