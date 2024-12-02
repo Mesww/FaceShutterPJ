@@ -39,7 +39,7 @@ MarkupSafe==3.0.2
 matplotlib==3.9.2
 mdurl==0.1.2
 mediapipe==0.10.18
-ml_dtypes==0.5.0
+ml_dtypes>=0.4.0
 motor==3.6.0
 mtcnn==1.0.0
 numpy==1.26.4

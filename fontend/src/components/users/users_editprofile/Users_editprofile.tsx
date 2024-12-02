@@ -491,7 +491,7 @@ const EditProfilePage: React.FC = () => {
                           textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
                         }}
                       >
-                        {imageCount === 10 ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
+                        {imageCount === toltalDirection ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
                       </p>
                       <p
                         className="text-xl font-semibold text-red-500"

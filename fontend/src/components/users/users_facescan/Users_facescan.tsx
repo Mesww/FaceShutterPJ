@@ -39,6 +39,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [login, setLogin] = useState<boolean>(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [toltalDirection, setToltalDirection] = useState<number>(0);
+  const [errorDirectiom, setErrorDirection] = useState<string>("");
+
   // Camera States
   const webcamRef = useRef<Webcam>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
@@ -58,8 +60,14 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
   const directionInstructions: Record<string, string> = {
     "Front": "กรุณาหันหน้าตรง",
-    "Turn left": "กรุณาหันหน้าไปทางซ้าย",
-    "Turn right": "กรุณาหันหน้าไปทางขวา"
+    "Turn_left": "กรุณาหันหน้าไปทางซ้าย",
+    "Turn_right": "กรุณาหันหน้าไปทางขวา"
+  };
+
+  const errordirectionInstructions: Record<string, string> = {
+    "Front": "ตรง",
+    "Turn_left": "ซ้าย",
+    "Turn_right": "ขวา"
   };
 
   // WebSocket Message Handler
@@ -140,10 +148,16 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         setCurrentDirection(direction);
       }
       // Handle incorrect direction message
-      else if (message.startsWith("ทิศทางผิด!")) {
-        const errorDetails = message.replace("ทิศทางผิด! ", "");
-        setInstruction(errorDetails);
+      else if (message.startsWith("Incorrect direction! Detected:")) {
+        const match = message.match(/Incorrect direction! Detected: (\w+)/);
+        console.log(match);
+        if (match) {
+          const direction = match[1];
+          const errorDetails = `ท่านหันหน้าไปทาง ${errordirectionInstructions[direction]}`;
+          setErrorDirection(errorDetails);
+        }
       }
+
       // Existing other message handlers...
       else if (message.startsWith("Image ")) {
         const match = message.match(/Image (\d+) captured for (\w+)/);
@@ -285,12 +299,13 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       const baseUrl = "ws://localhost:8000/ws";
       const path = isScanning ? '/scan' : '/auth';
       const token = isAuthen ? getLogined() : undefined;
+      console.log('Test');
       setupWebSocket(`${baseUrl}${path}`, token);
     }
 
     return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanning, sendImage, handleWebSocketMessage]);
+  }, [isScanning, sendImage, handleWebSocketMessage,isAuthen]);
 
   // Form Handling
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -574,8 +589,16 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                           textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
                         }}
                       >
-                        {imageCount === 10 ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
+                        {imageCount === toltalDirection ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
                       </p>
+                      <p
+                        className="text-xl font-semibold text-red-500"
+                        style={{
+                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
+                        }}
+                      >
+                        {errorDirectiom}
+                        </p>
                     </div>
                   </div>
                 </>
