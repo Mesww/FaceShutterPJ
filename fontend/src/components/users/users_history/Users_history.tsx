@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
@@ -22,9 +22,8 @@ const AttendanceHistoryPage = () => {
     userData,
   } = useUserData();
 
+  // State for form fields
   const [name, setName] = useState(userData?.name || '');
-  // const [email, setEmail] = useState(userData?.email || '');
-  // const [phone, setPhone] = useState(userData?.tel || '');
 
   const getFirstDayOfCurrentMonth = () => {
     const date = new Date();
@@ -163,7 +162,11 @@ const AttendanceHistoryPage = () => {
   ];
 
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
-  
+
+  useEffect(() => {
+    setName(userData?.name || '');
+  }, [userData?.name]);
+
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">

@@ -30,11 +30,16 @@ class History_Service:
         return {"message": "Migration complete", "migrated_count": len(records)}
 
     @staticmethod
-    async def get_history_records(start_date: str, end_date: str):
-        db= await connect_to_mongodb()
+    async def get_history_records(start_date: str, end_date: str, employee_id: str):
+        db = await connect_to_mongodb()
         history_collection = db['checkinouthistory']
-        # Query historical records within a date range
+        print(start_date, end_date, employee_id)
+        # Query historical records within a date range and for a specific employee
         records = await history_collection.find({
-            "date": {"$gte": start_date, "$lte": end_date}
+            "date": {"$gte": start_date, "$lte": end_date},
+            "employee_id": employee_id
         }).to_list(1000)
+        for record in records:
+            record["_id"] = str(record["_id"])
+        
         return {"data": records}

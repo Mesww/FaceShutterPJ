@@ -18,7 +18,7 @@ CHECKOUT_TIME_START = "17:00:00"
 CHECKOUT_TIME_END = "19:59:00"
 
 
-IMAGE_PER_DIRECTION = 5
+IMAGE_PER_DIRECTION = 20
 
 # Store active connections
 class ConnectionManager:
