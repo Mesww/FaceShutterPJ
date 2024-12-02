@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, Zap, User, Clock, AlertTriangle } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
+import { useUserData } from '@/containers/provideruserdata.js';
 
 type NotificationType = 'error' | 'warning' | 'success';
 type NotificationStatus = 'รอการแก้ไข' | 'แก้ไขแล้ว' | 'สำเร็จ';
@@ -16,6 +17,7 @@ interface Notification {
 }
 
 const notifications: Notification[] = [
+
   {
     id: 1,
     time: "09:15:23",
@@ -59,6 +61,16 @@ const notifications: Notification[] = [
 ];
 
 const UserNotificationProblem: React.FC = () => {
+
+  const {
+    isLogined,
+    userData,
+  } = useUserData();
+
+  const [name, setName] = useState(userData?.name || '');
+  // const [email, setEmail] = useState(userData?.email || '');
+  // const [phone, setPhone] = useState(userData?.tel || '');
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const getNotificationStyles = (type: NotificationType): string => {
@@ -122,6 +134,7 @@ const UserNotificationProblem: React.FC = () => {
       {/* Mobile Sidebar */}
       <div className={`md:hidden`}>
         <Sidebar
+          isLogined={isLogined}
           isSidebarCollapsed={false}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
@@ -130,6 +143,7 @@ const UserNotificationProblem: React.FC = () => {
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <Sidebar
+          isLogined={isLogined}
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
@@ -138,7 +152,7 @@ const UserNotificationProblem: React.FC = () => {
       {/* Main Content */}
       <div className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
-        <Header currentMenuItem={currentMenuItem} />
+        <Header currentMenuItem={currentMenuItem} name={name} />
 
         <div className="w-full p-2 md:p-4 bg-white">
           <div className="p-3 md:p-6 bg-white rounded-lg shadow overflow-hidden">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
+import { useUserData } from '@/containers/provideruserdata.js';
 
 interface AttendanceRecord {
   id: number;
@@ -14,6 +15,17 @@ interface AttendanceRecord {
 }
 
 const AttendanceHistoryPage = () => {
+
+  // ====== Provider Data ======
+  const {
+    isLogined,
+    userData,
+  } = useUserData();
+
+  const [name, setName] = useState(userData?.name || '');
+  // const [email, setEmail] = useState(userData?.email || '');
+  // const [phone, setPhone] = useState(userData?.tel || '');
+
   const getFirstDayOfCurrentMonth = () => {
     const date = new Date();
     date.setHours(date.getHours() + 7); // เพิ่ม 7 ชั่วโมงให้เป็นเวลาของไทย
@@ -151,6 +163,7 @@ const AttendanceHistoryPage = () => {
   ];
 
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
+  
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -158,6 +171,7 @@ const AttendanceHistoryPage = () => {
       {/* Mobile Sidebar */}
       <div className={`md:hidden`}>
         <Sidebar
+          isLogined={isLogined}
           isSidebarCollapsed={false}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
@@ -166,6 +180,7 @@ const AttendanceHistoryPage = () => {
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <Sidebar
+          isLogined={isLogined}
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
@@ -174,7 +189,7 @@ const AttendanceHistoryPage = () => {
       {/* Main Content */}
       <div className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
-        <Header currentMenuItem={currentMenuItem} />
+        <Header currentMenuItem={currentMenuItem} name={name} />
 
         <div className="w-full p-2 md:p-4 bg-white">
           {/* Filter Section */}
