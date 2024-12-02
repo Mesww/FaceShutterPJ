@@ -81,23 +81,22 @@ class UserController:
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
         
-    # @staticmethod
-    # @router.post("/auth")
-    # async def authenticate_user(
-    #     employee_id: str = Form(...),
-    # ):
-    #     try:
-    #         res = await UserService.authenticate_user(employee_id)
-    #         if res.status >= 400:
-    #             raise HTTPException(status_code=400, detail=res.message)
-    #         return res
-    #     except Exception as e:
-    #         raise HTTPException(status_code=400, detail=str(e))
-        
-
-
-
-
-
-
- 
+    @staticmethod
+    @router.put("/update_user")
+    async def update_user(
+        request: Userupdate,
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+    ):
+        try:
+            userservice = UserService()
+            employee_id = userservice.extract_token( token=credentials.credentials)
+            res = await UserService.update_user_by_employee_id(
+                employee_id.get('sub'),
+                request
+            )
+            print(res.status)
+            if res.status >= 400:
+                raise HTTPException(status_code=400, detail=res.message)
+            return res.to_json()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))

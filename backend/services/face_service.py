@@ -65,12 +65,12 @@ class Face_service:
             nose_x < face_landmarks.landmark[33].x - threshold_x
             or nose_x < face_landmarks.landmark[61].x - threshold_x
         ):
-            return "Turn left"
+            return "Turn_left"
         elif (
             nose_x > face_landmarks.landmark[263].x + threshold_x
             or nose_x > face_landmarks.landmark[291].x + threshold_x
         ):
-            return "Turn right"
+            return "Turn_right"
         else:
             return "Front"
 

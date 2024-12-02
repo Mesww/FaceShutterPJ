@@ -37,6 +37,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
+      console.log('Fetching user data');
       const token = Cookies.get('token');
       if (!token || token === 'undefined') {
         removeLogined();
@@ -46,10 +47,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (!data) {
         throw new Error('No user data received');
       }
-
+      // console.log('User data:', data);
       setUserData(data);
-      if (data.image?.data) {
-        setProfileImage(`data:image/jpeg;base64,${data.image.data}`);
+      if (data.images_profile) {
+        setProfileImage(`data:image/jpeg;base64,${data.images_profile}`);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -73,7 +74,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setIsCheckinroute(data.data as string);
 
       if (data.data && token) {
-        const isCheckin = await getisCheckin(token, data.data);
+        const isCheckin = await getisCheckin(token, data.data as string);
         setDisableCheckinorout(isCheckin.data ?? false);
         setDisableCheckinorouttext(isCheckin.message ?? null);
       }
@@ -87,6 +88,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const refreshUserData = async () => {
     await fetchUserData();
   };
+
+
 
   // Initial data fetch
   useEffect(() => {
@@ -102,6 +105,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     };
 
     initializeData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array for initialization only
 
   // Handle login state changes

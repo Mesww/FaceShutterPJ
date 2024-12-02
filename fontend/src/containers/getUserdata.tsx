@@ -1,5 +1,6 @@
 import { BACKEND_URL } from "@/configs/backend";
 import { Responsedata } from "@/interfaces/users_facescan.interface";
+import { getLogined } from "./userLogin";
 
 export const getuserdata = async (token: string) => {
 
@@ -111,9 +112,23 @@ export const edituserdata = async (employee_id: string, name: string, email: str
             console.log('imageData:', imageData);
             formData.append('image', imageData);
         }
+        const token = getLogined();
+        if (!token) {
+            throw new Error('No token found');
+        }
+        const body = {
+            'employee_id': employee_id ?? null,
+            'name': name ?? null,
+            'email': email ?? null,
+            'tel': phone ?? null,
+        }
         const response = await fetch(`${BACKEND_URL}/api/users/update`, {
         method: 'PUT',
-        body: formData,
+        body: JSON.stringify(body),
+        headers:{
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+        }
         });
         if (!response.ok) {
             const errorData = await response.json();

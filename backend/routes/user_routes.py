@@ -11,5 +11,4 @@ router = APIRouter(
 router.add_api_route("/register", UserController.register_user, methods=["POST"])
 router.add_api_route("/get_user_by_employee_id", UserController.get_user_by_employee_id, methods=["GET"])
 router.add_api_route("/get_is_user_by_employee_id/{employee_id}", UserController.get_is_user_by_employee_id, methods=["GET"])
-
-
+router.add_api_route("/update", UserController.update_user, methods=["PUT"])

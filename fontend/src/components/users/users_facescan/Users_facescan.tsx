@@ -38,7 +38,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [login, setLogin] = useState<boolean>(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-
+  const [toltalDirection, setToltalDirection] = useState<number>(0);
   // Camera States
   const webcamRef = useRef<Webcam>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
@@ -61,6 +61,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     "Turn left": "กรุณาหันหน้าไปทางซ้าย",
     "Turn right": "กรุณาหันหน้าไปทางขวา"
   };
+
   // WebSocket Message Handler
   const handleWebSocketMessage = useCallback((event: MessageEvent) => {
     try {
@@ -118,6 +119,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
               confirmButtonColor: '#3085d6',
             });
             handleScanSuccess(jsonData.data.token);
+            break;
+          case "register":
+            console.log("User data received, awaiting scan...", jsonData.data.totaldirection);
+            setToltalDirection(jsonData.data.totaldirection);
             break;
           case "success":
             handleScanSuccess(jsonData.data.token);
@@ -285,7 +290,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
     return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthen, isScanning, userDetails, employeeId, sendImage, handleWebSocketMessage]);
+  }, [isScanning, sendImage, handleWebSocketMessage]);
 
   // Form Handling
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -333,6 +338,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     stopCamera();
     setIsScanning(false);
     setIsAuthen(false);
+    handleScanStop()
   };
 
   // Registration Handlers
@@ -551,14 +557,14 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
                     <div className="text-white text-center">
                       {/* Current direction and image count */}
-                      {currentDirection && imageCount < 10 && (
+                      {currentDirection && imageCount < toltalDirection && (
                         <p
                           className="text-xl font-semibold mb-2"
                           style={{
                             textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
                           }}
                         >
-                          {`${currentDirection} - Image ${imageCount}/10`}
+                          {`${currentDirection} - Image ${imageCount}/${toltalDirection}`}
                         </p>
                       )}
                       {/* Main instruction */}

@@ -3,6 +3,7 @@ from pathlib import Path
 
 from dotenv import dotenv_values, load_dotenv
 import jwt
+import pytz
 from backend.configs.db import connect_to_mongodb
 from backend.models.returnformat import Returnformat
 from backend.models.user_model import Faceimage, RoleEnum, User, Userupdate
@@ -34,13 +35,20 @@ class UserService:
 
             if not user:
                 return Returnformat(400, "User not found", None)
+            
             user["_id"] = str(user["_id"])
+            image_path = user["images"][0]
+            user["images_profile_path"] = image_path['path']
+            image_profile = Image_utills.read_image_from_path(image_path['path'])
+            user["images_profile"] = Image_utills.convert_cv2_to_base64(image_profile)
             # Return success response with user data
             return Returnformat(200, "User fetched successfully", user)
 
         except Exception as e:
             return Returnformat(400, str(e), None)
 
+    
+    
     @staticmethod
     async def get_is_user_by_employee_id(employee_id: str) -> Returnformat:
         try:
@@ -99,25 +107,41 @@ class UserService:
         employee_id: str, request: Userupdate
     ) -> Returnformat:
         try:
-            db = connect_to_mongodb()  # Establish database connection
+            
+            db = await connect_to_mongodb()  # Establish database connection
             collection = db["users"]
-
+            # print(request)
             # Prepare user data for update
             user_data = (
                 request.model_dump()
             )  # Pydantic models use dict() instead of model_dump()
+            
+            exit_user = await collection.find_one({"employee_id": employee_id})
+            
+            if not exit_user:
+                return Returnformat(400, "User not found", None)
+            
+            timezone = pytz.timezone("Asia/Bangkok")
+            
             user_data["roles"] = request.roles.value  # Convert Enum to string
+            user_data["name"] = user_data["name"] if user_data["name"] else exit_user["name"]
+            user_data["email"] = user_data["email"] if user_data["email"] else exit_user["email"]
+            user_data["tel"] = user_data["tel"] if user_data["tel"] else exit_user["tel"]
+            user_data["images"] = user_data["images"] if user_data["images"] else exit_user["images"] 
+            user_data["roles"] = user_data["roles"] if user_data["roles"] else exit_user["roles"]
+            user_data["update_at"] = datetime.now(tz=timezone)
+            # print(user_data)
             # Update the user in the database
-            updated_user = collection.update_one(
+            updated_user = await collection.update_one(
                 {"employee_id": employee_id}, {"$set": user_data}
             )
-
+            print(updated_user)
             # Check if the user was updated successfully
             if updated_user.modified_count == 0:
                 return Returnformat(400, "User not found", None)
 
             # Fetch the updated document (optional but useful)
-            updated_user = collection.find_one({"employee_id": employee_id})
+            updated_user = await collection.find_one({"employee_id": employee_id})
 
             # Convert ObjectId to string for serialization
             updated_user["_id"] = str(updated_user["_id"])
@@ -125,6 +149,7 @@ class UserService:
             # Return success response with updated user data
             return Returnformat(200, "User updated successfully", updated_user)
         except Exception as e:
+            print(e)
             return Returnformat(400, str(e), None)
 
     @staticmethod
@@ -167,20 +192,20 @@ class UserService:
             if not user:
                 return Returnformat(400, "User not found", None)
 
-            existing_faceimages = user.get("faceimage", [])
+            existing_faceimages = user.get("images", [])
 
             # Check if an image with the same scan_direction already exists
             for existing_image in existing_faceimages:
-                if existing_image["scan_direction"] == faceimage_data["scan_direction"]:
+                if existing_image["direction"] == faceimage_data["direction"]:
                     # Update the existing face image instead of adding a new one
                     updated_user = await collection.update_one(
                         {
                             "employee_id": employee_id,
-                            "faceimage.scan_direction": faceimage_data[
-                                "scan_direction"
+                            "images.direction": faceimage_data[
+                                "direction"
                             ],
                         },
-                        {"$set": {"faceimage.$": [faceimage_data]}},
+                        {"$set": {"images.$": [faceimage_data]}},
                     )
 
                     if updated_user.modified_count == 0:
@@ -298,7 +323,7 @@ class UserService:
                 # Generate a unique filename for each image
                 filepath = await image_utills.save_image(
                     image=frame,
-                    filename=f"{name}_{direction.replace(' ', '_').lower()}.jpg",
+                    filename=f"{employee_id}_{direction.replace(' ', '_').lower()}.jpg",
                 )
 
                 # Append the path to the list

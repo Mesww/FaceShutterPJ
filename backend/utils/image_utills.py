@@ -50,3 +50,24 @@ class Image_utills:
         except Exception as e:
             print(f"Error in save_image: {str(e)}")
             raise ValueError("Failed to save image to file")
+    
+    @staticmethod
+    def read_image_from_path(image_path: str) -> np.ndarray:
+        """Read image from file"""
+        try:
+            image = cv2.imread(image_path)
+            if image is None:
+                raise ValueError("Failed to read image file")
+            return image
+        except Exception as e:
+            print(f"Error in read_image_from_path: {str(e)}")
+            raise ValueError("Failed to read image from file")
+    @staticmethod
+    def remove_image(image_path: str) -> None:
+        """Remove image file"""
+        try:
+            os.remove(image_path)
+            print(f"Successfully removed image: {image_path}")
+        except Exception as e:
+            print(f"Error in remove_image: {str(e)}")
+            raise ValueError("Failed to remove image file")
