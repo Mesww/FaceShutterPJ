@@ -196,6 +196,14 @@ async def websocket_endpoint(websocket: WebSocket):
                         f"Incorrect direction! Detected: {detected_direction}"
                     )
                     continue
+                
+                current_time = time.time()
+                if current_time - last_saved_time >= delay_time:
+                    # Add the frame and direction to the images list
+                    images.append({"frame": frame, "direction": expected_direction})
+                    image_count += 1  # เพิ่มตัวนับภาพ
+                    last_saved_time = current_time  # อัปเดตเวลาที่บันทึกล่าสุด
+                    await websocket.send_text(f"Image {image_count} captured for {expected_direction}")
 
                 # Add the frame and direction to the images list
                 images.append({"frame": frame, "direction": expected_direction})
