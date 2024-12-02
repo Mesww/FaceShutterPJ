@@ -422,7 +422,7 @@ class Face_service:
                         print(
                             f"Predicted label: {label_id}, Confidence: {pred_confidence:.2f}, Direction: {labels[label_id]}, Live: {is_live}"
                         )
-                        if is_live and pred_confidence < 90:
+                        if is_live and pred_confidence < 80:
 
                             print("You are Real!!!!")
                             is_Chcek = True
