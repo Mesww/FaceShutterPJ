@@ -166,6 +166,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           const direction = match[2];
           setImageCount(count);
           setCurrentDirection(direction);
+          setInstruction(`${directionInstructions[direction]}`);
+          setErrorDirection('')
+
         }
       }
       else if (message.startsWith("User data and images saved successfully")) {
