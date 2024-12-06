@@ -25,6 +25,7 @@ class User(BaseModel):
     employee_id: str
     tel: Optional[str] =None
     images: Optional[List[Faceimage]] = []  # Add faceimage field with empty list
+    embeddeds: Optional[List[float]] = []  # Add embedded field with empty list
     roles: Optional[RoleEnum] = RoleEnum.USER  # Default to USER role
     create_at: datetime = Field(default_factory=datetime.now)  # Default to current time
     update_at: Optional[datetime] = None

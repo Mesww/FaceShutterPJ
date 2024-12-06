@@ -24,9 +24,12 @@ import cv2
 import numpy as np
 import mediapipe as mp
 from fastapi import WebSocket, WebSocketDisconnect
-from typing import List, Dict, Optional, Tuple
-import asyncio
+from typing import Any, List, Dict, Optional, Tuple
 from datetime import datetime
+import numpy as np
+import os
+
+
 
 
 class Face_service:
@@ -331,6 +334,14 @@ class Face_service:
             else:
                 print(f"Unable to read image: {imgs['path']}")
             i += 1
+        
+        if not saved_faces:
+            await websocket.send_json(
+                {"data": {"status": "failed", "message": "No valid images for training."}}
+            )
+            return
+
+        
         recognizer = cv2.face.LBPHFaceRecognizer_create()
         recognizer.train(saved_faces, np.array(list(labels.keys())))
         mp_face_mesh = mp.solutions.face_mesh
@@ -449,3 +460,60 @@ class Face_service:
                         }
                     }
                 )
+
+    """
+        Face Embedding Service 
+    """
+
+    def _encode_embedding(self, embeddings: List[List[float]]) -> List[str]:
+            """
+            Encode embeddings to base64 for storage
+            
+            Args:
+                embeddings (List[List[float]]): Face embeddings
+            
+            Returns:
+                List[str]: Base64 encoded embeddings
+            """
+            return [
+                base64.b64encode(np.array(embedding).tobytes()).decode('utf-8')
+                for embedding in embeddings
+            ]
+    def _decode_embedding(self, encoded_embeddings: List[str]) -> List[List[float]]:
+        """
+        Decode base64 embeddings
+        
+        Args:
+            encoded_embeddings (List[str]): Base64 encoded embeddings
+        
+        Returns:
+            List[List[float]]: Decoded embeddings
+        """
+        return [
+            np.frombuffer(base64.b64decode(embedding), dtype=np.float32).tolist()
+            for embedding in encoded_embeddings
+        ]
+        
+    async def retrieve_embeddings(self, user_id: str) -> Dict[str, Any]:
+        """
+        Retrieve user embeddings from MongoDB
+        
+        Args:
+            user_id (str): Unique user identifier
+        
+        Returns:
+            Dict: User embedding data or None
+        """
+        try:
+            user = UserService()
+            
+            document = await user.get_user_by_employee_id(user_id)
+            document = document.to_json()
+            user = document['data']
+            if user:
+                user['embeddings'] = self._decode_embedding(user['embeddings'])
+                return user
+            return None
+        except Exception as e:
+            print(f"Embedding Retrieval Error: {e}")
+            return None

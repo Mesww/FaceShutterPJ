@@ -8,12 +8,16 @@ from dotenv import dotenv_values, load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import jwt
 import numpy as np
-from backend.configs.config import IMAGE_PER_DIRECTION, SCAN_DIRECTION, ConnectionManager
+from backend.configs.config import (
+    IMAGE_PER_DIRECTION,
+    SCAN_DIRECTION,
+    ConnectionManager,
+)
 from backend.models.user_model import User, Userupdate
-from backend.routes import face_routes, user_routes,history_routes,checkinout_routes
+from backend.routes import face_routes, user_routes, history_routes, checkinout_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
-
+from deepface import DeepFace
 from backend.services.face_service import Face_service
 from backend.services.user_service import UserService
 from backend.utils.image_utills import Image_utills
@@ -22,7 +26,7 @@ pathenv = Path("./.env")
 load_dotenv(dotenv_path=pathenv)
 config = dotenv_values()
 FONTEND_URL = config.get("FRONTEND_URL", "http://localhost:5173")
-SECRET_KEY = config.get("SECRET_KEY","RickAstley")
+SECRET_KEY = config.get("SECRET_KEY", "RickAstley")
 ALGORITHM = config.get("ALGORITHM", "HS256")
 
 app = FastAPI()
@@ -77,7 +81,6 @@ app.include_router(
     prefix="/api/history",  # Base path for user-related routes
     tags=["history"],
 )
-    
 
 
 manager = ConnectionManager()
@@ -95,7 +98,8 @@ face_mesh = mp_face_mesh.FaceMesh(
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import Optional
 
-active_connections = {} 
+active_connections = {}
+
 
 @app.websocket("/ws/auth")
 async def websocket_endpoint(websocket: WebSocket):
@@ -110,7 +114,7 @@ async def websocket_endpoint(websocket: WebSocket):
         try:
             # Decode the JWT token
             decoded_token = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
-            employee_id = decoded_token.get('sub')
+            employee_id = decoded_token.get("sub")
         except jwt.ExpiredSignatureError:
             print("Token has expired.")
         except jwt.InvalidTokenError as e:
@@ -119,9 +123,9 @@ async def websocket_endpoint(websocket: WebSocket):
             print(f"Unexpected error decoding token: {e}")
             token = None
             employee_id = None
-    
+
     print("token,employee : ", token, employee_id)
-    
+
     await websocket.accept()
 
     if token and employee_id:
@@ -132,7 +136,6 @@ async def websocket_endpoint(websocket: WebSocket):
         await face_service.login_ws(websocket)
 
 
-
 @app.websocket("/ws/scan")
 async def websocket_endpoint(websocket: WebSocket):
     face_service = Face_service()
@@ -141,7 +144,7 @@ async def websocket_endpoint(websocket: WebSocket):
     scan_directions = ["Front", "Turn_left", "Turn_right"]
     current_direction_idx = 0
     images = []  # To store images temporarily
-    images_per_direction =IMAGE_PER_DIRECTION  # Number of images per direction
+    images_per_direction = IMAGE_PER_DIRECTION  # Number of images per direction
     image_count = 0  # Counter for images saved in the current direction
 
     # Delay time for saving data per frame
@@ -152,24 +155,32 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.send_text(
         "Provide user details (employee_id, name, email, password):"
     )
-    await websocket.send_json({"data":{"status":"register","scan_directions": scan_directions,"totaldirection":images_per_direction}})
+    await websocket.send_json(
+        {
+            "data": {
+                "status": "register",
+                "scan_directions": scan_directions,
+                "totaldirection": images_per_direction,
+            }
+        }
+    )
     user_details = await websocket.receive_json()
-    print('receive user_details : ',user_details)
+    print("receive user_details : ", user_details)
     employee_id = user_details["employee_id"]
     name = user_details["name"]
     email = user_details["email"]
     tel = user_details["tel"]
-    password = ''
+    password = ""
 
     try:
         while current_direction_idx < len(scan_directions):
             expected_direction = scan_directions[current_direction_idx]
             await websocket.send_text(f"Please move your head to: {expected_direction}")
             image_count = 0  # ตัวนับจำนวนภาพในทิศทางปัจจุบัน
-            
-             # ส่งข้อความขอให้ผู้ใช้ส่งข้อมูลภาพ
+
+            # ส่งข้อความขอให้ผู้ใช้ส่งข้อมูลภาพ
             while image_count < images_per_direction:  # เก็บภาพจนกว่าจะครบ 20 ภาพ
-                
+
                 data = await websocket.receive_json()
 
                 # Decode the received image
@@ -183,12 +194,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 face_landmarks = results.multi_face_landmarks[0]
-                frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
+                # frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
                 detected_direction = face_service.check_head_direction(face_landmarks)
                 print(f"Detected direction: {detected_direction}")
 
                 # Check if the direction matches
-                encoded_frame = face_service.encode_image_to_base64(frame_with_landmarks)
+                encoded_frame = face_service.encode_image_to_base64(frame)
                 await websocket.send_text(encoded_frame)
 
                 if detected_direction != expected_direction:
@@ -196,25 +207,32 @@ async def websocket_endpoint(websocket: WebSocket):
                         f"Incorrect direction! Detected: {detected_direction}"
                     )
                     continue
-                
+
                 current_time = time.time()
                 if current_time - last_saved_time >= delay_time:
                     # Add the frame and direction to the images list
                     images.append({"frame": frame, "direction": expected_direction})
                     image_count += 1  # เพิ่มตัวนับภาพ
                     last_saved_time = current_time  # อัปเดตเวลาที่บันทึกล่าสุด
-                    await websocket.send_text(f"Image {image_count} captured for {expected_direction}")
+                    await websocket.send_text(
+                        f"Image {image_count} captured for {expected_direction}"
+                    )
+
+               
+            
 
                 # Add the frame and direction to the images list
                 images.append({"frame": frame, "direction": expected_direction})
 
                 image_count += 1  # เพิ่มตัวนับภาพ
 
-                await websocket.send_text(f"Image {image_count} captured for {expected_direction}")
+                await websocket.send_text(
+                    f"Image {image_count} captured for {expected_direction}"
+                )
 
             current_direction_idx += 1  # เปลี่ยนไปทิศทางถัดไป
         print("All images captured successfully.")
-        print("Saving user data and images...",len(images))
+        print("Saving user data and images...", len(images))
         # Save all images and user data at once
         user_id = await user_service.save_user_and_images(
             employee_id, name, email, password, images, tel
@@ -226,19 +244,20 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         print("WebSocket disconnected.")
 
+
 @app.websocket("/ws/edit_image")
 async def websocket_endpoint(websocket: WebSocket):
     face_service = Face_service()
     user_service = UserService()
     await websocket.accept()
-       # Extract token from query parameters
+    # Extract token from query parameters
     token: Optional[str] = websocket.query_params.get("token")
     employee_id = None
     if token:
         try:
             # Decode the JWT token
             decoded_token = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
-            employee_id = decoded_token.get('sub')
+            employee_id = decoded_token.get("sub")
         except jwt.ExpiredSignatureError:
             print("Token has expired.")
         except jwt.InvalidTokenError as e:
@@ -250,18 +269,27 @@ async def websocket_endpoint(websocket: WebSocket):
     scan_directions = ["Front", "Turn_left", "Turn_right"]
     current_direction_idx = 0
     images = []
+    embeddings = []
     images_per_direction = IMAGE_PER_DIRECTION
-    image_count = 0 
-    await websocket.send_json({"data":{"status":"register","scan_directions": scan_directions,"totaldirection":images_per_direction}})
+    image_count = 0
+    await websocket.send_json(
+        {
+            "data": {
+                "status": "register",
+                "scan_directions": scan_directions,
+                "totaldirection": images_per_direction,
+            }
+        }
+    )
     try:
         while current_direction_idx < len(scan_directions):
             expected_direction = scan_directions[current_direction_idx]
             await websocket.send_text(f"Please move your head to: {expected_direction}")
             image_count = 0  # ตัวนับจำนวนภาพในทิศทางปัจจุบัน
-            
-             # ส่งข้อความขอให้ผู้ใช้ส่งข้อมูลภาพ
+
+            # ส่งข้อความขอให้ผู้ใช้ส่งข้อมูลภาพ
             while image_count < images_per_direction:  # เก็บภาพจนกว่าจะครบ 20 ภาพ
-                
+
                 data = await websocket.receive_json()
 
                 # Decode the received image
@@ -275,12 +303,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 face_landmarks = results.multi_face_landmarks[0]
-                frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
+                # frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
                 detected_direction = face_service.check_head_direction(face_landmarks)
                 print(f"Detected direction: {detected_direction}")
 
                 # Check if the direction matches
-                encoded_frame = face_service.encode_image_to_base64(frame_with_landmarks)
+                encoded_frame = face_service.encode_image_to_base64(frame)
                 await websocket.send_text(encoded_frame)
 
                 if detected_direction != expected_direction:
@@ -289,50 +317,59 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
                     continue
 
+                embedding = DeepFace.represent(
+                    frame, model_name="ArcFace", enforce_detection=True
+                )
+
+                embeddings.append(embedding)
+
                 # Add the frame and direction to the images list
                 images.append({"frame": frame, "direction": expected_direction})
 
                 image_count += 1  # เพิ่มตัวนับภาพ
 
-                await websocket.send_text(f"Image {image_count} captured for {expected_direction}")
+                await websocket.send_text(
+                    f"Image {image_count} captured for {expected_direction}"
+                )
 
             current_direction_idx += 1  # เปลี่ยนไปทิศทางถัดไป
-        
-        
+
         print("All images captured successfully.")
-        print("Saving user data and images...",len(images))
+        print("Saving user data and images...", len(images))
         image_utills = Image_utills()
         user = await user_service.get_user_by_employee_id(employee_id)
         # Save images to disk
         saved_image_paths = []
         for img_data in images:
-                direction = img_data["direction"]
-                frame = img_data["frame"]
+            direction = img_data["direction"]
+            frame = img_data["frame"]
 
-                # Generate a unique filename for each image
-                filepath = await image_utills.save_image(
-                    image=frame,
-                    filename=f"{employee_id}_{direction.replace(' ', '_').lower()}.jpg",
-                )
+            # Generate a unique filename for each image
+            filepath = await image_utills.save_image(
+                image=frame,
+                filename=f"{employee_id}_{direction.replace(' ', '_').lower()}.jpg",
+            )
 
-                # Append the path to the list
-                saved_image_paths.append({"path": filepath, "direction": direction})
+            # Append the path to the list
+            saved_image_paths.append({"path": filepath, "direction": direction})
 
-        for existing_image in user.data['images']:
-            image_utills.remove_image(existing_image['path'])
+        for existing_image in user.data["images"]:
+            image_utills.remove_image(existing_image["path"])
         # Save all images and user data at once
         user_update = Userupdate(images=saved_image_paths)
-        
-        user_id = await user_service.update_user_by_employee_id(employee_id=employee_id, request=user_update)
+
+        user_id = await user_service.update_user_by_employee_id(
+            employee_id=employee_id, request=user_update
+        )
         await websocket.send_text(
             f"User data and images saved successfully with ID: {user_id}"
         )
 
     except WebSocketDisconnect:
         print("WebSocket disconnected.")
-    
+
+
 if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
-
