@@ -55,9 +55,15 @@ const AttendanceHistoryPage = () => {
 
   const getCombinedStatus = (record: AttendanceRecord): string => {
     if (record.status === 'Incomplete') {
-      return record.check_in_time && !record.check_out_time ? 'ขาดงาน' : 'รอการลงเวลา';
+      return 'ขาดงาน';
     }
-    return record.status === 'Complete' ? 'มาปกติ' : 'นอกเวลา';
+    if (record.status === 'Outcomplete') {
+      return 'ขาดงาน';
+    }
+    if (record.status === 'Complete') {
+      return 'มาปกติ';
+    }
+    return 'ขาดงาน';
   };
 
   const getFilteredData = (): AttendanceRecord[] => {
@@ -140,10 +146,10 @@ const AttendanceHistoryPage = () => {
   }, [startDate, endDate, userData?.employee_id]);
   const fetchAttendanceRecords = async () => {
     if (!userData?.employee_id) return;
-  
+
     setLoading(true);
     setError(null);
-  
+
     try {
       const response = await axios.get('http://localhost:8000/api/history/get_history_records', {
         params: {
@@ -152,17 +158,17 @@ const AttendanceHistoryPage = () => {
           end_date: endDate
         }
       });
-      
+
       // Extract the array from response.data
       const records = response.data.data || response.data;
-      
+
       console.log('Fetched records:', records);
-      
+
       // Ensure you're setting an array
       setAttendanceData(Array.isArray(records) ? records : []);
-      
+
       console.log('Attendance records:', attendanceData);
-      
+
     } catch (err) {
       setError('Failed to fetch attendance records');
       console.error(err);
@@ -170,8 +176,6 @@ const AttendanceHistoryPage = () => {
       setLoading(false);
     }
   };
-
-
 
 
   useEffect(() => {
@@ -238,7 +242,7 @@ const AttendanceHistoryPage = () => {
             </div>
           </div>
 
-       
+
           {/* Loading and Error States */}
           {loading && (
             <div className="text-center py-4 text-gray-600">
@@ -256,11 +260,11 @@ const AttendanceHistoryPage = () => {
           {!loading && !error && (
             <>
               <div className="md:hidden space-y-4">
-                {paginatedData.map((record,index) => (
-                  <div key={index+1} className="bg-white rounded-lg shadow p-4">
+                {paginatedData.map((record, index) => (
+                  <div key={index + 1} className="bg-white rounded-lg shadow p-4">
                     <div className="flex justify-between items-center mb-3">
                       <div className="text-lg font-medium">{formatDate(record.date)}</div>
-                      <div className="text-sm text-gray-500">{index+1}</div>
+                      <div className="text-sm text-gray-500">{index + 1}</div>
                     </div>
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
@@ -280,63 +284,63 @@ const AttendanceHistoryPage = () => {
                 ))}
               </div>
 
-    {/* Desktop Table View */}
-    <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">ลำดับที่</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะ</th>
-                    {/* <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">หมายเหตุ</th> */}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {paginatedData.map((record,index) => (
-                    <tr key={index+1} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm">{index+1}</td>
-                      <td className="px-4 py-3 text-sm">{formatDate(record.date)}</td>
-                      <td className="px-4 py-3 text-sm text-center">{record.check_in_time || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-center">{record.check_out_time || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-center">
-                      {getCombinedStatus(record)}
-                      </td>
-                      {/* <td className="px-4 py-3 text-sm text-center">Note</td> */}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+              {/* Desktop Table View */}
+              <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">ลำดับที่</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะ</th>
+                        {/* <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">หมายเหตุ</th> */}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {paginatedData.map((record, index) => (
+                        <tr key={index + 1} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm">{index + 1}</td>
+                          <td className="px-4 py-3 text-sm">{formatDate(record.date)}</td>
+                          <td className="px-4 py-3 text-sm text-center">{record.check_in_time || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-center">{record.check_out_time || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-center">
+                            {getCombinedStatus(record)}
+                          </td>
+                          {/* <td className="px-4 py-3 text-sm text-center">Note</td> */}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-          {/* Pagination */}
-          <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-              <span className="text-sm text-gray-600">
-                หน้า {currentPage} จาก {totalPages}
-              </span>
-            </div>
-            <div className="text-sm text-gray-600 hidden sm:block">
-              แสดง {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredData.length)} จาก {filteredData.length} รายการ
-            </div>
-          </div>
+              {/* Pagination */}
+              <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    หน้า {currentPage} จาก {totalPages}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-600 hidden sm:block">
+                  แสดง {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredData.length)} จาก {filteredData.length} รายการ
+                </div>
+              </div>
 
 
 
@@ -344,7 +348,7 @@ const AttendanceHistoryPage = () => {
             </>
           )}
 
-      
+
         </div>
       </div>
     </div>

@@ -6,3 +6,6 @@ router = APIRouter(
 
 router.add_api_route("/migrate_to_history", History_Controller.migrate_to_history, methods=["POST"])
 router.add_api_route("/get_history_records", History_Controller.get_history_records, methods=["GET"])
+router.add_api_route("/get_all_history_records/{start_date}/{end_date}", 
+                     History_Controller.get_all_history_records, 
+                     methods=["GET"])

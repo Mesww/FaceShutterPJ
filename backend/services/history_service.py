@@ -43,3 +43,18 @@ class History_Service:
             record["_id"] = str(record["_id"])
         
         return {"data": records}
+    
+    @staticmethod
+    async def get_all_history_records(start_date: str, end_date: str):
+        db = await connect_to_mongodb()
+        history_collection = db['checkinouthistory']
+        
+        # Query historical records within a date range for all employees
+        records = await history_collection.find({
+            "date": {"$gte": start_date, "$lte": end_date}
+        }).to_list(1000)
+        
+        for record in records:
+            record["_id"] = str(record["_id"])
+    
+        return {"data": records}

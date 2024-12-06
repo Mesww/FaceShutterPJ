@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Search, File, FileSpreadsheet } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -7,151 +8,149 @@ import * as XLSX from 'xlsx';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header';
 
+// Updated interface to match API response
 interface AttendanceRecord {
-  id: number;
-  name: string;
+  _id: { $oid: string };
+  employee_id: string;
   date: string;
-  checkIn: string;
-  checkOut: string;
-  checkInStatus: string;
-  checkOutStatus: string;
-  note: string;
+  check_in_time: string;
+  check_out_time: string;
+  status: string;
+  // location: string | null;
+  created_at: { $date: string };
+  updated_at: { $date: string };
 }
 
-const AdminReports= () => {
+const AdminReports = () => {
   const [searchReportName, setSearchReportName] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const notificationCount = 3;
-  const [attendanceRecords] = useState<AttendanceRecord[]>([
-    {
-      id: 1,
-      name: "John Doe",
-      date: "2024-11-01",
-      checkIn: "08:45",
-      checkOut: "17:30",
-      checkInStatus: "เข้าปกติ",
-      checkOutStatus: "ออกปกติ",
-      note: "-"
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      date: "2024-11-15",
-      checkIn: "09:00",
-      checkOut: "-",
-      checkInStatus: "เข้าปกติ",
-      checkOutStatus: "ไม่ได้ลงเวลาออก",
-      note: "-"
-    },
-    {
-      id: 3,
-      name: "Bob Johnson",
-      date: "2024-11-20",
-      checkIn: "-",
-      checkOut: "-",
-      checkInStatus: "-",
-      checkOutStatus: "-",
-      note: "วันหยุด"
-    }
-  ]);
+
+  // State for attendance records
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const getCurrentDate = () => {
     const date = new Date();
-    date.setHours(date.getHours() + 7); // ปรับเวลาเป็น UTC+7 สำหรับเขตเวลาไทย
-    return date.toISOString().split("T")[0]; // แปลงเป็นรูปแบบ YYYY-MM-DD
+    date.setHours(date.getHours() + 7); // Adjust to UTC+7 for Thailand
+    return date.toISOString().split("T")[0];
   };
 
   const [startDate, setStartDate] = useState(getCurrentDate());
   const [endDate, setEndDate] = useState(getCurrentDate());
 
-  const filteredAttendanceRecords = attendanceRecords.filter(
-    (record) =>
-      record.name.toLowerCase().includes(searchReportName.toLowerCase()) &&
-      record.date >= startDate &&
-      record.date <= endDate
-  );
+  // Fetch attendance records
+  useEffect(() => {
+    const fetchAttendanceRecords = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get(
+          `http://localhost:8000/api/history/get_all_history_records/${startDate}/${endDate}`
+        );
 
-  const getCombinedStatus = (checkInStatus: string, checkOutStatus: string, note: string): string => {
-    if (checkInStatus === '-' && checkOutStatus === '-' && note === 'วันหยุด') {
-      return 'นอกเวลา';
-    }
-    if (checkInStatus === 'เข้าปกติ' && checkOutStatus === 'ออกปกติ') {
-      return 'มาปกติ';
-    }
-    if (checkInStatus === 'เข้าปกติ' && checkOutStatus === 'ไม่ได้ลงเวลาออก') {
+        // แก้ไขการดึงข้อมูล
+        const records = response.data.data || [];
+
+        console.log('API Response:', response.data);
+        console.log('Records count:', records.length);
+
+        setAttendanceRecords(records);
+      } catch (err) {
+        setError('Failed to fetch attendance records');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAttendanceRecords();
+  }, [startDate, endDate]);
+
+  // Filter records
+  const filteredAttendanceRecords = Array.isArray(attendanceRecords)
+    ? attendanceRecords.filter(
+      (record) =>
+      (searchReportName === "" ||
+        record.employee_id.toLowerCase().includes(searchReportName.toLowerCase()))
+    )
+    : [];
+  console.log('Filtered Records:', filteredAttendanceRecords);
+
+  // Determine combined status
+  const getCombinedStatus = (record: AttendanceRecord): string => {
+    if (record.status === 'Incomplete') {
       return 'ขาดงาน';
     }
-    return `${checkInStatus} - ${checkOutStatus}`;
+    if (record.status === 'Outcomplete') {
+      return 'ขาดงาน';
+    }
+    if (record.status === 'Complete') {
+      return 'มาปกติ';
+    }
+    return 'ขาดงาน';
   };
 
+  // Download Excel
   const downloadAttendanceExcel = () => {
-    // สร้างข้อมูลสำหรับ Excel
     const excelData = filteredAttendanceRecords.map(record => ({
       'วันที่': formatDateForDisplay(record.date),
-      'ชื่อ-นามสกุล': record.name,
-      'เวลาเข้า': record.checkIn,
-      'เวลาออก': record.checkOut,
-      'สถานะ': getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note),
-      'หมายเหตุ': record.note
+      'รหัสพนักงาน': record.employee_id,
+      'เวลาเข้า': record.check_in_time,
+      'เวลาออก': record.check_out_time,
+      'สถานะ': getCombinedStatus(record),
+      // 'สถานที่': record.location || '-'
     }));
 
-    // สร้าง workbook และ worksheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(excelData);
 
-    // ตั้งค่าความกว้างของคอลัมน์
     const columnWidths = [
       { wch: 20 }, // วันที่
-      { wch: 25 }, // ชื่อ-นามสกุล
+      { wch: 15 }, // รหัสพนักงาน
       { wch: 10 }, // เวลาเข้า
       { wch: 10 }, // เวลาออก
       { wch: 15 }, // สถานะ
-      { wch: 15 }  // หมายเหตุ
+      { wch: 15 }  // สถานที่
     ];
     ws['!cols'] = columnWidths;
 
-    // เพิ่ม worksheet ลงใน workbook
     XLSX.utils.book_append_sheet(wb, ws, "รายงานการเข้าออกงาน");
 
-    // บันทึกไฟล์
     const formattedStartDate = formatDateForDisplay(startDate);
     const formattedEndDate = formatDateForDisplay(endDate);
     XLSX.writeFile(wb, `รายงานการเข้าออกงาน_${formattedStartDate}_ถึง_${formattedEndDate}.xlsx`);
   };
 
+  // Download PDF
   const downloadAttendancePDF = () => {
     const doc = new jsPDF();
 
-    // Add Thai font support
     doc.addFont(THSarabunNew, "THSarabun", "normal");
     doc.setFont("THSarabun");
 
     const formattedStartDate = formatDateForDisplay(startDate);
     const formattedEndDate = formatDateForDisplay(endDate);
 
-    // Set title
     doc.setFontSize(18);
     doc.text(`รายงานการเข้าออกงาน`, 14, 15);
     doc.setFontSize(14);
     doc.text(`วันที่ ${formattedStartDate} ถึง ${formattedEndDate}`, 14, 22);
 
-    const tableData = filteredAttendanceRecords.map((record) => {
-      const status = getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note);
-      const formattedDate = formatDateForDisplay(record.date);
-      return [
-        formattedDate,
-        record.name,
-        record.checkIn,
-        record.checkOut,
-        status,
-        record.note,
-      ];
-    });
+    const tableData = filteredAttendanceRecords.map((record) => [
+      formatDateForDisplay(record.date),
+      record.employee_id,
+      record.check_in_time,
+      record.check_out_time,
+      getCombinedStatus(record),
+      // record.location || '-'
+    ]);
 
     autoTable(doc, {
       startY: 30,
-      head: [["วันที่", "ชื่อ-นามสกุล", "เวลาเข้า", "เวลาออก", "สถานะ", "หมายเหตุ"]],
+      head: [["วันที่", "รหัสพนักงาน", "เวลาเข้า", "เวลาออก", "สถานะ"]],
       body: tableData,
       theme: "grid",
       styles: {
@@ -168,18 +167,19 @@ const AdminReports= () => {
         halign: 'center'
       },
       columnStyles: {
-        0: { halign: 'left' },  // วันที่
-        1: { halign: 'left' },  // ชื่อ-นามสกุล
+        0: { halign: 'left' },   // วันที่
+        1: { halign: 'left' },   // รหัสพนักงาน
         2: { halign: 'center' }, // เวลาเข้า
         3: { halign: 'center' }, // เวลาออก
         4: { halign: 'center' }, // สถานะ
-        5: { halign: 'left' }   // หมายเหตุ
+        // 5: { halign: 'left' }    // สถานที่
       }
     });
 
     doc.save(`รายงานการเข้าออกงาน_${formattedStartDate}_ถึง_${formattedEndDate}.pdf`);
   };
 
+  // Format date for display
   const formatDateForDisplay = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('th-TH', {
@@ -277,12 +277,12 @@ const AdminReports= () => {
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ค้นหาชื่อ
+                  ค้นหารหัสพนักงาน
                 </label>
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="ค้นหาชื่อ"
+                    placeholder="ค้นหารหัสพนักงาน"
                     value={searchReportName}
                     onChange={(e) => setSearchReportName(e.target.value)}
                     className="w-full p-2 pl-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
@@ -293,6 +293,19 @@ const AdminReports= () => {
             </div>
           </div>
 
+          {/* Loading and Error Handling */}
+          {loading && (
+            <div className="text-center py-4 text-gray-600">
+              กำลังโหลดข้อมูล...
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              {error}
+            </div>
+          )}
+
           {/* Table Section */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="overflow-x-auto">
@@ -300,26 +313,37 @@ const AdminReports= () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">ชื่อ-นามสกุล</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">รหัสพนักงาน</th>
                     <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
                     <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
                     <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะ</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">หมายเหตุ</th>
+                    {/* <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานที่</th> */}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredAttendanceRecords.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm">{formatDateForDisplay(record.date)}</td>
-                      <td className="px-4 py-3 text-sm">{record.name}</td>
-                      <td className="px-4 py-3 text-sm text-center">{record.checkIn}</td>
-                      <td className="px-4 py-3 text-sm text-center">{record.checkOut}</td>
-                      <td className="px-4 py-3 text-sm text-center">
-                        {getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note)}
+                  {filteredAttendanceRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-4 text-gray-600">
+                        ไม่พบข้อมูลในช่วงเวลาที่เลือก
                       </td>
-                      <td className="px-4 py-3 text-sm text-center">{record.note}</td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredAttendanceRecords.map((record, index) => (
+                      <tr
+                        key={record._id.$oid || `record-${index}`}
+                        className="hover:bg-gray-50"
+                      >
+                        <td className="px-4 py-3 text-sm">{formatDateForDisplay(record.date)}</td>
+                        <td className="px-4 py-3 text-sm">{record.employee_id}</td>
+                        <td className="px-4 py-3 text-sm text-center">{record.check_in_time}</td>
+                        <td className="px-4 py-3 text-sm text-center">{record.check_out_time}</td>
+                        <td className="px-4 py-3 text-sm text-center">
+                          {getCombinedStatus(record)}
+                        </td>
+                        {/* <td className="px-4 py-3 text-sm text-center">{record.location || '-'}</td> */}
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
