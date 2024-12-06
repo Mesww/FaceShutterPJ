@@ -13,7 +13,7 @@ class History_Controller:
     async def migrate_to_history():
         return await History_Service.migrate_to_history()
     @staticmethod
-    @router.get("/get_history_records")
-    async def get_history_records(data:get_history_records_Request):
-        # print(data)
-        return await History_Service.get_history_records(data.start_date, data.end_date, data.employee_id)
+    @router.get("/get_history_records/{start_date}/{end_date}/{employee_id}")
+    async def get_history_records(employee_id, start_date, end_date):
+        
+        return await History_Service.get_history_records(start_date, end_date, employee_id)
