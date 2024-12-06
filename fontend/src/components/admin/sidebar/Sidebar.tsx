@@ -7,7 +7,6 @@ import {
     FileText,
     Settings,
     LogOut,
-    Monitor,
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
@@ -29,12 +28,12 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
             icon: <Users size={20} />,
             description: "เพิ่ม ลบ แก้ไขข้อมูลผู้ใช้",
         },
-        {
-            path: "/admin/AdminAccess",
-            title: "สิทธิ์การเข้าถึง",
-            icon: <Monitor size={20} />,
-            description: "กำหนดสิทธิ์การเข้าถึงระบบ",
-        },
+        // {
+        //     path: "/admin/AdminAccess",
+        //     title: "สิทธิ์การเข้าถึง",
+        //     icon: <Monitor size={20} />,
+        //     description: "กำหนดสิทธิ์การเข้าถึงระบบ",
+        // },
         {
             path: "/admin/AdminReports",
             title: "รายงาน",
