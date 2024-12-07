@@ -308,10 +308,9 @@ class UserService:
     
     # Save user data and images to the server
     @staticmethod
-    async def save_user_and_images(employee_id, name, email, password, images, tel):
+    async def save_user_and_images(employee_id, name, email, password, images, tel,face_encoding) -> str:
         try:
             image_utills = Image_utills()
-            face_service =  ()
             db = await connect_to_mongodb()  # Establish database connection
             collection = db["users"]
             # Save images to disk
@@ -326,20 +325,7 @@ class UserService:
                     image=frame,
                     filename=f"{employee_id}_{direction.replace(' ', '_').lower()}.jpg",
                 )
-                 # Generate embedding with error handling
-                embedded = DeepFace.represent(
-                                img_path=filepath,
-                                model_name="ArcFace",
-                                enforce_detection=True,
-                                detector_backend="retinaface"  # Specify detector backend
-                            )
-                            
-                            # Store data
-                encoded_embedding = face_service._encode_embedding(embedded)
-                embeddeds.append({
-                                "embedded": encoded_embedding,
-                                "direction": direction
-                            })
+    
                 # Append the path to the list
                 saved_image_paths.append({"path": filepath, "direction": direction})
                 
@@ -354,13 +340,12 @@ class UserService:
                 images=saved_image_paths,
                 roles=RoleEnum.USER,
                 created_at=datetime.now(),
-                updated_at=None,
-                embeddeds=embeddeds
+                embeddeds=face_encoding,
+                updated_at=None
             )
             user = user.model_dump()
             user["roles"] = user["roles"].value
             result = await collection.insert_one(user)
             return str(result.inserted_id)
         except Exception as e:
-
             raise HTTPException(status_code=400, detail=str(e))

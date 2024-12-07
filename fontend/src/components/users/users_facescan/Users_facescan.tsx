@@ -132,6 +132,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
             console.log("User data received, awaiting scan...", jsonData.data.totaldirection);
             setToltalDirection(jsonData.data.totaldirection);
             break;
+          case "scanning":
+            console.log("User data received, awaiting scan...",jsonData.data.instructions);
+            setInstruction(jsonData.data.instructions);
+            break;
           case "success":
             handleScanSuccess(jsonData.data.token);
             break;
