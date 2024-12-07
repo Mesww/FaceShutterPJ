@@ -22,6 +22,32 @@ class UserService:
     load_dotenv(dotenv_path=pathenv)
     config = dotenv_values()
     @staticmethod
+    async def add_admin(employee_id: str, password: str) -> Returnformat:
+        try:
+            db = await connect_to_mongodb()  # Establish database connection
+            collection = db["users"]
+            user = await collection.find_one({"employee_id": employee_id})
+            if user:
+                res = await UserService.update_user_by_employee_id(employee_id, Userupdate(roles=RoleEnum.ADMIN))
+                return res
+            user = User(
+                employee_id=employee_id,
+                name="admin",
+                email="",
+                password="",
+                tel="",
+                images=[],
+                roles=RoleEnum.ADMIN,
+                created_at=datetime.now(),
+                updated_at=None,
+            )
+            user = user.model_dump()
+            user["roles"] = user["roles"].value
+            result = await collection.insert_one(user)
+            return str(result.inserted_id)
+        except Exception as e:
+            return Returnformat(400, str(e), None)
+    @staticmethod
     async def get_user_by_employee_id(employee_id: str) -> Returnformat:
         try:
             db = await connect_to_mongodb()  # Establish database connection
