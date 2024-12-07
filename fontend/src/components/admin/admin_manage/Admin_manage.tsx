@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Search, Edit, Trash2, UserPlus } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header';
@@ -81,22 +82,29 @@ const AdminManage: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const notificationCount = 3;
 
-  const [users, setUsers] = useState<User[]>([
-    {
-      employee_id: "246",
-      name: "John Doe",
-      email: "john.doe@example.com",
-      tel: "081-234-5678",
-      roles: "USER",
-    },
-    {
-      employee_id: "123",
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-      tel: "089-876-5432",
-      roles: "ADMIN",
-    },
-  ]);
+  // State for users fetched from the API
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch users from API
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:8000/api/users/get_all_user');
+      setUsers(response.data);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch users');
+      setLoading(false);
+      console.error('Error fetching users:', err);
+    }
+  };
+
+  // Fetch users when component mounts
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditFormVisible, setIsEditFormVisible] = useState(false);
@@ -116,13 +124,41 @@ const AdminManage: React.FC = () => {
     setIsEditFormVisible(true);
   };
 
-  const handleSaveUser = (updatedUser: User) => {
-    setUsers(users.map(user =>
-      user.employee_id === originalEmployeeId ? updatedUser : user
-    ));
-    setIsEditFormVisible(false);
-    setEditingUser(null);
-    setOriginalEmployeeId('');
+  const handleSaveUser = async (updatedUser: User) => {
+    try {
+      // Prepare the request body to match the API requirements
+      const requestBody = {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        tel: updatedUser.tel,
+        roles: updatedUser.roles,
+        images: null  // Add this if needed, or fetch from existing user data
+      };
+
+      // Make API call to update user
+      const response = await axios.put(
+        `http://localhost:8000/api/users/update_user_by_employee_id/${originalEmployeeId}`,
+        requestBody
+      );
+
+      // Update local state with the response from the server
+      if (response.data.status === 200) {
+        // Update the users array with the updated user
+        setUsers(users.map(user =>
+          user.employee_id === originalEmployeeId ? { ...updatedUser } : user
+        ));
+
+        // Close the edit form
+        setIsEditFormVisible(false);
+        setEditingUser(null);
+        setOriginalEmployeeId('');
+      } else {
+        throw new Error(response.data.message || 'Failed to update user');
+      }
+    } catch (err) {
+      console.error('Error updating user:', err);
+      alert('Failed to update user');
+    }
   };
 
   const handleCancelEdit = () => {
@@ -188,6 +224,24 @@ const AdminManage: React.FC = () => {
   ];
 
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
+
+  // If loading, show a loading state
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        กำลังโหลดข้อมูล...
+      </div>
+    );
+  }
+
+  // If error, show an error message
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen text-red-500">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -368,7 +422,8 @@ const AdminManage: React.FC = () => {
                           name="employee_id"
                           defaultValue={editingUser.employee_id}
                           className="w-full p-2 border rounded"
-                          required
+                          disabled
+                          readOnly
                         />
                       </div>
                       <div>
