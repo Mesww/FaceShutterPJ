@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { LogOut, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Scan,
@@ -11,19 +11,28 @@ import {
     ChevronRight,
     Menu
 } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { User as Users } from '@/interfaces/users_facescan.interface';
 
 
 interface SidebarProps {
     isSidebarCollapsed: boolean;
     setIsSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
     isLogined:boolean;
+    logout: () => void;
+    setName?: React.Dispatch<React.SetStateAction<string  >>;
+    setUserDetails?: React.Dispatch<React.SetStateAction<Users>>;
 }
 
-const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed,isLogined }: SidebarProps) => {
+const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed,isLogined,logout,setName,setUserDetails }: SidebarProps) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
- // ============= Provider ===============  
+
+
+
+ // ============= Provider =============== 
+ 
     const menuItems = isLogined? [
         {
             path: '/users/UsersFacescan',
@@ -62,6 +71,35 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed,isLogined }: Sideba
         navigate(path);
         setIsMobileMenuOpen(false);
     };
+
+    const handleLogout = () => {
+        Swal.fire({
+            title: 'คุณต้องการออกจากระบบหรือไม่?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'ใช่',
+            cancelButtonText: 'ไม่',
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#d33',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (setName !== undefined) {
+                    setName('');
+                }else if (setUserDetails !== undefined) {
+                    setUserDetails({ employee_id: "",
+                        name: "",
+                        email: "",
+                        password: "",
+                        tel: "",});
+                }   
+                logout();
+                setIsMobileMenuOpen(false);
+                navigate('/users/UsersFacescan');
+            }
+        });
+        
+    }
 
     // Desktop Sidebar
     const DesktopMenu = () => (
@@ -122,6 +160,16 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed,isLogined }: Sideba
                     </button>
                 ))}
             </nav>
+
+        {/* Desktop Logout */}
+        
+      {/* Sidebar Logout - Positioned at the Bottom */}
+      <div className="absolute bottom-4 w-full">
+            <button className="w-full px-4 py-3 text-gray-300 hover:text-white hover:bg-blue-700 rounded flex items-center justify-start" onClick={handleLogout}>
+                <LogOut size={20} className={`${!isSidebarCollapsed && 'mr-2'}`} />
+                {!isSidebarCollapsed && "ออกจากระบบ"}
+            </button>
+        </div>
         </div>
     );
 

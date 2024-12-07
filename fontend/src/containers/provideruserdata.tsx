@@ -18,6 +18,7 @@ interface UserContextType {
   isCheckinroute: string | null;
   disableCheckinorout: boolean;
   disableCheckinorouttext: string | null;
+  logout: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -89,6 +90,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     await fetchUserData();
   };
 
+  const logout = () => {  
+    removeLogined();
+    setIsLogined(false);
+    setUserData(null);
+    
+  }
 
 
   // Initial data fetch
@@ -129,7 +136,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     fetchCheckinoroutTime,
     isCheckinroute,
     disableCheckinorout,
-    disableCheckinorouttext
+    disableCheckinorouttext,
+    logout
   };
 
   return (

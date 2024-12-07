@@ -23,6 +23,7 @@ const AttendanceHistoryPage = () => {
   const {
     isLogined,
     userData,
+    logout,
   } = useUserData();
 
   // State for form fields and data fetching
@@ -192,6 +193,8 @@ const AttendanceHistoryPage = () => {
           isLogined={isLogined}
           isSidebarCollapsed={false}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
+          logout={logout}
+          setName={setName}
         />
       </div>
 
@@ -201,6 +204,8 @@ const AttendanceHistoryPage = () => {
           isLogined={isLogined}
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
+          logout={logout}
+          setName={setName}
         />
       </div>
 

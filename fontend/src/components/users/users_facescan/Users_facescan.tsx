@@ -57,7 +57,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     isCheckinroute,
     disableCheckinorout,
     disableCheckinorouttext,
-    fetchCheckinoroutTime
+    fetchCheckinoroutTime,
+    logout,
   } = useUserData();
 
   const directionInstructions: Record<string, string> = {
@@ -490,6 +491,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           isSidebarCollapsed={false}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
           isLogined={isLogined || login}
+          logout={logout}
         />
       </div>
 
@@ -499,6 +501,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
           isLogined={isLogined || login}
+          logout={logout}
+          setUserDetails={setUserDetails}
         />
       </div>
 

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
-import { Camera, Scan, X, FlipHorizontal, UserCircle } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Camera, X, FlipHorizontal, UserCircle } from "lucide-react";
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
 import { useUserData } from '../../../containers/provideruserdata';
@@ -16,7 +16,8 @@ const EditProfilePage: React.FC = () => {
     userData,
     fetchCheckinoroutTime,
     profileImage,
-    refreshUserData
+    refreshUserData,
+    logout,
   } = useUserData();
 
   // ================== Add the following code ==================
@@ -362,6 +363,8 @@ const EditProfilePage: React.FC = () => {
           isSidebarCollapsed={false}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
           isLogined={isLogined}
+          logout={logout}
+          setName={setName}
         />
       </div>
 
@@ -371,6 +374,8 @@ const EditProfilePage: React.FC = () => {
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
           isLogined={isLogined}
+          logout={logout}
+          setName={setName}
         />
       </div>
 

@@ -66,6 +66,7 @@ const UserNotificationProblem: React.FC = () => {
  const {
   isLogined,
   userData,
+  logout
 } = useUserData();
 
 // State for form fields
@@ -141,6 +142,8 @@ const [name, setName] = useState(userData?.name || '');
           isLogined={isLogined}
           isSidebarCollapsed={false}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
+          logout={logout}
+          setName={setName}
         />
       </div>
 
@@ -150,6 +153,8 @@ const [name, setName] = useState(userData?.name || '');
           isLogined={isLogined}
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
+          logout={logout}
+          setName={setName}
         />
       </div>
 
