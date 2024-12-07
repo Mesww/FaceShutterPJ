@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
 import { useUserData } from '@/containers/provideruserdata.js';
+import axios from 'axios';
 
 interface AttendanceRecord {
-  id: number;
+  _id: { $oid: string };
+  employee_id: string;
   date: string;
-  checkIn: string;
-  checkOut: string;
-  checkInStatus: string;
-  checkOutStatus: string;
-  note: string;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  status: string;
+  location: string | null;
+  created_at: { $date: string };
+  updated_at: { $date: string };
 }
 
 const AttendanceHistoryPage = () => {
@@ -22,9 +25,11 @@ const AttendanceHistoryPage = () => {
     userData,
   } = useUserData();
 
+  // State for form fields and data fetching
   const [name, setName] = useState(userData?.name || '');
-  // const [email, setEmail] = useState(userData?.email || '');
-  // const [phone, setPhone] = useState(userData?.tel || '');
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const getFirstDayOfCurrentMonth = () => {
     const date = new Date();
@@ -47,48 +52,18 @@ const AttendanceHistoryPage = () => {
   const itemsPerPage = 5;
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // Mock data
-  const attendanceData: AttendanceRecord[] = [
-    {
-      id: 1,
-      date: '2024-10-01',
-      checkIn: '8:30',
-      checkOut: '17:30',
-      checkInStatus: 'เข้าปกติ',
-      checkOutStatus: 'ออกปกติ',
-      note: '-'
-    },
-    {
-      id: 2,
-      date: '2024-10-15',
-      checkIn: '8:15',
-      checkOut: '-',
-      checkInStatus: 'เข้าปกติ',
-      checkOutStatus: 'ไม่ได้ลงเวลาออก',
-      note: '-'
-    },
-    {
-      id: 3,
-      date: '2024-10-20',
-      checkIn: '-',
-      checkOut: '-',
-      checkInStatus: '-',
-      checkOutStatus: '-',
-      note: 'วันหยุด'
-    }
-  ];
 
-  const getCombinedStatus = (checkInStatus: string, checkOutStatus: string, note: string): string => {
-    if (checkInStatus === '-' && checkOutStatus === '-' && note === 'วันหยุด') {
-      return 'นอกเวลา';
-    }
-    if (checkInStatus === 'เข้าปกติ' && checkOutStatus === 'ออกปกติ') {
-      return 'มาปกติ';
-    }
-    if (checkInStatus === 'เข้าปกติ' && checkOutStatus === 'ไม่ได้ลงเวลาออก') {
+  const getCombinedStatus = (record: AttendanceRecord): string => {
+    if (record.status === 'Incomplete') {
       return 'ขาดงาน';
     }
-    return `${checkInStatus} - ${checkOutStatus}`;
+    if (record.status === 'Outcomplete') {
+      return 'ขาดงาน';
+    }
+    if (record.status === 'Complete') {
+      return 'มาปกติ';
+    }
+    return 'ขาดงาน';
   };
 
   const getFilteredData = (): AttendanceRecord[] => {
@@ -163,7 +138,50 @@ const AttendanceHistoryPage = () => {
   ];
 
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
-  
+
+
+  // Fetch records when component mounts or dates change
+  useEffect(() => {
+    fetchAttendanceRecords();
+  }, [startDate, endDate, userData?.employee_id]);
+  const fetchAttendanceRecords = async () => {
+    if (!userData?.employee_id) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.get('http://localhost:8000/api/history/get_history_records', {
+        params: {
+          employee_id: userData.employee_id,
+          start_date: startDate,
+          end_date: endDate
+        }
+      });
+
+      // Extract the array from response.data
+      const records = response.data.data || response.data;
+
+      console.log('Fetched records:', records);
+
+      // Ensure you're setting an array
+      setAttendanceData(Array.isArray(records) ? records : []);
+
+      console.log('Attendance records:', attendanceData);
+
+    } catch (err) {
+      setError('Failed to fetch attendance records');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    setName(userData?.name || '');
+  }, [userData?.name]);
+
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -224,95 +242,113 @@ const AttendanceHistoryPage = () => {
             </div>
           </div>
 
+
+          {/* Loading and Error States */}
+          {loading && (
+            <div className="text-center py-4 text-gray-600">
+              กำลังโหลดข้อมูล...
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              {error}
+            </div>
+          )}
+
           {/* Mobile Card View */}
-          <div className="md:hidden space-y-4">
-            {paginatedData.map((record) => (
-              <div key={record.id} className="bg-white rounded-lg shadow p-4">
-                <div className="flex justify-between items-center mb-3">
-                  <div className="text-lg font-medium">{formatDate(record.date)}</div>
-                  <div className="text-sm text-gray-500">#{record.id}</div>
-                </div>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="text-sm text-gray-600">เวลาเข้า:</div>
-                    <div className="text-sm font-medium">{record.checkIn}</div>
-                    <div className="text-sm text-gray-600">เวลาออก:</div>
-                    <div className="text-sm font-medium">{record.checkOut}</div>
-                  </div>
-                  <div className="pt-2 border-t">
-                    <div className="text-sm text-gray-600 mb-1">สถานะ:</div>
-                    <div className="text-sm font-medium">
-                      {getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note)}
+          {!loading && !error && (
+            <>
+              <div className="md:hidden space-y-4">
+                {paginatedData.map((record, index) => (
+                  <div key={index + 1} className="bg-white rounded-lg shadow p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="text-lg font-medium">{formatDate(record.date)}</div>
+                      <div className="text-sm text-gray-500">{index + 1}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="text-sm text-gray-600">เวลาเข้า:</div>
+                        <div className="text-sm font-medium">{record.check_in_time || '-'}</div>
+                        <div className="text-sm text-gray-600">เวลาออก:</div>
+                        <div className="text-sm font-medium">{record.check_out_time || '-'}</div>
+                      </div>
+                      <div className="pt-2 border-t">
+                        <div className="text-sm text-gray-600 mb-1">สถานะ:</div>
+                        <div className="text-sm font-medium">
+                          {getCombinedStatus(record)}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  {record.note !== '-' && (
-                    <div className="pt-2 border-t">
-                      <div className="text-sm text-gray-600 mb-1">หมายเหตุ:</div>
-                      <div className="text-sm">{record.note}</div>
-                    </div>
-                  )}
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">ลำดับที่</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะ</th>
+                        {/* <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">หมายเหตุ</th> */}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {paginatedData.map((record, index) => (
+                        <tr key={index + 1} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm">{index + 1}</td>
+                          <td className="px-4 py-3 text-sm">{formatDate(record.date)}</td>
+                          <td className="px-4 py-3 text-sm text-center">{record.check_in_time || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-center">{record.check_out_time || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-center">
+                            {getCombinedStatus(record)}
+                          </td>
+                          {/* <td className="px-4 py-3 text-sm text-center">Note</td> */}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Desktop Table View */}
-          <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">ลำดับที่</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะ</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">หมายเหตุ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {paginatedData.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm">{record.id}</td>
-                      <td className="px-4 py-3 text-sm">{formatDate(record.date)}</td>
-                      <td className="px-4 py-3 text-sm text-center">{record.checkIn}</td>
-                      <td className="px-4 py-3 text-sm text-center">{record.checkOut}</td>
-                      <td className="px-4 py-3 text-sm text-center">
-                        {getCombinedStatus(record.checkInStatus, record.checkOutStatus, record.note)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-center">{record.note}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+              {/* Pagination */}
+              <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    หน้า {currentPage} จาก {totalPages}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-600 hidden sm:block">
+                  แสดง {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredData.length)} จาก {filteredData.length} รายการ
+                </div>
+              </div>
 
-          {/* Pagination */}
-          <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-              <span className="text-sm text-gray-600">
-                หน้า {currentPage} จาก {totalPages}
-              </span>
-            </div>
-            <div className="text-sm text-gray-600 hidden sm:block">
-              แสดง {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredData.length)} จาก {filteredData.length} รายการ
-            </div>
-          </div>
+
+
+
+            </>
+          )}
+
+
         </div>
       </div>
     </div>

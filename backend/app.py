@@ -85,7 +85,6 @@ app.include_router(
     tags=["history"],
 )
 # Create a scheduler instance
-scheduler = BackgroundScheduler()
 
 scheduler = BackgroundScheduler()
 

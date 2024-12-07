@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Camera, Zap, User, Clock, AlertTriangle } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
@@ -62,14 +62,14 @@ const notifications: Notification[] = [
 
 const UserNotificationProblem: React.FC = () => {
 
-  const {
-    isLogined,
-    userData,
-  } = useUserData();
+ // ====== Provider Data ======
+ const {
+  isLogined,
+  userData,
+} = useUserData();
 
-  const [name, setName] = useState(userData?.name || '');
-  // const [email, setEmail] = useState(userData?.email || '');
-  // const [phone, setPhone] = useState(userData?.tel || '');
+// State for form fields
+const [name, setName] = useState(userData?.name || '');
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -128,6 +128,10 @@ const UserNotificationProblem: React.FC = () => {
 
   const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
 
+  useEffect(() => {
+    setName(userData?.name || '');
+  }, [userData?.name]);
+  
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
 
