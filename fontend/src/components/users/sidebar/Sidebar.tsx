@@ -95,7 +95,8 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed,isLogined,logout,se
                 }   
                 logout();
                 setIsMobileMenuOpen(false);
-                navigate('/users/UsersFacescan');
+                navigate('/users/');
+                
             }
         });
         
@@ -164,12 +165,12 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed,isLogined,logout,se
         {/* Desktop Logout */}
         
       {/* Sidebar Logout - Positioned at the Bottom */}
-      <div className="absolute bottom-4 w-full">
+     {isLogined&& <div className="absolute bottom-4 w-full">
             <button className="w-full px-4 py-3 text-gray-300 hover:text-white hover:bg-blue-700 rounded flex items-center justify-start" onClick={handleLogout}>
                 <LogOut size={20} className={`${!isSidebarCollapsed && 'mr-2'}`} />
                 {!isSidebarCollapsed && "ออกจากระบบ"}
             </button>
-        </div>
+        </div>}
         </div>
     );
 
@@ -274,6 +275,38 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed,isLogined,logout,se
                                 </motion.button>
                             ))}
                         </nav>
+                            
+                            {/* Mobile Logout */}
+                            
+                            {isLogined&& <motion.button  initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ 
+                                        opacity: 0, 
+                                        x: -20,
+                                        transition: {
+                                            duration: 0.15,
+                                            delay: (menuItems.length - 1) * 0.05
+                                        }
+                                    }}
+                                    transition={{ 
+                                        delay: 0.1,
+                                        duration: 0.2
+                                    }} className="py-2 w-full text-left transition-all duration-200 group hover:bg-gray-800" onClick={handleLogout}>
+                                         <div className="px-4 py-3 flex items-center space-x-4">
+                                         <LogOut size={20} className="flex-shrink-0 transform transition-transform group-hover:scale-110 text-gray-400 group-hover:text-blue-400" />
+
+                                        <div className="flex flex-col">
+                                            <span
+                                                className={`font-medium transition-colors text-gray-400 group-hover:text-blue-400
+                                                 `}
+                                            >
+                                                ออกจากระบบ
+                                            </span>
+                                            
+                                        </div>
+                                    </div>
+                                
+                            </motion.button>}
                     </motion.div>
                 )}
             </AnimatePresence>

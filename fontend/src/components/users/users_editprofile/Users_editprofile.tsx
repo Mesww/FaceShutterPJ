@@ -23,7 +23,7 @@ const EditProfilePage: React.FC = () => {
   // ================== Add the following code ==================
   const [isScanning, setIsScanning] = useState(false);
   const [facingMode, setFacingMode] = useState("user");
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFile] = useState<File | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [instruction, setInstruction] = useState("");
@@ -42,7 +42,6 @@ const EditProfilePage: React.FC = () => {
   const [toltalDirection, setToltalDirection] = useState<number>(0);
   const [imageCount, setImageCount] = useState<number>(0);
   const [errorDirectiom, setErrorDirection] = useState<string>("");
-  const [errorsMessage, setErrorsMessage] = useState<string | null>(null);
 
   const directionInstructions: Record<string, string> = {
     "Front": "กรุณาหันหน้าตรง",
@@ -148,7 +147,6 @@ const EditProfilePage: React.FC = () => {
     setIsScanning(false);
     setInstruction("");
     setConnectionStatus('disconnected');
-    setErrorsMessage('');
     websocket?.close();
   };
 
@@ -187,11 +185,9 @@ const EditProfilePage: React.FC = () => {
           case "progress":
               console.log(messages);
               setInstruction(messages);
-              setErrorsMessage('');
               break;
           case "failed":
                 console.error("Error:", messages);
-                setErrorsMessage(messages);
                 setInstruction("กรุณาวางใบหน้าให้อยู่ในกรอบ");
               break;
           case "stopped":
@@ -348,9 +344,10 @@ const EditProfilePage: React.FC = () => {
       isLoadings,
       connectionStatus,
       instruction,
+      errors
     });
     // refreshUserData();
-  }, [connectionStatus, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel]);
+  }, [connectionStatus,errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel]);
 
 
 

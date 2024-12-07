@@ -144,6 +144,7 @@ const AttendanceHistoryPage = () => {
   // Fetch records when component mounts or dates change
   useEffect(() => {
     fetchAttendanceRecords();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate, userData?.employee_id]);
   const fetchAttendanceRecords = async () => {
     if (!userData?.employee_id) return;
