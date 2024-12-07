@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import datetime
 from pathlib import Path
 import time
 import cv2
@@ -12,14 +13,8 @@ from backend.models.user_model import User, Userupdate
 from backend.routes import face_routes, user_routes,history_routes,checkinout_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime
-
-
 
 from backend.services.face_service import Face_service
-from backend.services.history_service import History_Service
 from backend.services.user_service import UserService
 from backend.utils.image_utills import Image_utills
 
@@ -31,8 +26,6 @@ SECRET_KEY = config.get("SECRET_KEY","RickAstley")
 ALGORITHM = config.get("ALGORITHM", "HS256")
 
 app = FastAPI()
-# Create a scheduler instance
-scheduler = BackgroundScheduler()
 
 # CORS configuration
 app.add_middleware(
@@ -85,15 +78,7 @@ app.include_router(
     tags=["history"],
 )
     
-async def daily_task():
-    
-    # Your daily task logic here
-    print(f"Daily task executed at {datetime.now()}")
-    await History_Service.migrate_to_history()
 
-scheduler.add_job(daily_task, 'cron', hour=22, minute=18)
-# Start the scheduler
-scheduler.start()
 
 manager = ConnectionManager()
 
@@ -107,6 +92,8 @@ face_mesh = mp_face_mesh.FaceMesh(
 )
 
 
+from fastapi import WebSocket, WebSocketDisconnect
+from typing import Optional
 
 active_connections = {} 
 
