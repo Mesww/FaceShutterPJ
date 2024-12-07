@@ -42,5 +42,6 @@ class Userupdate(BaseModel):
     email: Optional[str] = None
     tel: Optional[str] = None
     images: Optional[List[Faceimage]] = None
+    embeddeds: Optional[List] = []
     roles: Optional[RoleEnum] = RoleEnum.USER 
     update_at: Optional[datetime] = Field(default_factory=datetime.now)  # Default to current time

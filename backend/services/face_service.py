@@ -11,7 +11,13 @@ import math
 
 import pytz
 
-from backend.configs.config import DEFAULT_TIMEZONE
+from backend.configs.config import (
+    CONSECUTIVE_SUCCESS_NEEDED,
+    DEFAULT_TIMEZONE,
+    MAX_ATTEMPTS,
+    MIN_CONFIDENCE_THRESHOLD,
+    SCAN_DIRECTION,
+)
 from backend.models.checkinout_model import CheckInOutToday
 from backend.models.returnformat import Returnformat
 import mediapipe as mp
@@ -39,28 +45,22 @@ from datetime import datetime
 
 class Face_service:
 
-    base_dir = Path(__file__).resolve().parent.parent
-    image_storage_path = os.path.join(base_dir, "images")
+    def __init__(self):
+        self.base_dir = Path(__file__).resolve().parent.parent
+        self.image_storage_path = os.path.join(self.base_dir, "images")
+        # Initialize face mesh with optimal settings
+        self.face_mesh = mp.solutions.face_mesh.FaceMesh(
+            static_image_mode=False,
+            max_num_faces=1,
+            refine_landmarks=True,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5,
+        )
 
     @staticmethod
     def encode_image_to_base64(image):
         _, buffer = cv2.imencode(".jpg", image)
         return base64.b64encode(buffer).decode("utf-8")
-
-    @staticmethod
-    def crop_face(frame, landmarks):
-        h, w, _ = frame.shape
-        bounding_box = [
-            int(min([lm.x * w for lm in landmarks])),
-            int(min([lm.y * h for lm in landmarks])),
-            int(max([lm.x * w for lm in landmarks])),
-            int(max([lm.y * h for lm in landmarks])),
-        ]
-        # Crop the face region from the frame
-        cropped_face = frame[
-            bounding_box[1] : bounding_box[3], bounding_box[0] : bounding_box[2]
-        ]
-        return cropped_face
 
     @staticmethod
     def check_head_direction(face_landmarks):
@@ -81,33 +81,6 @@ class Face_service:
             return "Turn_right"
         else:
             return "Front"
-
-    def calculate_eye_aspect_ratio(self, eye_landmarks):
-        """Calculate the Eye Aspect Ratio to detect blinking"""
-        # Vertical eye landmarks
-        A = math.dist(eye_landmarks[1], eye_landmarks[5])
-        B = math.dist(eye_landmarks[2], eye_landmarks[4])
-        # Horizontal eye landmark
-        C = math.dist(eye_landmarks[0], eye_landmarks[3])
-
-        # Eye Aspect Ratio
-        ear = (A + B) / (2.0 * C)
-        return ear
-
-    def is_face_moving(self, prev_landmarks, curr_landmarks, threshold=0.02):
-        """Check if face is moving between frames"""
-        if prev_landmarks is None:
-            return False
-
-        # Calculate total movement of landmark points
-        total_movement = sum(
-            [
-                math.dist((lm1.x, lm1.y), (lm2.x, lm2.y))
-                for lm1, lm2 in zip(prev_landmarks.landmark, curr_landmarks.landmark)
-            ]
-        )
-
-        return total_movement > threshold
 
     @staticmethod
     def draw_landmarks(frame, face_landmarks):
@@ -137,7 +110,17 @@ class Face_service:
                 websocket, employee_id
             )
             # print("Check: ",checkorcheckout)
-
+            if not user:
+                await websocket.send_json(
+                    {
+                        "data": {
+                            "status": "failed",
+                            "message": "Face not recognized. Please try again.",
+                        }
+                    }
+                )
+                await websocket.close()
+                return
             if checkorcheckout["data"] == "checkin":
                 data = CheckInOutToday(
                     employee_id=user.employee_id,
@@ -234,7 +217,18 @@ class Face_service:
             user, label, pred_confidence = await self.face_scan_ws(
                 websocket, employee_id
             )
-            print("User: ", user)
+
+            if not user:
+                await websocket.send_json(
+                    {
+                        "data": {
+                            "status": "failed",
+                            "message": "Face not recognized. Please try again.",
+                        }
+                    }
+                )
+                await websocket.close()
+                return
             timezone = pytz.timezone(DEFAULT_TIMEZONE)
             # print("Check in time: ",datetime.now(tz=timezone).strftime("%H:%M:%S"))
             check_in_time = datetime.now(tz=timezone).strftime("%H:%M:%S")
@@ -338,48 +332,154 @@ class Face_service:
             print("WebSocket disconnected.")
 
     async def face_scan_ws(self, websocket: WebSocket, employee_id: str):
-        user_service = UserService()
-        auth_service = FaceAuthenticationService()
+        """
+        WebSocket handler for face scanning and authentication
+        Returns tuple of (user, authentication_message, confidence_score)
+        """
+        try:
+            # Initialize services
+            user_service = UserService()
+            auth_service = FaceAuthenticationService()
 
-        user = await user_service.get_user_by_employee_id(employee_id)
-
-        if not user.data:
-            await websocket.send_json(
-                {"data": {"status": "failed", "message": "User not found"}}
-            )
-            return
-
-        user = User(**user.data)
-        if not user.embeddeds:
-            await websocket.send_json(
-                {"data": {"status": "failed", "message": "No face encodings found"}}
-            )
-            return
-
-   
-        while True:
-            data = await websocket.receive_json()
-            if not data["image"]:
-                continue
-            frame_bytes = np.frombuffer(bytearray(data["image"]), dtype=np.uint8)
-            frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
-            frame = cv2.flip(frame, 1)
-
-            is_authenticated, confidence, message = await auth_service.authenticate_face(
-                    websocket, frame, user.embeddeds
-                )
-            
-            print('is_authenticated',is_authenticated)
-            print('confidence',confidence)
-            print('message',message)
-            
-            if is_authenticated:
-                return user, message, confidence
-            else:
+            # Fetch and validate user
+            user_response = await user_service.get_user_by_employee_id(employee_id)
+            if not user_response.data:
                 await websocket.send_json(
-                    {"data": {"status": "failed", "message": message}}
+                    {"data": {"status": "failed", "message": "User not found"}}
                 )
-            
+                return None, "User not found", 0.0
+
+            user = User(**user_response.data)
+            if not user.embeddeds:
+                await websocket.send_json(
+                    {
+                        "data": {
+                            "status": "failed",
+                            "message": "No face encodings found for user",
+                        }
+                    }
+                )
+                return None, "No face encodings found", 0.0
+
+            # Authentication attempt counter and threshold
+            max_attempts = MAX_ATTEMPTS
+            attempt_count = 0
+            min_confidence_threshold = MIN_CONFIDENCE_THRESHOLD
+            consecutive_successes_needed = CONSECUTIVE_SUCCESS_NEEDED
+            consecutive_successes = 0
+            last_confidence = 0.0
+
+            while attempt_count < max_attempts:
+                try:
+                    # Receive and validate frame data
+                    data = await websocket.receive_json()
+                    if not data.get("image"):
+                        await websocket.send_json(
+                            {
+                                "data": {
+                                    "status": "failed",
+                                    "message": "No image data received",
+                                }
+                            }
+                        )
+                        continue
+
+                    # Process frame
+                    frame_bytes = np.frombuffer(
+                        bytearray(data["image"]), dtype=np.uint8
+                    )
+                    frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
+                    if frame is None:
+                        await websocket.send_json(
+                            {
+                                "data": {
+                                    "status": "failed",
+                                    "message": "Invalid image data",
+                                }
+                            }
+                        )
+                        continue
+
+                    frame = cv2.flip(frame, 1)  # Mirror image
+
+                    # Authenticate face
+                    is_authenticated, confidence, message = (
+                        await auth_service.authenticate_face(
+                            websocket, frame, user.embeddeds
+                        )
+                    )
+
+                    # Debug logging
+                    print(
+                        f"Attempt {attempt_count + 1}: Auth={is_authenticated}, Confidence={confidence:.2f}, Message={message}, consecutive_successes={consecutive_successes}"
+                    )
+
+                    if is_authenticated and confidence >= min_confidence_threshold:
+                        consecutive_successes += 1
+                        last_confidence = confidence
+
+                        # Send progress message
+                        await websocket.send_json(
+                            {
+                                "data": {
+                                    "status": "progress",
+                                    "message": f"แสกนสำเร็จ: {consecutive_successes}/{consecutive_successes_needed}",
+                                    "confidence": confidence,
+                                }
+                            }
+                        )
+
+                        if consecutive_successes >= consecutive_successes_needed:
+                            return user, "ยืนยันตัวตนสำเร็จ", last_confidence
+                    else:
+                        await websocket.send_json(
+                            {
+                                "data": {
+                                    "status": "failed",
+                                    "message": message,
+                                    "confidence": confidence,
+                                }
+                            }
+                        )
+
+                except WebSocketDisconnect:
+                    print("WebSocket disconnected during face scan")
+                    return None, "Connection lost", 0.0
+                except Exception as e:
+                    print(f"Error during face scan: {str(e)}")
+                    await websocket.send_json(
+                        {
+                            "data": {
+                                "status": "error",
+                                "message": f"Face scan error: {str(e)}",
+                            }
+                        }
+                    )
+
+                attempt_count += 1
+
+            # If we've exhausted all attempts
+            await websocket.send_json(
+                {
+                    "data": {
+                        "status": "stopped",
+                        "message": "คุณไม่สามารถยืนยันตัวตนได้ - ครบจำนวนครั้งที่กำหนดแล้ว",
+                    }
+                }
+            )
+            return None, "คุณไม่สามารถยืนยันตัวตนได้ - ครบจำนวนครั้งที่กำหนดแล้ว", 0.0
+
+        except Exception as e:
+            print(f"Fatal error in face_scan_ws: {str(e)}")
+            await websocket.send_json(
+                {
+                    "data": {
+                        "status": "error",
+                        "message": "Internal server error during face scan",
+                    }
+                }
+            )
+            return None, f"Fatal error: {str(e)}", 0.0
 
     def generate_encodeings(self, images):
         try:
@@ -391,3 +491,73 @@ class Face_service:
         except Exception as e:
             print(f"Error encoding image: {str(e)}")
             return None
+
+    async def face_registation(
+        self,
+        websocket: WebSocket,
+        images: List = [],
+        current_direction_idx: int = 0,
+        scan_directions: List[str] = SCAN_DIRECTION,
+    ):
+        try:
+            encode = None
+            frame = None
+            while current_direction_idx < len(scan_directions):
+                expected_direction = scan_directions[current_direction_idx]
+                await websocket.send_json(
+                    {
+                        "data": {
+                            "status": "scan",
+                            "instructions": f"Please move your head into frame.",
+                        }
+                    }
+                )
+                data = await websocket.receive_json()
+                # Decode the received image
+                frame_bytes = np.frombuffer(bytearray(data["image"]), dtype=np.uint8)
+                frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
+                results = self.face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                if not results.multi_face_landmarks:
+                    await websocket.send_text("No face detected. Please try again.")
+                    continue
+
+                face_landmarks = results.multi_face_landmarks[0]
+                # frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
+                detected_direction = self.check_head_direction(face_landmarks)
+                # print(f"Detected direction: {detected_direction}")
+                if detected_direction == expected_direction:
+                    face_encodings = self.generate_encodeings(images=frame)
+                    if face_encodings:
+                        encode = face_encodings[0]
+                        images.clear()
+                        images.append({"frame": frame, "direction": expected_direction})
+                        await websocket.send_json(
+                            {
+                                "data": {
+                                    "status": "scanning",
+                                    "instructions": f"Face detected. Please wait.",
+                                }
+                            }
+                        )
+                        return encode, images
+                    else:
+                        await websocket.send_json(
+                            {
+                                "data": {
+                                    "status": "scanning",
+                                    "instructions": f"No face detected. Please try again.",
+                                }
+                            }
+                        )
+                else:
+                    await websocket.send_json(
+                        {
+                            "data": {
+                                "status": "scanning",
+                                "instructions": f"Please move your head to: {expected_direction}",
+                            }
+                        }
+                    )
+                    continue
+        except WebSocketDisconnect:
+            print("WebSocket disconnected.")

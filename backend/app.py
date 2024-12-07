@@ -3,7 +3,6 @@ import base64
 import datetime
 from pathlib import Path
 import time
-import cv2
 from dotenv import dotenv_values, load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import jwt
@@ -17,11 +16,9 @@ from backend.models.user_model import User, Userupdate
 from backend.routes import face_routes, user_routes, history_routes, checkinout_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
-from deepface import DeepFace
 from backend.services.face_service import Face_service
 from backend.services.user_service import UserService
 from backend.utils.image_utills import Image_utills
-import bson
 
 pathenv = Path("./.env")
 load_dotenv(dotenv_path=pathenv)
@@ -142,9 +139,8 @@ async def websocket_endpoint(websocket: WebSocket):
     face_service = Face_service()
     user_service = UserService()
     await websocket.accept()
-    scan_directions = ["Front"]
+    scan_directions = SCAN_DIRECTION
     current_direction_idx = 0
-    images = []  # To store images temporarily
     images_per_direction = IMAGE_PER_DIRECTION  # Number of images per direction
     image_count = 0  # Counter for images saved in the current direction
 
@@ -174,42 +170,8 @@ async def websocket_endpoint(websocket: WebSocket):
     password = ""
 
     try:
-      encode = None
-      frame = None
-      while current_direction_idx < len(scan_directions):
-        expected_direction = scan_directions[current_direction_idx]
-        await websocket.send_json({
-                "data": {
-                    "status": "scan",
-                    "instructions": f"Please move your head into frame.",
-                }
-          })
-        data = await websocket.receive_json()
-          # Decode the received image
-        frame_bytes = np.frombuffer(bytearray(data["image"]), dtype=np.uint8)
-        frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
-        results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        if not results.multi_face_landmarks:
-            await websocket.send_text("No face detected. Please try again.")
-            continue
-
-        face_landmarks = results.multi_face_landmarks[0]
-                # frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
-        detected_direction = face_service.check_head_direction(face_landmarks)
-        print(f"Detected direction: {detected_direction}")
-        if detected_direction == expected_direction:
-            face_encodings = face_service.generate_encodeings(images=frame)
-            if face_encodings:
-                encode = face_encodings[0]
-                images.append({"frame": frame, "direction": expected_direction})
-                await websocket.send_json({"data": {"status": "scanning", "instructions": f"Face detected. Please wait."}})
-                break
-            else:
-                await websocket.send_json({"data": {"status": "scanning", "instructions": f"No face detected. Please try again."}})          
-        else:
-            await websocket.send_json({"data": {"status": "scanning", "instructions": f"Please move your head to: {expected_direction}"}})
-            continue
-    #   print("encode : ", encode)
+      encode,images = await face_service.face_registation(websocket=websocket)  
+    #   len(images)
       user_id = await user_service.save_user_and_images(employee_id=employee_id, name=name, email=email,images=images, tel=tel, password=password, face_encoding=encode)
       await websocket.send_json({"data": {"status": "success", "message": f"User data and images saved successfully with ID: {user_id}"}})
     except WebSocketDisconnect:
@@ -237,7 +199,7 @@ async def websocket_endpoint(websocket: WebSocket):
             print(f"Unexpected error decoding token: {e}")
             token = None
             employee_id = None
-    scan_directions = ["Front", "Turn_left", "Turn_right"]
+    scan_directions = SCAN_DIRECTION
     current_direction_idx = 0
     images = []
     embeddings = []
@@ -253,58 +215,7 @@ async def websocket_endpoint(websocket: WebSocket):
         }
     )
     try:
-        while current_direction_idx < len(scan_directions):
-            expected_direction = scan_directions[current_direction_idx]
-            await websocket.send_text(f"Please move your head to: {expected_direction}")
-            image_count = 0  # ตัวนับจำนวนภาพในทิศทางปัจจุบัน
-
-            # ส่งข้อความขอให้ผู้ใช้ส่งข้อมูลภาพ
-            while image_count < images_per_direction:  # เก็บภาพจนกว่าจะครบ 20 ภาพ
-
-                data = await websocket.receive_json()
-
-                # Decode the received image
-                frame_bytes = np.frombuffer(bytearray(data["image"]), dtype=np.uint8)
-                frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
-
-                # Detect face and landmarks
-                results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                if not results.multi_face_landmarks:
-                    await websocket.send_text("No face detected. Please try again.")
-                    continue
-
-                face_landmarks = results.multi_face_landmarks[0]
-                # frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
-                detected_direction = face_service.check_head_direction(face_landmarks)
-                print(f"Detected direction: {detected_direction}")
-
-                # Check if the direction matches
-                encoded_frame = face_service.encode_image_to_base64(frame)
-                await websocket.send_text(encoded_frame)
-
-                if detected_direction != expected_direction:
-                    await websocket.send_text(
-                        f"Incorrect direction! Detected: {detected_direction}"
-                    )
-                    continue
-
-                embedding = DeepFace.represent(
-                    frame, model_name="ArcFace", enforce_detection=True
-                )
-
-                embeddings.append(embedding)
-
-                # Add the frame and direction to the images list
-                images.append({"frame": frame, "direction": expected_direction})
-
-                image_count += 1  # เพิ่มตัวนับภาพ
-
-                await websocket.send_text(
-                    f"Image {image_count} captured for {expected_direction}"
-                )
-
-            current_direction_idx += 1  # เปลี่ยนไปทิศทางถัดไป
-
+        encode,images = await face_service.face_registation(websocket=websocket)  
         print("All images captured successfully.")
         print("Saving user data and images...", len(images))
         image_utills = Image_utills()
@@ -327,17 +238,17 @@ async def websocket_endpoint(websocket: WebSocket):
         for existing_image in user.data["images"]:
             image_utills.remove_image(existing_image["path"])
         # Save all images and user data at once
-        user_update = Userupdate(images=saved_image_paths)
+        user_update = Userupdate(images=saved_image_paths,embeddeds=encode)
 
         user_id = await user_service.update_user_by_employee_id(
             employee_id=employee_id, request=user_update
         )
-        await websocket.send_text(
-            f"User data and images saved successfully with ID: {user_id}"
-        )
+        await websocket.send_json({"data": {"status": "success", "message": f"User data and images saved successfully with ID: {user_id}"}})
 
     except WebSocketDisconnect:
         print("WebSocket disconnected.")
+
+
 
 
 if __name__ == "__main__":

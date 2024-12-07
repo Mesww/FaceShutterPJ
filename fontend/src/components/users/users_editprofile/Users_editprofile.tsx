@@ -41,6 +41,8 @@ const EditProfilePage: React.FC = () => {
   const [toltalDirection, setToltalDirection] = useState<number>(0);
   const [imageCount, setImageCount] = useState<number>(0);
   const [errorDirectiom, setErrorDirection] = useState<string>("");
+  const [errorsMessage, setErrorsMessage] = useState<string | null>(null);
+
   const directionInstructions: Record<string, string> = {
     "Front": "กรุณาหันหน้าตรง",
     "Turn_left": "กรุณาหันหน้าไปทางซ้าย",
@@ -145,6 +147,7 @@ const EditProfilePage: React.FC = () => {
     setIsScanning(false);
     setInstruction("");
     setConnectionStatus('disconnected');
+    setErrorsMessage('');
     websocket?.close();
   };
 
@@ -171,14 +174,29 @@ const EditProfilePage: React.FC = () => {
         if (jsonData.data === undefined) return;
         
         const status = jsonData.data.status;
+        const messages = jsonData.data.message;
+
         switch (status) {
           case "register":
             setToltalDirection(jsonData.data.totaldirection);
             break;
           case "success":
             await handleScanSuccess();
-            
             break;
+          case "progress":
+              console.log(messages);
+              setInstruction(messages);
+              setErrorsMessage('');
+              break;
+          case "failed":
+                console.error("Error:", messages);
+                setErrorsMessage(messages);
+                setInstruction("กรุณาวางใบหน้าให้อยู่ในกรอบ");
+              break;
+          case "stopped":
+                handleScanStop();
+              break;
+       
         }
       }
       

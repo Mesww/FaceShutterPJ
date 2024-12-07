@@ -41,6 +41,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [toltalDirection, setToltalDirection] = useState<number>(0);
   const [errorDirectiom, setErrorDirection] = useState<string>("");
 
+  const [errorsMessage, setErrorsMessage] = useState<string | null>(null);
+
   // Camera States
   const webcamRef = useRef<Webcam>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
@@ -86,13 +88,16 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         const messages = jsonData.data.message;
         switch (status) {
           case "progress":
+            console.log(messages);
             setInstruction(messages);
+            setErrorsMessage('');
             break;
           case "pending":
             console.log("User data received, awaiting scan...");
             break;
           case "failed":
             console.error("Error:", messages);
+            setErrorsMessage(messages);
             setInstruction("กรุณาวางใบหน้าให้อยู่ในกรอบ");
             break;
           case "stopped":
@@ -190,6 +195,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     setInstruction("");
     setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
     setConnectionStatus('disconnected');
+    setErrorsMessage('');
+    if (websocket) websocket.close();
+    setWebSocket(null);
   };
 
   const handleScanSuccess = (token: string) => {
@@ -596,7 +604,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                           textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
                         }}
                       >
-                        {imageCount === toltalDirection ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
+                        {isScanning && imageCount === toltalDirection ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
+                        {isAuthen ?? instruction}
                       </p>
                       <p
                         className="text-xl font-semibold text-red-500"
@@ -604,7 +613,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                           textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
                         }}
                       >
-                        {errorDirectiom}
+                        {errorDirectiom || errorsMessage}
                         </p>
                     </div>
                   </div>
