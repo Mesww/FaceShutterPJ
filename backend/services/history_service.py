@@ -14,7 +14,7 @@ class History_Service:
         today_collection = db['checkinouttoday']
         history_collection = db['checkinouthistory']
         today_date = datetime.now(tz=timezone).strftime("%Y-%m-%d")
-        records = await today_collection.find().to_list(1000)
+        records = await today_collection.find().to_list()
 
         if not records:
             return {"message": "No records to migrate."}
