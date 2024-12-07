@@ -17,8 +17,13 @@ from backend.routes import face_routes, user_routes, history_routes, checkinout_
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
 from backend.services.face_service import Face_service
+from backend.services.history_service import History_Service
 from backend.services.user_service import UserService
 from backend.utils.image_utills import Image_utills
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime
+from typing import Optional
+
 
 pathenv = Path("./.env")
 load_dotenv(dotenv_path=pathenv)
@@ -79,6 +84,33 @@ app.include_router(
     prefix="/api/history",  # Base path for user-related routes
     tags=["history"],
 )
+# Create a scheduler instance
+scheduler = BackgroundScheduler()
+
+scheduler = BackgroundScheduler()
+
+async def async_daily_task():
+    # Your async daily task logic here
+    print(f"Async daily task started at {datetime.now()}")
+    res= await History_Service.migrate_to_history()
+    print(res)
+    print(f"Async daily task completed at {datetime.now()}")
+
+def daily_task():
+    # Run the async task in the event loop
+    asyncio.run(async_daily_task())
+
+# Schedule the task to run daily at a specific time
+scheduler.add_job(daily_task, 'cron', hour=23, minute=59)  # Adjust time as needed
+
+# Start the scheduler
+scheduler.start()
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    # Shutdown scheduler gracefully
+    scheduler.shutdown()
 
 
 manager = ConnectionManager()
@@ -93,8 +125,6 @@ face_mesh = mp_face_mesh.FaceMesh(
 )
 
 
-from fastapi import WebSocket, WebSocketDisconnect
-from typing import Optional
 
 active_connections = {}
 
