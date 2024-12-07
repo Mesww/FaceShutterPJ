@@ -373,6 +373,16 @@ const AdminManage: React.FC = () => {
                         required
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">รหัสผ่าน</label>
+                      <input
+                        type="password"
+                        name="password"
+                        className="w-full p-2 border rounded"
+                        placeholder="กรอกรหัสผ่าน"
+                        required
+                      />
+                    </div>
                     <div className="flex justify-end gap-2 mt-4">
                       <button
                         type="button"
@@ -422,7 +432,6 @@ const AdminManage: React.FC = () => {
                           name="employee_id"
                           defaultValue={editingUser.employee_id}
                           className="w-full p-2 border rounded"
-                          disabled
                           readOnly
                         />
                       </div>
@@ -463,11 +472,29 @@ const AdminManage: React.FC = () => {
                           defaultValue={editingUser.roles}
                           className="w-full p-2 border rounded"
                           required
+                          onChange={(e) => setEditingUser({
+                            ...editingUser,
+                            roles: e.target.value,
+                          })}
                         >
                           <option value="USER">USER</option>
                           <option value="ADMIN">ADMIN</option>
                         </select>
                       </div>
+
+                      {/* Password field for ADMIN */}
+                      {editingUser.roles === 'ADMIN' && (
+                        <div>
+                          <label className="block text-sm font-medium mb-1">รหัสผ่าน</label>
+                          <input
+                            type="password"
+                            name="password"
+                            className="w-full p-2 border rounded"
+                            placeholder="กรอกรหัสผ่าน"
+                            required={editingUser.roles === 'ADMIN'}
+                          />
+                        </div>
+                      )}
                       <div className="flex justify-end gap-2 mt-4">
                         <button
                           type="button"
