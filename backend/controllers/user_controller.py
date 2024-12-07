@@ -100,3 +100,27 @@ class UserController:
             return res.to_json()
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+    @staticmethod
+    @router.put("/update_user_by_employee_id/{employee_id}")
+    async def update_user(
+        request: Userupdate,
+        employee_id: str,
+    ):
+        try:
+            res = await UserService.update_user_by_employee_id(
+                employee_id,
+                request
+            )
+            if res.status >= 400:
+                raise HTTPException(status_code=400, detail=res.message)
+            return res.to_json()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    @staticmethod
+    @router.get("/get_all_user")
+    async def getAllUser():
+        try:
+            res = await UserService.getAllUser()
+            return res
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))

@@ -348,3 +348,15 @@ class UserService:
         except Exception as e:
 
             raise HTTPException(status_code=400, detail=str(e))
+    @staticmethod
+    async def getAllUser():
+        try:
+            db = await connect_to_mongodb()  # Establish database connection
+            collection = db["users"]
+            users = await collection.find().to_list(1000)
+            print(users)
+            for user in users:
+                user["_id"] = str(user["_id"])
+            return users
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
