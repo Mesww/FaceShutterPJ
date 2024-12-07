@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { User as Users } from '@/interfaces/users_facescan.interface';
+import "../sidebar/Sidebar.css";
 
 
 interface SidebarProps {
@@ -74,34 +75,43 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed,isLogined,logout,se
 
     const handleLogout = () => {
         Swal.fire({
-            title: 'คุณต้องการออกจากระบบหรือไม่?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'ใช่',
-            cancelButtonText: 'ไม่',
-            confirmButtonColor: '#2563eb',
-            cancelButtonColor: '#d33',
-            reverseButtons: true
+          title: 'คุณต้องการออกจากระบบหรือไม่?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'ตกลง',
+          cancelButtonText: 'ยกเลิก',
+          confirmButtonColor: '#2563eb',
+          cancelButtonColor: '#d33',
+          reverseButtons: false, // ไม่ต้องสลับปุ่ม
+          width: '90%', // ปรับขนาดสำหรับมือถือ
+          customClass: {
+            popup: 'mobile-popup',
+            title: 'mobile-title',
+            confirmButton: 'mobile-btn confirm-btn-left', // เพิ่มคลาสสำหรับตำแหน่งปุ่ม
+            cancelButton: 'mobile-btn',
+          },
         }).then((result) => {
-            if (result.isConfirmed) {
-                if (setName !== undefined) {
-                    setName('');
-                }else if (setUserDetails !== undefined) {
-                    setUserDetails({ employee_id: "",
-                        name: "",
-                        email: "",
-                        password: "",
-                        tel: "",});
-                }   
-                logout();
-                setIsMobileMenuOpen(false);
-                navigate('/users/');
-                
+          if (result.isConfirmed) {
+            if (setName !== undefined) {
+              setName('');
+            } else if (setUserDetails !== undefined) {
+              setUserDetails({
+                employee_id: '',
+                name: '',
+                email: '',
+                password: '',
+                tel: '',
+              });
             }
+            logout();
+            setIsMobileMenuOpen(false);
+            navigate('/users/');
+            window.location.reload(); // รีโหลดหน้า
+          }
         });
-        
-    }
-
+      };
+      
+            
     // Desktop Sidebar
     const DesktopMenu = () => (
         <div

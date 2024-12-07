@@ -280,7 +280,7 @@ const AdminManage: React.FC = () => {
                   <Search className="w-5 h-5 text-gray-500 mr-2" />
                   <input
                     type="text"
-                    placeholder="ค้นหาตามชื่อ, อีเมล, หรือเบอร์โทร"
+                    placeholder="ค้นหาตาม รหัสพนักงาน, ชื่อ, อีเมล, หรือเบอร์โทร"
                     value={searchUserTerm}
                     onChange={(e) => setSearchUserTerm(e.target.value)}
                     className="bg-transparent border-none outline-none flex-1"

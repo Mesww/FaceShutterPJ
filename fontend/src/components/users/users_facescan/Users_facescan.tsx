@@ -11,6 +11,7 @@ import RegisModal from './regis_modal.js';
 import Webcam from 'react-webcam';
 import { useUserData } from '@/containers/provideruserdata.js';
 import Swal from 'sweetalert2';
+import "../users_facescan/Users_facescan.css";
 // import { useUserData } from '@/containers/provideruserdata.js';
 
 const FaceScanPage: React.FC<FaceScanPageProps> = () => {
@@ -104,36 +105,59 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           case "stopped":
             handleScanStop();
             break;
-          case "alreadycheckedin":
-            Swal.fire({
-              icon: 'info',
-              title: 'Already Checked In',
-              text: 'You have already checked in today',
-              confirmButtonText: 'OK',
-              confirmButtonColor: '#3085d6',
-            });
-            handleScanSuccess(jsonData.data.token);
-            break;
-          case "alreadycheckedout":
-            Swal.fire({
-              icon: 'info',
-              title: 'Already Checked Out',
-              text: 'You have already checked out today',
-              confirmButtonText: 'OK',
-              confirmButtonColor: '#3085d6',
-            });
-            handleScanSuccess(jsonData.data.token);
-            break;
-          case "alreadycheckedinout":
-            Swal.fire({
-              icon: 'info',
-              title: 'Check-in/out Completed',
-              text: 'You have already checked in/out today',
-              confirmButtonText: 'OK',
-              confirmButtonColor: '#3085d6',
-            });
-            handleScanSuccess(jsonData.data.token);
-            break;
+            case "alreadycheckedin":
+              Swal.fire({
+                icon: 'info',
+                title: 'Already Checked In',
+                text: 'You have already checked in today',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                width: '90%', // ปรับขนาดสำหรับมือถือ
+                customClass: {
+                  popup: 'mobile-popup',
+                  title: 'mobile-title',
+                  confirmButton: 'mobile-btn',
+                },
+              }).then(() => {
+                handleScanSuccess(jsonData.data.token);
+              });
+              break;
+            
+            case "alreadycheckedout":
+              Swal.fire({
+                icon: 'info',
+                title: 'Already Checked Out',
+                text: 'You have already checked out today',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                width: '90%', // ปรับขนาดสำหรับมือถือ
+                customClass: {
+                  popup: 'mobile-popup',
+                  title: 'mobile-title',
+                  confirmButton: 'mobile-btn',
+                },
+              }).then(() => {
+                handleScanSuccess(jsonData.data.token);
+              });
+              break;
+            
+            case "alreadycheckedinout":
+              Swal.fire({
+                icon: 'info',
+                title: 'Check-in/out Completed',
+                text: 'You have already checked in/out today',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                width: '90%', // ปรับขนาดสำหรับมือถือ
+                customClass: {
+                  popup: 'mobile-popup',
+                  title: 'mobile-title',
+                  confirmButton: 'mobile-btn',
+                },
+              }).then(() => {
+                handleScanSuccess(jsonData.data.token);
+              });
+              break;            
           case "register":
             console.log("User data received, awaiting scan...", jsonData.data.totaldirection);
             setToltalDirection(jsonData.data.totaldirection);

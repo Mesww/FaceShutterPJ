@@ -1,0 +1,18 @@
+/* ปรับขนาดและระยะห่าง */
+.mobile-popup {
+    font-size: 14px; /* ปรับขนาดตัวอักษร */
+    padding: 16px;   /* เพิ่มพื้นที่รอบข้อความ */
+    border-radius: 10px; /* มุมโค้ง */
+  }
+  
+  .mobile-title {
+    font-size: 18px; /* ขนาดหัวเรื่อง */
+    font-weight: bold;
+  }
+  
+  .mobile-btn {
+    font-size: 14px; /* ขนาดของปุ่ม */
+    padding: 8px 16px; /* ขนาดของปุ่ม */
+    border-radius: 5px; /* มุมปุ่ม */
+  }
+  

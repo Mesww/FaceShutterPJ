@@ -7,6 +7,8 @@ import { edituserdata } from '@/containers/getUserdata.js'; // Import the editus
 import LoadingSpinner from '@/components/loading/loading.js';
 import Webcam from 'react-webcam';
 import { getLogined } from '@/containers/userLogin.js';
+import Swal from 'sweetalert2';
+import "../users_editprofile/Users_editprofile.css";
 
 const EditProfilePage: React.FC = () => {
   // ====== Provider Data ======
@@ -80,13 +82,32 @@ const EditProfilePage: React.FC = () => {
     try {
       await edituserdata(userData?.employee_id || '', name, email, phone, imageFile);
       await refreshUserData();
-      alert('Profile updated successfully');
+      Swal.fire({
+        title: 'สำเร็จ!',
+        text: 'อัปเดตโปรไฟล์เรียบร้อยแล้ว',
+        icon: 'success',
+        confirmButtonText: 'ตกลง',
+        width: '90%', // ให้ขนาดหน้าต่างยืดหยุ่นตามหน้าจอมือถือ
+        customClass: {
+          popup: 'mobile-popup',
+          title: 'mobile-title',
+        },
+      });
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile');
+      Swal.fire({
+        title: 'เกิดข้อผิดพลาด!',
+        text: 'ไม่สามารถอัปเดตโปรไฟล์ได้',
+        icon: 'error',
+        confirmButtonText: 'ลองใหม่',
+        width: '90%', // ปรับขนาดสำหรับมือถือ
+        customClass: {
+          popup: 'mobile-popup',
+          title: 'mobile-title',
+        },
+      });
     }
   };
-
 
   // Camera Controls
   const handleSwitchCamera = () => {
