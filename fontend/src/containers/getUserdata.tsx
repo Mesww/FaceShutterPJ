@@ -122,7 +122,7 @@ export const edituserdata = async (employee_id: string, name: string, email: str
             'email': email ?? null,
             'tel': phone ?? null,
         }
-        const response = await fetch(`${BACKEND_URL}/api/users/update`, {
+        const response = await fetch(`${BACKEND_URL}/api/users/update_user`, {
         method: 'PUT',
         body: JSON.stringify(body),
         headers:{

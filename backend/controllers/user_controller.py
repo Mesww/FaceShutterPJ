@@ -67,6 +67,7 @@ class UserController:
             # employee_id = int(employee_id["sub"])
             # print(employee_id)
             res = await userservice.get_user_by_employee_id(employee_id.get('sub'))
+            print(res.to_json())
             return res
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -89,33 +90,36 @@ class UserController:
     ):
         try:
             userservice = UserService()
-            employee_id = userservice.extract_token( token=credentials.credentials)
+            # print(credentials.credentials)
+            employee_id = userservice.extract_token(token=credentials.credentials)
+            # print(request)
             res = await UserService.update_user_by_employee_id(
                 employee_id.get('sub'),
                 request
             )
-            print(res.status)
+            # print(res.status)
             if res.status >= 400:
                 raise HTTPException(status_code=400, detail=res.message)
             return res.to_json()
+            # return {"status": 200, "message": "success"}
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
-    @staticmethod
-    @router.put("/update_user_by_employee_id/{employee_id}")
-    async def update_user(
-        request: Userupdate,
-        employee_id: str,
-    ):
-        try:
-            res = await UserService.update_user_by_employee_id(
-                employee_id,
-                request
-            )
-            if res.status >= 400:
-                raise HTTPException(status_code=400, detail=res.message)
-            return res.to_json()
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+    # @staticmethod
+    # @router.put("/update_user_by_employee_id/{employee_id}")
+    # async def update_user(
+    #     request: Userupdate,
+    #     employee_id: str,
+    # ):
+    #     try:
+    #         res = await UserService.update_user_by_employee_id(
+    #             employee_id,
+    #             request
+    #         )
+    #         if res.status >= 400:
+    #             raise HTTPException(status_code=400, detail=res.message)
+    #         return res.to_json()
+    #     except Exception as e:
+    #         raise HTTPException(status_code=400, detail=str(e))
     @staticmethod
     @router.get("/get_all_user")
     async def getAllUser():

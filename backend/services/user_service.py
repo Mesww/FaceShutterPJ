@@ -36,10 +36,35 @@ class UserService:
                 return Returnformat(400, "User not found", None)
             
             user["_id"] = str(user["_id"])
-            image_path = user["images"][0]
+            if user['roles'] == 'ADMIN':
+                return Returnformat(200, "Admin fetched successfully", user)
+            
+            image_path = user["images"][0] 
             user["images_profile_path"] = image_path['path']
             image_profile = Image_utills.read_image_from_path(image_path['path'])
             user["images_profile"] = Image_utills.convert_cv2_to_base64(image_profile)
+            # print(user)
+            # Return success response with user data
+            return Returnformat(200, "User fetched successfully", user)
+
+        except Exception as e:
+            return Returnformat(400, str(e), None)
+    @staticmethod
+    async def get_user_by_employee_id_admin(employee_id: str) -> Returnformat:
+        try:
+            db = await connect_to_mongodb()  # Establish database connection
+            collection = db["users"]
+            print(employee_id)
+
+            # Correct way: "employee_id" should be the field name
+            query = {"employee_id": str(employee_id)}
+            user = await collection.find_one(filter=query)
+            print(f"Found {user}")
+
+            if not user:
+                return Returnformat(400, "User not found", None)
+            
+            # print(user)
             # Return success response with user data
             return Returnformat(200, "User fetched successfully", user)
 
@@ -127,6 +152,7 @@ class UserService:
             user_data["email"] = user_data["email"] if user_data["email"] else exit_user["email"]
             user_data["tel"] = user_data["tel"] if user_data["tel"] else exit_user["tel"]
             user_data["images"] = user_data["images"] if user_data["images"] else exit_user["images"] 
+            user_data["embeddeds"] = user_data["embeddeds"] if user_data["embeddeds"] else exit_user["embeddeds"]
             user_data["roles"] = user_data["roles"] if user_data["roles"] else exit_user["roles"]
             user_data["update_at"] = datetime.now(tz=timezone)
             # print(user_data)

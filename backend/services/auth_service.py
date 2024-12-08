@@ -6,7 +6,8 @@ import mediapipe as mp
 import numpy as np
 from typing import Tuple, List, Union
 import time
-
+from werkzeug.security import generate_password_hash, check_password_hash
+from backend.services.user_service import UserService
 from backend.utils.image_utills import Phone_Detection
 
 class FaceAuthenticationService:   
@@ -251,3 +252,39 @@ class FaceAuthenticationService:
         except Exception as e:
             print(f"Enhanced authentication error: {str(e)}")
             return False, 0.0, f"Authentication error: {str(e)}"
+
+
+class AdminAuthenticationService:
+    def __init__(self):
+        self.HASH_METHOD = 'pbkdf2:sha256'
+        self.HASH_ITERATIONS = 310000
+    
+    def hash_password(self, password: str) -> str:
+        """Hash a password using PBKDF2"""
+        return generate_password_hash(password, method=self.HASH_METHOD, salt_length=16)
+    
+    async def login(self, employee_id: str, password: str) -> Tuple[bool, str]:
+      """Check if the provided password matches the hashed password"""
+      try: 
+        user = await UserService.get_user_by_employee_id_admin(employee_id)
+        user = user.to_json()
+        user = user.get('data')
+        
+        if not user['employee_id']:
+            return False,"ไม่พบผู้ใช้งาน"
+        
+        is_admin = user['roles'] == 'ADMIN'
+        
+        if not is_admin:
+            return False,"ไม่มีสิทธิ์เข้าใช้งาน"
+        print(password)
+        print(user['password'])
+        compair_passwpord = check_password_hash(pwhash= user['password'],password= password)
+        print(compair_passwpord)
+        if compair_passwpord:
+            return compair_passwpord,"เข้าสู่ระบบสำเร็จ"
+        else:
+            return False,"รหัสผ่านไม่ถูกต้อง"
+      except Exception as e:
+              print(f"Login error: {str(e)}")
+              return False,str(e)

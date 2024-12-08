@@ -11,9 +11,10 @@ from backend.configs.config import (
     IMAGE_PER_DIRECTION,
     SCAN_DIRECTION,
     ConnectionManager,
+    public_key_pem
 )
 from backend.models.user_model import User, Userupdate
-from backend.routes import face_routes, user_routes, history_routes, checkinout_routes
+from backend.routes import face_routes, user_routes, history_routes, checkinout_routes,auth_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
 from backend.services.face_service import Face_service
@@ -21,8 +22,10 @@ from backend.services.history_service import History_Service
 from backend.services.user_service import UserService
 from backend.utils.image_utills import Image_utills
 from apscheduler.schedulers.background import BackgroundScheduler
+
 from datetime import datetime
 from typing import Optional
+
 
 
 pathenv = Path("./.env")
@@ -55,6 +58,10 @@ async def health_check():
     """
     return {"status": "healthy", "message": "Application is running smoothly"}
 
+# For frontend to get the public key
+@app.get('/get_public_key')
+def get_public_key():
+    return {'public_key': public_key_pem.decode('utf-8')}
 
 # Global exception handler
 @app.exception_handler(Exception)
@@ -84,6 +91,14 @@ app.include_router(
     prefix="/api/history",  # Base path for user-related routes
     tags=["history"],
 )
+app.include_router(
+    auth_routes.router,  # เพิ่มการรวม user_routes
+    prefix="/api/auth",  # Base path for user-related routes
+    tags=["auth"],
+)
+
+
+
 # Create a scheduler instance
 
 scheduler = BackgroundScheduler()

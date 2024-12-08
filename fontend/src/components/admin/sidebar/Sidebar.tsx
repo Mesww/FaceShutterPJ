@@ -10,6 +10,7 @@ import {
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
+import { removeLogined } from "@/containers/userLogin";
 
 interface SidebarProps {
     isSidebarCollapsed: boolean;
@@ -54,8 +55,10 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
     ];
 
     const handleLogout = () => {
+        removeLogined();
         // เพิ่มโลจิกการ logout ที่นี่
         navigate("/admin/Login");
+        window.location.reload(); // รีโหลดหน้า
     };
 
     const handleNavigate = (path: string) => {

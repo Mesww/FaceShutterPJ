@@ -4,13 +4,15 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, EyeOff } from 'lucide-react';
+import { adminLogin } from '@/containers/userLogin';
+import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
+  const [employee_id, setemployee_id] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
+  const navigate = useNavigate();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -18,8 +20,19 @@ const LoginPage = () => {
     // Simulate API call
     try {
       // Add your login logic here
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Login attempt with:', { email, password });
+      // await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('Login attempt with:', { employee_id, password });
+     const  is_login = await adminLogin(employee_id, password);
+
+      if (is_login) {
+        console.log('Login successful');
+        // Redirect to the dashboard
+        // history.push('/dashboard');
+        navigate('/admin/AdminManage');
+      } else {
+        console.log('Login failed');
+      }
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
@@ -37,15 +50,15 @@ const LoginPage = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="email">
-                อีเมล
+              <label className="text-sm font-medium" htmlFor="employee_id">
+                employee_id
               </label>
               <Input
-                id="email"
-                type="email"
-                placeholder="example@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="employee_id"
+                type="text"
+                placeholder="123456"
+                value={employee_id}
+                onChange={(e) => setemployee_id(e.target.value)}
                 required
                 className="w-full"
               />

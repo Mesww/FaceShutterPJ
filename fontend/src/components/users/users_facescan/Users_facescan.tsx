@@ -108,8 +108,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
             case "alreadycheckedin":
               Swal.fire({
                 icon: 'info',
-                title: 'Already Checked In',
-                text: 'You have already checked in today',
+                title: 'เข้างานเรียบร้อย',
+                text: 'วันนี้คุณได้ทำการเข้างานแล้ว',
                 confirmButtonText: 'OK',
                 confirmButtonColor: '#3085d6',
                 width: '90%', // ปรับขนาดสำหรับมือถือ
@@ -126,8 +126,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
             case "alreadycheckedout":
               Swal.fire({
                 icon: 'info',
-                title: 'Already Checked Out',
-                text: 'You have already checked out today',
+                title: 'ออกงานเรียบร้อย',
+                text: 'วันนี้คุณได้ทำการออกงานแล้ว',
                 confirmButtonText: 'OK',
                 confirmButtonColor: '#3085d6',
                 width: '90%', // ปรับขนาดสำหรับมือถือ
@@ -144,8 +144,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
             case "alreadycheckedinout":
               Swal.fire({
                 icon: 'info',
-                title: 'Check-in/out Completed',
-                text: 'You have already checked in/out today',
+                title: 'เข้างาน/ออกงานแล้ว',
+                text: 'วันนี้คุณได้ทำการเข้างาน/ออกงานแล้ว',
                 confirmButtonText: 'OK',
                 confirmButtonColor: '#3085d6',
                 width: '90%', // ปรับขนาดสำหรับมือถือ
@@ -570,8 +570,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
               >
                 <Camera size={20} />
                 {isLogined || login
-                  ? (!disableCheckinorout ? (isCheckinroute ?? "ยังไม่ถึงเวลาเข้าหรือออกงาน") : disableCheckinorouttext)
-                  : (isCheckinroute ?? "Login")}
+                  ? (!disableCheckinorout ? ( 
+                    isCheckinroute !== null ?(isCheckinroute ==="checkin" ? "เข้างาน":"ออกงาน")  : "ยังไม่ถึงเวลาเข้าหรือออกงาน") : disableCheckinorouttext)
+                  :  isCheckinroute !== null ?(isCheckinroute ==="checkin" ? "เข้างาน":"ออกงาน")  :  "เข้าสู่ระบบ"}
               </button>
             </div>
           </form>

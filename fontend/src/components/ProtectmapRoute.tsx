@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { getuserdata } from '@/containers/getUserdata';
+import { getLogined } from '@/containers/userLogin';
+import LoadingSpinner from './loading/loading';
 
 interface ProtectmapRouteProps {
   children: React.ReactNode;
@@ -10,39 +13,70 @@ const ProtectmapRoute: React.FC<ProtectmapRouteProps> = ({
   children, 
   requireRoles 
 }) => {
-  // Function to get current user role from localStorage or your auth state management
-  const getCurrentUserRole = (): string => {
-    // This should be replaced with your actual auth logic
-    return 'ADMIN';
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [userRole, setUserRole] = useState<string>('');
+  const getCurrentUserRole = async (): Promise<string> => {
+    const token = getLogined();
+    if (token) {
+      const userData = await getuserdata(token);
+      console.log('User Data:', userData);
+      return userData.roles; // Assuming `userData` has a `roles` property
+    }
+    return '';
   };
 
-  // Function to check if user is authenticated
-  const isAuthenticated = (): boolean => {
-    // This should be replaced with your actual auth logic
-    // const token = localStorage.getItem('authToken');
-    // replace this with your actual check
-    return true;
-  };
+  useEffect(() => {
+    const checkAccess = async () => {
+      const token = getLogined();
+      console.log('Token:', token);
 
-  // Check if user has required role
-  const hasRequiredRole = (): boolean => {
-    const currentRole = getCurrentUserRole();
-    return requireRoles.includes(currentRole);
-  };
+      if (!token) {
+        setIsAuthenticated(false);
+        setHasAccess(false);
+        return;
+      }
+
+      setIsAuthenticated(true);
+
+      const role = await getCurrentUserRole();
+      console.log('User Role:', role);
+      console.log('Required Roles:', requireRoles);
+      setUserRole(role);
+      const access = requireRoles.includes(role);
+      setHasAccess(access);
+    };
+
+    checkAccess();
+  }, [requireRoles]); // Only run this effect when `requireRoles` changes
+
+  // Logging outside of the effect to track state after updates
+  useEffect(() => {
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('hasAccess:', hasAccess);
+  }, [isAuthenticated, hasAccess]);
+
+  // Show loading state if authentication and role check are in progress
+  if (isAuthenticated === null || hasAccess === null) {
+    return <LoadingSpinner />;
+  }
 
   // If not authenticated, redirect to login
-  // if (!isAuthenticated()) {
-  //   return <Navigate to="/admin/Login" replace />;
-  // }
-  if (getCurrentUserRole() === 'ADMIN' && !isAuthenticated()) {
-    return <Navigate to="/admin/login" replace />;
-    
+  if (!isAuthenticated || !hasAccess) {
+    switch (userRole) {
+      case "ADMIN":
+        return <Navigate to="/admin/login" replace />;
+      case "USER":
+        return <Navigate to="/" replace />;
+      default:
+        return <Navigate to="/" replace />;
+    }
   }
+
   // If authenticated but doesn't have required role, redirect to unauthorized page
-  // You can create a separate unauthorized page or redirect to home
-  if (!hasRequiredRole()) {
-    return <Navigate to="/" replace />;
-  }
+  // if (!hasAccess) {
+  //   return <Navigate to="/" replace />;
+  // }
 
   // If authenticated and has required role, render children
   return <>{children}</>;

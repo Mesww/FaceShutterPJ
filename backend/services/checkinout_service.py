@@ -90,7 +90,7 @@ class CheckInOut_Service:
             record = await today_collection.find_one({"employee_id": employee_id, "date": datetime.now(tz=timezone).strftime("%Y-%m-%d")})
             if record:
                 is_checked = True
-                message = "User already checked in today"
+                message = "คุณได้ทำการเข้างานแล้ว"
             return Returnformat(status="success", message=message, data=is_checked).to_json()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
@@ -106,7 +106,7 @@ class CheckInOut_Service:
             record = await today_collection.find_one({"employee_id": employee_id, "date": datetime.now(tz=timezone).strftime("%Y-%m-%d")})
             if record and record["check_out_time"]:
                 is_checked = True
-                message = "User already checked out today"
+                message = "คุณได้ทำการออกงานแล้ว"
             return Returnformat(status="success", message=message, data=is_checked).to_json()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
