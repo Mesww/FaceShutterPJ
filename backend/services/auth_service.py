@@ -84,38 +84,52 @@ class FaceAuthenticationService:
 
     async def _check_liveness(self, landmarks) -> Tuple[bool, str]:
         """
-        Enhanced liveness detection using multiple features
+        Enhanced liveness detection using multiple features, focusing on blink detection.
         Returns (is_live, message)
         """
         try:
-            
-            
             # Extract eye landmarks
             left_eye = [landmarks.landmark[i] for i in [362, 385, 387, 263, 373, 380]]
             right_eye = [landmarks.landmark[i] for i in [33, 160, 158, 133, 153, 144]]
-            
+
             # Calculate EAR for both eyes
             left_ear = self.calculate_eye_aspect_ratio([(lm.x, lm.y) for lm in left_eye])
             right_ear = self.calculate_eye_aspect_ratio([(lm.x, lm.y) for lm in right_eye])
             current_ear = (left_ear + right_ear) / 2.0
-            
-            # Update EAR history
+
+            # Smooth EAR values with a moving average (reduce noise)
+            if not hasattr(self, "recent_ear_values"):
+                self.recent_ear_values = []
             self.recent_ear_values.append(current_ear)
             if len(self.recent_ear_values) > self.MAX_EAR_HISTORY:
                 self.recent_ear_values.pop(0)
             
-            # Detect blink by checking for sudden EAR drop
+            smoothed_ear = sum(self.recent_ear_values[-3:]) / len(self.recent_ear_values[-3:])
+
+            # Adaptive threshold (optional): Update based on baseline EAR
+            if not hasattr(self, "baseline_ear"):
+                self.baseline_ear = smoothed_ear
+            if smoothed_ear > self.baseline_ear * 1.1:  # Update baseline if eyes open wider
+                self.baseline_ear = smoothed_ear
+
+            # Detect blinking: Look for rapid drops and rises in EAR
             if len(self.recent_ear_values) >= 3:
-                if (max(self.recent_ear_values[-3:]) > self.EYE_BLINK_THRESHOLD and 
-                    min(self.recent_ear_values[-3:]) < self.EYE_BLINK_THRESHOLD):
-                    return True, "พบการเคลื่อนไหวของตา"
+                last_ear = self.recent_ear_values[-1]
+                min_ear = min(self.recent_ear_values[-3:])
+                max_ear = max(self.recent_ear_values[-3:])
+
+                # Blink occurs if EAR drops below threshold and rises back
+                if max_ear > self.EYE_BLINK_THRESHOLD and min_ear < self.EYE_BLINK_THRESHOLD:
+                    duration = self.recent_ear_values[-3:].index(min_ear)  # How long the blink lasted
+                    if 1 <= duration <= 2:  # Validate realistic blink duration
+                        return True, "พบการกะพริบตา"
+
+            # Check if eyes are open based on smoothed EAR
+            # if smoothed_ear > self.EYE_OPEN_THRESHOLD:
+            #     return True, "พบการเปิดของตา"
             
-            # Check if eyes are open
-            if current_ear > self.EYE_BLINK_THRESHOLD:
-                return True, "พบการเปิดของตา"
-                
-            return False, "ไม่พบการเปิดของตา"
-            
+            return False, "ไม่พบการกะพริบตาหรือการเปิดของตา"
+
         except Exception as e:
             print(f"Liveness check error: {str(e)}")
             return False, "Liveness check error"
@@ -138,6 +152,7 @@ class FaceAuthenticationService:
         
         # Real faces have more texture variation
         texture_variance = np.var(texture_features)
+        print(f"Texture variance: {texture_variance:.3f}")
         return texture_variance > self.TEXTURE_THRESHOLD
     
     def check_natural_movement(self) -> bool:
@@ -189,8 +204,9 @@ class FaceAuthenticationService:
 
             # Check liveness
             is_live, liveness_msg = await self._check_liveness(results.multi_face_landmarks[0])
+            print(f"Liveness check: {is_live}, {liveness_msg}")
             if not is_live:
-                return False, 0.0, f"ห้ามใช้รูปภาพ: {liveness_msg}"
+                return False, 0.0, f"ห้ามใช้รูปภาพ: กรุณากระพริบตา"
             
             # Store landmarks for movement analysis
             self.frame_buffer.append(results.multi_face_landmarks[0].landmark)
@@ -208,6 +224,7 @@ class FaceAuthenticationService:
             
             if phone_detecttion.detect_phone_in_frame(rgb_frame,face_region=face_region):
                 return False, 0.0, "พบหน้าจอโทรศัพท์"
+            
             # Check face quality and texture
             if not self.check_face_quality(rgb_frame, face_locations[0]):
                 return False, 0.0, "ภาพไม่ชัดหรือหน้าอยู่ใกล้เกินไป"

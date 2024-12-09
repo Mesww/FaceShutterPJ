@@ -21,7 +21,7 @@ class Phone_Detection:
             # Use a more conservative threshold
             thresholded = cv2.adaptiveThreshold(
                 blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                cv2.THRESH_BINARY, 11, 4  # Increased C parameter to reduce sensitivity
+                cv2.THRESH_BINARY, 11, 5  # Increased C parameter to reduce sensitivity
             )
             
             contours, _ = cv2.findContours(
@@ -105,9 +105,10 @@ class Phone_Detection:
             aspect_ratio = w / float(h)
             
             # Check if aspect ratio matches a phone's typical screen
-            if 0.5 < aspect_ratio < 2.0 and w > 100 and h > 100:  # Adjust size thresholds
+            if 0.6 < aspect_ratio < 2.0 and w > 150 and h > 300:  # Adjust size thresholds
                 return True
         return False
+    
     def detect_uniform_brightness(self,face_region: np.ndarray) -> bool:
         """
         Check for uniform brightness typical of phone screens.
@@ -125,24 +126,28 @@ class Phone_Detection:
         # Screen reflection (highest weight)
         weight = 3
         if self.detect_screen_reflection(face_region):
+            print("screen reflection")
             score += weight
         total_weights += weight
         
         # Texture analysis (medium weight)
         weight = 2
         if not self.analyze_texture_frequency(face_region):
+            print("texture analysis")
             score += weight
         total_weights += weight
         
         # Phone shape detection (lower weight)
         weight = 1
         if self.detect_phone_shape(frame):
+            print("phone shape")
             score += weight
         total_weights += weight
         
         # Uniform brightness (medium weight)
         weight = 2
         if self.detect_uniform_brightness(face_region):
+            print("uniform brightness")
             score += weight
         total_weights += weight
         
