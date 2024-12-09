@@ -9,8 +9,8 @@ const NotificationProblem = () => {
       id: 1,
       name: "Robert Jhonson",
       time: "09:15:23",
-      problem: "ไม่สามารถตรวจจับใบหน้าได้ กล้องอาจมีปัญหา",
-      status: "รอการแก้ไข",
+      problem: "Face detection failed. The camera might have an issue.",
+      status: "Awaiting resolution.",
       icon: <Camera className="w-6 h-6 text-red-500" />,
       type: "error"
     },
@@ -18,8 +18,8 @@ const NotificationProblem = () => {
       id: 2,
       name: "สมชาย ชาตรี",
       time: "08:30:45",
-      problem: "ระบบออฟไลน์ชั่วคราว อาจเกิดจากปัญหาการเชื่อมต่อ",
-      status: "แก้ไขแล้ว",
+      problem: "The system is temporarily offline, possibly due to connectivity issues.",
+      status: "Resolved.",
       icon: <Zap className="w-6 h-6 text-yellow-500" />,
       type: "warning"
     },
@@ -27,8 +27,8 @@ const NotificationProblem = () => {
       id: 3,
       name: "Anna Bell",
       time: "13:45:12",
-      problem: "การยืนยันตัวตนล้มเหลว โปรดลองใหม่อีกครั้ง",
-      status: "รอการแก้ไข",
+      problem: "Authentication failed. Please try again.",
+      status: "Awaiting resolution.",
       icon: <User className="w-6 h-6 text-red-500" />,
       type: "error"
     }
@@ -45,7 +45,7 @@ const NotificationProblem = () => {
       <div className="mb-6">
         <input
           type="text"
-          placeholder="ค้นหาชื่อ (ภาษาไทย/อังกฤษ)"
+          placeholder="Search by name (Thai/English)."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -78,7 +78,7 @@ const NotificationProblem = () => {
 
                   <div className="mt-2 flex justify-between items-center">
                     <button
-                      className={`px-3 py-1 rounded-full text-sm ${notification.status === 'รอการแก้ไข'
+                      className={`px-3 py-1 rounded-full text-sm ${notification.status === 'Awaiting resolution.'
                           ? 'bg-red-500 text-white'
                           : 'bg-green-500 text-white'
                         }`}
@@ -92,7 +92,7 @@ const NotificationProblem = () => {
           ))
         ) : (
           <div className="text-center p-4 text-gray-500">
-            ไม่พบข้อมูลที่ค้นหา
+            No notifications found
           </div>
         )}
       </div>

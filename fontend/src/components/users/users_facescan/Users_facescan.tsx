@@ -105,65 +105,65 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           case "stopped":
             handleScanStop();
             break;
-            case "alreadycheckedin":
-              Swal.fire({
-                icon: 'info',
-                title: 'เข้างานเรียบร้อย',
-                text: 'วันนี้คุณได้ทำการเข้างานแล้ว',
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                width: '90%', // ปรับขนาดสำหรับมือถือ
-                customClass: {
-                  popup: 'mobile-popup',
-                  title: 'mobile-title',
-                  confirmButton: 'mobile-btn',
-                },
-              }).then(() => {
-                handleScanSuccess(jsonData.data.token);
-              });
-              break;
-            
-            case "alreadycheckedout":
-              Swal.fire({
-                icon: 'info',
-                title: 'ออกงานเรียบร้อย',
-                text: 'วันนี้คุณได้ทำการออกงานแล้ว',
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                width: '90%', // ปรับขนาดสำหรับมือถือ
-                customClass: {
-                  popup: 'mobile-popup',
-                  title: 'mobile-title',
-                  confirmButton: 'mobile-btn',
-                },
-              }).then(() => {
-                handleScanSuccess(jsonData.data.token);
-              });
-              break;
-            
-            case "alreadycheckedinout":
-              Swal.fire({
-                icon: 'info',
-                title: 'เข้างาน/ออกงานแล้ว',
-                text: 'วันนี้คุณได้ทำการเข้างาน/ออกงานแล้ว',
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                width: '90%', // ปรับขนาดสำหรับมือถือ
-                customClass: {
-                  popup: 'mobile-popup',
-                  title: 'mobile-title',
-                  confirmButton: 'mobile-btn',
-                },
-              }).then(() => {
-                handleScanSuccess(jsonData.data.token);
-              });
-              break;            
+          case "alreadycheckedin":
+            Swal.fire({
+              icon: 'info',
+              title: 'เข้างานเรียบร้อย',
+              text: 'วันนี้คุณได้ทำการเข้างานแล้ว',
+              confirmButtonText: 'OK',
+              confirmButtonColor: '#3085d6',
+              width: '90%', // ปรับขนาดสำหรับมือถือ
+              customClass: {
+                popup: 'mobile-popup',
+                title: 'mobile-title',
+                confirmButton: 'mobile-btn',
+              },
+            }).then(() => {
+              handleScanSuccess(jsonData.data.token);
+            });
+            break;
+
+          case "alreadycheckedout":
+            Swal.fire({
+              icon: 'info',
+              title: 'ออกงานเรียบร้อย',
+              text: 'วันนี้คุณได้ทำการออกงานแล้ว',
+              confirmButtonText: 'OK',
+              confirmButtonColor: '#3085d6',
+              width: '90%', // ปรับขนาดสำหรับมือถือ
+              customClass: {
+                popup: 'mobile-popup',
+                title: 'mobile-title',
+                confirmButton: 'mobile-btn',
+              },
+            }).then(() => {
+              handleScanSuccess(jsonData.data.token);
+            });
+            break;
+
+          case "alreadycheckedinout":
+            Swal.fire({
+              icon: 'info',
+              title: 'เข้างาน/ออกงานแล้ว',
+              text: 'วันนี้คุณได้ทำการเข้างาน/ออกงานแล้ว',
+              confirmButtonText: 'OK',
+              confirmButtonColor: '#3085d6',
+              width: '90%', // ปรับขนาดสำหรับมือถือ
+              customClass: {
+                popup: 'mobile-popup',
+                title: 'mobile-title',
+                confirmButton: 'mobile-btn',
+              },
+            }).then(() => {
+              handleScanSuccess(jsonData.data.token);
+            });
+            break;
           case "register":
             console.log("User data received, awaiting scan...", jsonData.data.totaldirection);
             setToltalDirection(jsonData.data.totaldirection);
             break;
           case "scanning":
-            console.log("User data received, awaiting scan...",jsonData.data.instructions);
+            console.log("User data received, awaiting scan...", jsonData.data.instructions);
             setInstruction(jsonData.data.instructions);
             break;
           case "success":
@@ -345,7 +345,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
     return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanning, sendImage, handleWebSocketMessage,isAuthen]);
+  }, [isScanning, sendImage, handleWebSocketMessage, isAuthen]);
 
   // Form Handling
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -570,9 +570,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
               >
                 <Camera size={20} />
                 {isLogined || login
-                  ? (!disableCheckinorout ? ( 
-                    isCheckinroute !== null ?(isCheckinroute ==="checkin" ? "เข้างาน":"ออกงาน")  : "ยังไม่ถึงเวลาเข้าหรือออกงาน") : disableCheckinorouttext)
-                  :  isCheckinroute !== null ?(isCheckinroute ==="checkin" ? "เข้างาน":"ออกงาน")  :  "เข้าสู่ระบบ"}
+                  ? (!disableCheckinorout ? (
+                    isCheckinroute !== null ? (isCheckinroute === "checkin" ? "เข้างาน" : "ออกงาน") : "ยังไม่ถึงเวลาเข้าหรือออกงาน") : disableCheckinorouttext)
+                  : isCheckinroute !== null ? (isCheckinroute === "checkin" ? "เข้างาน" : "ออกงาน") : "เข้าสู่ระบบ"}
               </button>
             </div>
           </form>
@@ -606,9 +606,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                     className="absolute inset-0 w-full h-full object-cover"
                     mirrored={true}
                   />
-
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl">
+                    <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl top-[-50px]">
                     </div>
                   </div>
 
@@ -643,7 +642,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                         }}
                       >
                         {errorDirectiom || errorsMessage}
-                        </p>
+                      </p>
                     </div>
                   </div>
                 </>

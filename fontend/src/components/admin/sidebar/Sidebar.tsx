@@ -1,7 +1,4 @@
-import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Menu } from 'lucide-react';
 import {
     Users,
     FileText,
@@ -21,62 +18,58 @@ interface SidebarProps {
 const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const menuItems = [
         {
             path: "/admin/AdminManage",
-            title: "จัดการผู้ใช้งาน",
+            title: "User Management",
             icon: <Users size={20} />,
-            description: "เพิ่ม ลบ แก้ไขข้อมูลผู้ใช้",
+            description: "Add, delete, edit user information",
         },
-        // {
-        //     path: "/admin/AdminAccess",
-        //     title: "สิทธิ์การเข้าถึง",
-        //     icon: <Monitor size={20} />,
-        //     description: "กำหนดสิทธิ์การเข้าถึงระบบ",
-        // },
         {
             path: "/admin/AdminReports",
-            title: "รายงาน",
+            title: "Reports",
             icon: <FileText size={20} />,
-            description: "ดูรายงานการเข้าออกงาน",
+            description: "View work entry and exit reports",
         },
         {
             path: "/admin/AdminSettings",
-            title: "ตั้งค่าระบบ",
+            title: "System Settings",
             icon: <Settings size={20} />,
-            description: "ตั้งค่าทั่วไปของระบบ",
-        }, {
-            title: 'ออกจากระบบ',
-            // description: 'ออกจากระบบ',
+            description: "Configure general system settings",
+        },
+        {
+            title: 'Logout',
             path: '/admin/login',
-            icon: <LogOut size={24} />
+            icon: <LogOut size={20} />
         }
     ];
 
     const handleLogout = () => {
         Swal.fire({
-            title: "ยืนยันการออกจากระบบ",
-            text: "คุณต้องการออกจากระบบหรือไม่?",
+            title: "Confirm Logout",
+            text: "Are you sure you want to log out?",
             icon: "warning",
             showCancelButton: true,
             confirmButtonColor: "#d33",
             cancelButtonColor: "#3085d6",
-            confirmButtonText: "ออกจากระบบ",
-            cancelButtonText: "ยกเลิก",
+            confirmButtonText: "Logout",
+            cancelButtonText: "Cancel",
         }).then((result) => {
             if (result.isConfirmed) {
                 removeLogined();
                 navigate("/admin/Login");
-                window.location.reload(); // รีโหลดหน้า
+                window.location.reload(); // Reload page
             }
         });
     };
 
     const handleNavigate = (path: string) => {
-        navigate(path);
-        setIsMobileMenuOpen(false);
+        if (path === '/admin/login') {
+            handleLogout();
+        } else {
+            navigate(path);
+        }
     };
 
     // Desktop Sidebar
@@ -149,114 +142,32 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
 
     // Mobile Floating Button and Menu
     const MobileMenu = () => (
-        <div className="md:hidden fixed bottom-4 right-4 z-20">
-            <motion.button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="bg-gradient-to-r from-red-600 to-red-800 text-white p-4 rounded-full shadow-lg 
-                   hover:shadow-xl transform hover:scale-105 transition-all duration-300
-                   flex items-center justify-center"
-                whileTap={{ scale: 0.95 }}
-                animate={{
-                    rotate: isMobileMenuOpen ? 180 : 0
-                }}
-                transition={{ duration: 0.2 }}
-            >
-                {isMobileMenuOpen ? (
-                    <X size={24} className="text-white" />
-                ) : (
-                    <Menu size={24} className="text-white" />
-                )}
-            </motion.button>
-
-            <AnimatePresence mode="wait">
-                {isMobileMenuOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{
-                            opacity: 0,
-                            scale: 0.95,
-                            y: 20,
-                            transition: {
-                                duration: 0.2,
-                                ease: "easeInOut"
-                            }
-                        }}
-                        transition={{
-                            duration: 0.2,
-                            ease: "easeOut"
-                        }}
-                        className="absolute bottom-16 right-0 w-72 bg-gray-900 rounded-xl shadow-2xl overflow-hidden
-                       border border-gray-700"
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-100 border-t border-gray-500 z-20">
+            <div className="grid grid-cols-4 h-16">
+                {menuItems.map((item) => (
+                    <button
+                        key={item.path}
+                        onClick={() => handleNavigate(item.path)}
+                        className={`flex flex-col items-center justify-center py-2 relative 
+                        ${location.pathname === item.path
+                                ? 'text-red-700'
+                                : 'text-black hover:text-red-700'
+                            }`}
                     >
-                        <nav className="py-2">
-                            {menuItems.map((item, index) => (
-                                <motion.button
-                                    key={item.path}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{
-                                        opacity: 0,
-                                        x: -20,
-                                        transition: {
-                                            duration: 0.15,
-                                            delay: (menuItems.length - index - 1) * 0.05
-                                        }
-                                    }}
-                                    transition={{
-                                        delay: index * 0.1,
-                                        duration: 0.2
-                                    }}
-                                    onClick={() => {
-                                        if (item.path === '/admin/login') {
-                                            handleLogout();
-                                        } else {
-                                            handleNavigate(item.path);
-                                        }
-                                    }}
-                                    className={`w-full text-left transition-all duration-200 
-                                        ${location.pathname === item.path
-                                            ? 'bg-red-600 bg-opacity-20'
-                                            : 'hover:bg-gray-800'
-                                        } group`}
-                                >
-                                    <div className="px-4 py-3 flex items-center space-x-4">
-                                        <span
-                                            className={`flex-shrink-0 transform transition-transform group-hover:scale-110
-                                                ${location.pathname === item.path
-                                                    ? 'text-red-400'
-                                                    : 'text-gray-400 group-hover:text-red-400'
-                                                }`}
-                                        >
-                                            {item.icon}
-                                        </span>
-                                        <div className="flex flex-col">
-                                            <span
-                                                className={`font-medium transition-colors
-                                                    ${location.pathname === item.path
-                                                        ? 'text-red-400'
-                                                        : 'text-gray-300 group-hover:text-red-400'
-                                                    }`}
-                                            >
-                                                {item.title}
-                                            </span>
-                                            <span
-                                                className={`text-sm transition-colors
-                                                    ${location.pathname === item.path
-                                                        ? 'text-gray-300'
-                                                        : 'text-gray-500 group-hover:text-gray-300'
-                                                    }`}
-                                            >
-                                                {item.description}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </motion.button>
-                            ))}
-                        </nav>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        <div className="absolute h-1 w-full top-0 left-0">
+                            {location.pathname === item.path && (
+                                <div className="h-full bg-red-700 mx-auto w-8 rounded-b-full"></div>
+                            )}
+                        </div>
+                        {item.icon}
+                        {location.pathname === item.path && (
+                            <span className="text-xs font-semibold mt-1">
+                                {item.title}
+                            </span>
+                        )}
+                    </button>
+                ))}
+            </div>
         </div>
     );
 

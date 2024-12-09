@@ -69,7 +69,7 @@ const Header: React.FC<AdminHeaderProps> = ({
               <User size={20} className="text-red-600" />
             </div>
             <div className="text-left">
-              <div className="font-medium text-gray-900">ผู้ดูแลระบบ</div>
+              <div className="font-medium text-gray-900">System Administrator</div>
               <div className="text-sm text-gray-500">admin@example.com</div>
             </div>
           </div>
@@ -103,7 +103,7 @@ const Header: React.FC<AdminHeaderProps> = ({
                   <User size={20} className="text-red-600" />
                 </div>
                 <div className="text-left">
-                  <div className="font-medium text-gray-900">ผู้ดูแลระบบ</div>
+                  <div className="font-medium text-gray-900">System Administrator</div>
                   <div className="text-sm text-gray-500">admin@example.com</div>
                 </div>
               </div>

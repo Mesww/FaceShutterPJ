@@ -208,18 +208,18 @@ const AdminManage: React.FC = () => {
   const menuItems = [
     {
       path: "/admin/AdminManage",
-      title: "จัดการผู้ใช้งาน",
-      description: "เพิ่ม ลบ แก้ไขข้อมูลผู้ใช้",
+      title: "User Management",
+      description: "Add, delete, edit user information",
     },
     {
       path: "/admin/AdminReports",
-      title: "รายงาน",
-      description: "ดูรายงานการเข้าออกงาน",
+      title: "Reports",
+      description: "View work entry and exit reports",
     },
     {
       path: "/admin/AdminSettings",
-      title: "ตั้งค่าระบบ",
-      description: "ตั้งค่าทั่วไปของระบบ",
+      title: "System Settings",
+      description: "Configure general system settings",
     },
   ];
 
@@ -229,7 +229,7 @@ const AdminManage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        กำลังโหลดข้อมูล...
+        loading information...
       </div>
     );
   }
@@ -280,7 +280,7 @@ const AdminManage: React.FC = () => {
                   <Search className="w-5 h-5 text-gray-500 mr-2" />
                   <input
                     type="text"
-                    placeholder="ค้นหาตาม รหัสพนักงาน, ชื่อ, อีเมล, หรือเบอร์โทร"
+                    placeholder="Search by employee ID, name, email, or phone number."
                     value={searchUserTerm}
                     onChange={(e) => setSearchUserTerm(e.target.value)}
                     className="bg-transparent border-none outline-none flex-1"
@@ -299,7 +299,7 @@ const AdminManage: React.FC = () => {
                   className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition-colors"
                 >
                   <UserPlus className="w-4 h-4" />
-                  เพิ่มแอดมิน
+                  Add Admin
                 </button>
               </div>
             </div>
@@ -309,12 +309,12 @@ const AdminManage: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>รหัสพนักงาน</TableHead>
-                    <TableHead>ชื่อ</TableHead>
-                    <TableHead>อีเมล</TableHead>
-                    <TableHead>เบอร์โทรศัพท์</TableHead>
-                    <TableHead>บทบาท</TableHead>
-                    <TableHead className="text-right">จัดการ</TableHead>
+                    <TableHead>Employee ID</TableHead>
+                    <TableHead>Name Surname</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone Number</TableHead>
+                    <TableHead>Roles</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -333,14 +333,14 @@ const AdminManage: React.FC = () => {
                               className="flex items-center gap-1 bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-900 transition-colors"
                             >
                               <Edit className="w-4 h-4" />
-                              แก้ไข
+                              Edit
                             </button>
                             <button
                               onClick={() => handleDeleteUser(user.employee_id)}
                               className="flex items-center gap-1 bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
-                              ลบ
+                              Delete
                             </button>
                           </div>
                         </TableCell>
@@ -349,7 +349,7 @@ const AdminManage: React.FC = () => {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                        <div className="px-6 py-4 text-center text-gray-500">ไม่พบข้อมูลที่ค้นหา</div>
+                        <div className="px-6 py-4 text-center text-gray-500">No users found</div>
                       </TableCell>
                     </TableRow>
                   )}
@@ -360,26 +360,26 @@ const AdminManage: React.FC = () => {
             {isAddAdminModalVisible && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white p-6 rounded-lg w-full max-w-md">
-                  <h2 className="text-xl font-bold mb-4">เพิ่มแอดมิน</h2>
+                  <h2 className="text-xl font-bold mb-4">Add Admin</h2>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">รหัสพนักงาน</label>
+                      <label className="block text-sm font-medium mb-1">Employee ID</label>
                       <input
                         type="text"
                         value={newAdminEmployeeId}
                         onChange={(e) => setNewAdminEmployeeId(e.target.value)}
                         className="w-full p-2 border rounded"
-                        placeholder="กรอกรหัสพนักงาน"
+                        placeholder="Enter employee ID."
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">รหัสผ่าน</label>
+                      <label className="block text-sm font-medium mb-1">Password</label>
                       <input
                         type="password"
                         name="password"
                         className="w-full p-2 border rounded"
-                        placeholder="กรอกรหัสผ่าน"
+                        placeholder="Enter password."
                         required
                       />
                     </div>
@@ -392,7 +392,7 @@ const AdminManage: React.FC = () => {
                         }}
                         className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
                       >
-                        ยกเลิก
+                        Cancle
                       </button>
                       <button
                         type="button"
@@ -400,7 +400,7 @@ const AdminManage: React.FC = () => {
                         className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                         disabled={!newAdminEmployeeId}
                       >
-                        เพิ่มแอดมิน
+                        Add Admin
                       </button>
                     </div>
                   </div>
@@ -426,7 +426,7 @@ const AdminManage: React.FC = () => {
                   }}>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-1">รหัสพนักงาน</label>
+                        <label className="block text-sm font-medium mb-1">Employee ID</label>
                         <input
                           type="text"
                           name="employee_id"
@@ -436,7 +436,7 @@ const AdminManage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">ชื่อ</label>
+                        <label className="block text-sm font-medium mb-1">Name Surname</label>
                         <input
                           type="text"
                           name="name"
@@ -446,7 +446,7 @@ const AdminManage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">อีเมล</label>
+                        <label className="block text-sm font-medium mb-1">Email</label>
                         <input
                           type="email"
                           name="email"
@@ -456,7 +456,7 @@ const AdminManage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">เบอร์โทรศัพท์</label>
+                        <label className="block text-sm font-medium mb-1">Phone Number</label>
                         <input
                           type="tel"
                           name="tel"
@@ -466,7 +466,7 @@ const AdminManage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">บทบาท</label>
+                        <label className="block text-sm font-medium mb-1">Role</label>
                         <select
                           name="roles"
                           defaultValue={editingUser.roles}
@@ -485,12 +485,12 @@ const AdminManage: React.FC = () => {
                       {/* Password field for ADMIN */}
                       {editingUser.roles === 'ADMIN' && (
                         <div>
-                          <label className="block text-sm font-medium mb-1">รหัสผ่าน</label>
+                          <label className="block text-sm font-medium mb-1">Password</label>
                           <input
                             type="password"
                             name="password"
                             className="w-full p-2 border rounded"
-                            placeholder="กรอกรหัสผ่าน"
+                            placeholder="Enter password."
                             required={editingUser.roles === 'ADMIN'}
                           />
                         </div>
@@ -501,13 +501,13 @@ const AdminManage: React.FC = () => {
                           onClick={handleCancelEdit}
                           className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
                         >
-                          ยกเลิก
+                          Cancle
                         </button>
                         <button
                           type="submit"
                           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                         >
-                          บันทึก
+                          Save
                         </button>
                       </div>
                     </div>

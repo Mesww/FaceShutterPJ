@@ -11,30 +11,26 @@ const AdminSettings = () => {
 
     // Map paths to titles and descriptions
     const menuItems = [
-        {
-            path: "/admin/AdminDashboard",
-            title: "Dashboard",
-            description: "หน้าแดชบอร์ดหลัก",
-        },
+       
         {
             path: "/admin/AdminManage",
-            title: "จัดการผู้ใช้งาน",
-            description: "เพิ่ม ลบ แก้ไขข้อมูลผู้ใช้",
+            title: "User Management",
+            description: "Add, delete, edit user information",
         },
-        {
-            path: "/admin/AdminAccess",
-            title: "สิทธิ์การเข้าถึง",
-            description: "กำหนดสิทธิ์การเข้าถึงระบบ",
-        },
+        // {
+        //     path: "/admin/AdminAccess",
+        //     title: "สิทธิ์การเข้าถึง",
+        //     description: "กำหนดสิทธิ์การเข้าถึงระบบ",
+        // },
         {
             path: "/admin/AdminReports",
-            title: "รายงาน",
-            description: "ดูรายงานการเข้าออกงาน",
+            title: "Reports",
+            description: "View work entry and exit reports",
         },
         {
             path: "/admin/AdminSettings",
-            title: "ตั้งค่าระบบ",
-            description: "ตั้งค่าทั่วไปของระบบ",
+            title: "System Settings",
+            description: "Configure general system settings",
         },
     ];
 

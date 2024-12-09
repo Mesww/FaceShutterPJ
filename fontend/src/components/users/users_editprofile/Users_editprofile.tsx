@@ -192,7 +192,7 @@ const EditProfilePage: React.FC = () => {
       if (message.startsWith("{")) {
         const jsonData = JSON.parse(message);
         if (jsonData.data === undefined) return;
-        
+
         const status = jsonData.data.status;
         const messages = jsonData.data.message;
 
@@ -204,20 +204,20 @@ const EditProfilePage: React.FC = () => {
             await handleScanSuccess();
             break;
           case "progress":
-              console.log(messages);
-              setInstruction(messages);
-              break;
+            console.log(messages);
+            setInstruction(messages);
+            break;
           case "failed":
-                console.error("Error:", messages);
-                setInstruction("กรุณาวางใบหน้าให้อยู่ในกรอบ");
-              break;
+            console.error("Error:", messages);
+            setInstruction("กรุณาวางใบหน้าให้อยู่ในกรอบ");
+            break;
           case "stopped":
-                handleScanStop();
-              break;
-       
+            handleScanStop();
+            break;
+
         }
       }
-      
+
       // Handle direction instructions without resetting camera
       if (message.startsWith("Please move your head to:")) {
         const direction = message.replace("Please move your head to: ", "");
@@ -228,8 +228,8 @@ const EditProfilePage: React.FC = () => {
         setImageCount(0);
         setCurrentDirection(direction);
       }
-       // Handle incorrect direction message
-       else if (message.startsWith("Incorrect direction! Detected:")) {
+      // Handle incorrect direction message
+      else if (message.startsWith("Incorrect direction! Detected:")) {
         const match = message.match(/Incorrect direction! Detected: (\w+)/);
         console.log(match);
         if (match) {
@@ -246,7 +246,7 @@ const EditProfilePage: React.FC = () => {
           const count = parseInt(match[1]);
           const direction = match[2];
           console.log(direction);
-          console.log('dicrection:',directionInstructions[direction]);
+          console.log('dicrection:', directionInstructions[direction]);
           setImageCount(count);
           setCurrentDirection(direction);
           setInstruction(`${directionInstructions[direction]}`);
@@ -263,8 +263,8 @@ const EditProfilePage: React.FC = () => {
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [directionInstructions, handleScanSuccess,setImageCount]); // Minimize dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directionInstructions, handleScanSuccess, setImageCount]); // Minimize dependencies
 
   // WebSocket Setup and Cleanup
   useEffect(() => {
@@ -280,11 +280,11 @@ const EditProfilePage: React.FC = () => {
 
     const setupWebSocket = (url: string, token?: string) => {
       if (!isScanning) return;
-      
+
       cleanup();
       setIsLoadings(true);
       setLoadingMessage("กำลังเชื่อมต่อเซิฟเวอร์...");
-      
+
       if (!token) {
         setErrors("ไม่พบ Token");
         return;
@@ -322,10 +322,10 @@ const EditProfilePage: React.FC = () => {
     }
 
     return cleanup;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanning]); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScanning]);
 
-  
+
   // Map paths to titles and descriptions
   const menuItems = [
     {
@@ -368,7 +368,7 @@ const EditProfilePage: React.FC = () => {
       errors
     });
     // refreshUserData();
-  }, [connectionStatus,errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel]);
+  }, [connectionStatus, errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel]);
 
 
 
@@ -482,72 +482,72 @@ const EditProfilePage: React.FC = () => {
           </div>
 
           {isScanning && (
-           (
-            <div className="fixed inset-0 bg-gray-900 z-50">
-              <button
-                onClick={handleClose}
-                className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
-              >
-                <X size={32} />
-              </button>
-          
-              <button
-                onClick={handleSwitchCamera}
-                className="absolute top-4 left-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
-              >
-                <FlipHorizontal size={24} />
-              </button>
-          
-              <div className="relative h-screen">
-                {isLoadings && <LoadingSpinner message={loadingmessage} />}
-                <>
-                  <Webcam
-                    ref={webcamRef}
-                    audio={false}
-                    screenshotFormat="image/jpeg"
-                    className="absolute inset-0 w-full h-full object-cover"
-                    mirrored={true}
-                  />
-          
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl">
+            (
+              <div className="fixed inset-0 bg-gray-900 z-50">
+                <button
+                  onClick={handleClose}
+                  className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
+                >
+                  <X size={32} />
+                </button>
+
+                <button
+                  onClick={handleSwitchCamera}
+                  className="absolute top-4 left-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
+                >
+                  <FlipHorizontal size={24} />
+                </button>
+
+                <div className="relative h-screen">
+                  {isLoadings && <LoadingSpinner message={loadingmessage} />}
+                  <>
+                    <Webcam
+                      ref={webcamRef}
+                      audio={false}
+                      screenshotFormat="image/jpeg"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      mirrored={true}
+                    />
+
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl top-[-50px]">
+                      </div>
                     </div>
-                  </div>
-          
-                  <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
-                    <div className="text-white text-center">
-                      {currentDirection && imageCount < toltalDirection && (
+
+                    <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
+                      <div className="text-white text-center">
+                        {currentDirection && imageCount < toltalDirection && (
+                          <p
+                            className="text-xl font-semibold mb-2"
+                            style={{
+                              textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
+                            }}
+                          >
+                            {`${currentDirection} - Image ${imageCount}/${toltalDirection}`}
+                          </p>
+                        )}
                         <p
-                          className="text-xl font-semibold mb-2"
+                          className="text-2xl font-semibold"
                           style={{
                             textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
                           }}
                         >
-                          {`${currentDirection} - Image ${imageCount}/${toltalDirection}`}
+                          {imageCount === toltalDirection ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
                         </p>
-                      )}
-                      <p
-                        className="text-2xl font-semibold"
-                        style={{
-                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                        }}
-                      >
-                        {imageCount === toltalDirection ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
-                      </p>
-                      <p
-                        className="text-xl font-semibold text-red-500"
-                        style={{
-                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                        }}
-                      >
-                        {errorDirectiom}
+                        <p
+                          className="text-xl font-semibold text-red-500"
+                          style={{
+                            textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
+                          }}
+                        >
+                          {errorDirectiom}
                         </p>
+                      </div>
                     </div>
-                  </div>
-                </>
+                  </>
+                </div>
               </div>
-            </div>
-          )
+            )
           )}
         </div>
       </div >

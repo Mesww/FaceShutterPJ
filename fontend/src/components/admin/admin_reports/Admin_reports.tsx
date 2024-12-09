@@ -82,25 +82,25 @@ const AdminReports = () => {
   // Determine combined status
   const getCombinedStatus = (record: AttendanceRecord): string => {
     if (record.status === 'Incomplete') {
-      return 'ขาดงาน';
+      return 'Absent';
     }
     if (record.status === 'Outcomplete') {
-      return 'ขาดงาน';
+      return 'Absent';
     }
     if (record.status === 'Complete') {
-      return 'มาปกติ';
+      return 'Present';
     }
-    return 'ขาดงาน';
+    return 'Absent';
   };
 
   // Download Excel
   const downloadAttendanceExcel = () => {
     const excelData = filteredAttendanceRecords.map(record => ({
-      'วันที่': formatDateForDisplay(record.date),
-      'รหัสพนักงาน': record.employee_id,
-      'เวลาเข้า': record.check_in_time,
-      'เวลาออก': record.check_out_time,
-      'สถานะ': getCombinedStatus(record),
+      'Date': formatDateForDisplay(record.date),
+      'Employee ID': record.employee_id,
+      'Check-in time': record.check_in_time,
+      'Check-out time': record.check_out_time,
+      'Status': getCombinedStatus(record),
       // 'สถานที่': record.location || '-'
     }));
 
@@ -117,11 +117,11 @@ const AdminReports = () => {
     ];
     ws['!cols'] = columnWidths;
 
-    XLSX.utils.book_append_sheet(wb, ws, "รายงานการเข้าออกงาน");
+    XLSX.utils.book_append_sheet(wb, ws, "Attendance report");
 
     const formattedStartDate = formatDateForDisplay(startDate);
     const formattedEndDate = formatDateForDisplay(endDate);
-    XLSX.writeFile(wb, `รายงานการเข้าออกงาน_${formattedStartDate}_ถึง_${formattedEndDate}.xlsx`);
+    XLSX.writeFile(wb, `Attendance report_${formattedStartDate}_to_${formattedEndDate}.xlsx`);
   };
 
   // Download PDF
@@ -135,9 +135,9 @@ const AdminReports = () => {
     const formattedEndDate = formatDateForDisplay(endDate);
 
     doc.setFontSize(18);
-    doc.text(`รายงานการเข้าออกงาน`, 14, 15);
+    doc.text(`Attendance report`, 14, 15);
     doc.setFontSize(14);
-    doc.text(`วันที่ ${formattedStartDate} ถึง ${formattedEndDate}`, 14, 22);
+    doc.text(`Date ${formattedStartDate} to ${formattedEndDate}`, 14, 22);
 
     const tableData = filteredAttendanceRecords.map((record) => [
       formatDateForDisplay(record.date),
@@ -150,7 +150,7 @@ const AdminReports = () => {
 
     autoTable(doc, {
       startY: 30,
-      head: [["วันที่", "รหัสพนักงาน", "เวลาเข้า", "เวลาออก", "สถานะ"]],
+      head: [["Date", "Employee ID", "Check-in time", "Check-out time", "Status"]],
       body: tableData,
       theme: "grid",
       styles: {
@@ -176,7 +176,7 @@ const AdminReports = () => {
       }
     });
 
-    doc.save(`รายงานการเข้าออกงาน_${formattedStartDate}_ถึง_${formattedEndDate}.pdf`);
+    doc.save(`Attendance report_${formattedStartDate}_to_${formattedEndDate}.pdf`);
   };
 
   // Format date for display
@@ -192,29 +192,24 @@ const AdminReports = () => {
   // Map paths to titles and descriptions
   const menuItems = [
     {
-      path: "/admin/AdminDashboard",
-      title: "Dashboard",
-      description: "หน้าแดชบอร์ดหลัก",
-    },
-    {
       path: "/admin/AdminManage",
-      title: "จัดการผู้ใช้งาน",
-      description: "เพิ่ม ลบ แก้ไขข้อมูลผู้ใช้",
+      title: "User Management",
+      description: "Add, delete, edit user information",
     },
-    {
-      path: "/admin/AdminAccess",
-      title: "สิทธิ์การเข้าถึง",
-      description: "กำหนดสิทธิ์การเข้าถึงระบบ",
-    },
+    // {
+    //   path: "/admin/AdminAccess",
+    //   title: "สิทธิ์การเข้าถึง",
+    //   description: "กำหนดสิทธิ์การเข้าถึงระบบ",
+    // },
     {
       path: "/admin/AdminReports",
-      title: "รายงาน",
-      description: "ดูรายงานการเข้าออกงาน",
+      title: "Reports",
+      description: "View work entry and exit reports",
     },
     {
       path: "/admin/AdminSettings",
-      title: "ตั้งค่าระบบ",
-      description: "ตั้งค่าทั่วไปของระบบ",
+      title: "System Settings",
+      description: "Configure general system settings",
     },
   ];
 
@@ -254,7 +249,7 @@ const AdminReports = () => {
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  วันที่เริ่มต้น
+                  Start date
                 </label>
                 <input
                   type="date"
@@ -265,7 +260,7 @@ const AdminReports = () => {
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  วันที่สิ้นสุด
+                  End date
                 </label>
                 <input
                   type="date"
@@ -277,12 +272,12 @@ const AdminReports = () => {
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ค้นหารหัสพนักงาน
+                  Search by employee ID
                 </label>
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="ค้นหารหัสพนักงาน"
+                    placeholder="Search by employee ID"
                     value={searchReportName}
                     onChange={(e) => setSearchReportName(e.target.value)}
                     className="w-full p-2 pl-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
@@ -296,7 +291,7 @@ const AdminReports = () => {
           {/* Loading and Error Handling */}
           {loading && (
             <div className="text-center py-4 text-gray-600">
-              กำลังโหลดข้อมูล...
+              Loading information...
             </div>
           )}
 
@@ -312,11 +307,11 @@ const AdminReports = () => {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">วันที่</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">รหัสพนักงาน</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาเข้า</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">เวลาออก</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานะ</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Date</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Employee ID</th>
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Check-in time</th>
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Check-out time</th>
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Status</th>
                     {/* <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">สถานที่</th> */}
                   </tr>
                 </thead>
@@ -324,7 +319,7 @@ const AdminReports = () => {
                   {filteredAttendanceRecords.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="text-center py-4 text-gray-600">
-                        ไม่พบข้อมูลในช่วงเวลาที่เลือก
+                        No data found for the selected time period.
                       </td>
                     </tr>
                   ) : (
@@ -356,14 +351,14 @@ const AdminReports = () => {
               className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
             >
               <FileSpreadsheet className="w-4 h-4 mr-2" />
-              <span>ดาวน์โหลด Excel</span>
+              <span>Download Excel</span>
             </button>
             <button
               onClick={downloadAttendancePDF}
               className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
             >
               <File className="w-4 h-4 mr-2" />
-              <span>ดาวน์โหลด PDF</span>
+              <span>Download PDF</span>
             </button>
           </div>
         </div>
