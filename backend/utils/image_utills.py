@@ -92,6 +92,7 @@ class Phone_Detection:
         # Combine texture metrics
         texture_variance = np.var(texture_features)
         return texture_variance > 0.25  # Increased threshold
+    
     def detect_phone_shape(self,frame: np.ndarray) -> bool:
         """
         Detect rectangular shapes with phone-like aspect ratios.

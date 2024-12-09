@@ -37,7 +37,7 @@ const LoginPage = () => {
           text: 'กรุณาตรวจสอบข้อมูลอีกครั้ง',
         });
       }
-    } catch (error) {
+    } catch {
       Swal.fire({
         icon: 'error',
         title: 'เกิดข้อผิดพลาด',
