@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Eye, EyeOff } from 'lucide-react';
 import { adminLogin } from '@/containers/userLogin';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 const LoginPage = () => {
   const [employee_id, setemployee_id] = useState('');
@@ -16,29 +17,36 @@ const LoginPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
+
     try {
-      // Add your login logic here
-      // await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Login attempt with:', { employee_id, password });
-     const  is_login = await adminLogin(employee_id, password);
+      const is_login = await adminLogin(employee_id, password);
 
       if (is_login) {
-        console.log('Login successful');
-        // Redirect to the dashboard
-        // history.push('/dashboard');
+        Swal.fire({
+          icon: 'success',
+          title: 'เข้าสู่ระบบสำเร็จ',
+          text: 'กำลังเปลี่ยนเส้นทาง...',
+          timer: 2000,
+          showConfirmButton: false,
+        });
         navigate('/admin/AdminManage');
       } else {
-        console.log('Login failed');
+        Swal.fire({
+          icon: 'error',
+          title: 'เข้าสู่ระบบล้มเหลว',
+          text: 'กรุณาตรวจสอบข้อมูลอีกครั้ง',
+        });
       }
     } catch (error) {
-      console.error('Login failed:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'เกิดข้อผิดพลาด',
+        text: 'ไม่สามารถเข้าสู่ระบบได้',
+      });
     } finally {
       setIsLoading(false);
     }
-  };
+  };;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">

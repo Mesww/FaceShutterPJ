@@ -78,10 +78,10 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed,isLogined,logout,se
           title: 'คุณต้องการออกจากระบบหรือไม่?',
           icon: 'warning',
           showCancelButton: true,
-          confirmButtonText: 'ตกลง',
+          confirmButtonText: 'ออกจากระบบ',
           cancelButtonText: 'ยกเลิก',
-          confirmButtonColor: '#2563eb',
-          cancelButtonColor: '#d33',
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
           reverseButtons: false, // ไม่ต้องสลับปุ่ม
           width: '90%', // ปรับขนาดสำหรับมือถือ
           customClass: {

@@ -57,7 +57,7 @@ export const adminLogin = async (employeeId:string, password:string) =>  {
         // Send encrypted data to backend
         const response = await axios.post(BACKEND_URL+"/api/auth/login", encryptedData);
 
-        alert(response.data.message);
+        // alert(response.data.message);
         if (response.data.token) {
             setLogined(response.data.token);
             return true;

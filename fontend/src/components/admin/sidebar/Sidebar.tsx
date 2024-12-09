@@ -11,6 +11,7 @@ import {
     ChevronRight,
 } from "lucide-react";
 import { removeLogined } from "@/containers/userLogin";
+import Swal from "sweetalert2";
 
 interface SidebarProps {
     isSidebarCollapsed: boolean;
@@ -47,18 +48,30 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
             icon: <Settings size={20} />,
             description: "ตั้งค่าทั่วไปของระบบ",
         }, {
-            title: 'Logout',
-            description: 'ออกจากระบบ',
+            title: 'ออกจากระบบ',
+            // description: 'ออกจากระบบ',
             path: '/admin/login',
             icon: <LogOut size={24} />
         }
     ];
 
     const handleLogout = () => {
-        removeLogined();
-        // เพิ่มโลจิกการ logout ที่นี่
-        navigate("/admin/Login");
-        window.location.reload(); // รีโหลดหน้า
+        Swal.fire({
+            title: "ยืนยันการออกจากระบบ",
+            text: "คุณต้องการออกจากระบบหรือไม่?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "ออกจากระบบ",
+            cancelButtonText: "ยกเลิก",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                removeLogined();
+                navigate("/admin/Login");
+                window.location.reload(); // รีโหลดหน้า
+            }
+        });
     };
 
     const handleNavigate = (path: string) => {
@@ -160,16 +173,16 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ 
-                            opacity: 0, 
-                            scale: 0.95, 
+                        exit={{
+                            opacity: 0,
+                            scale: 0.95,
                             y: 20,
-                            transition: { 
+                            transition: {
                                 duration: 0.2,
-                                ease: "easeInOut" 
+                                ease: "easeInOut"
                             }
                         }}
-                        transition={{ 
+                        transition={{
                             duration: 0.2,
                             ease: "easeOut"
                         }}
@@ -182,15 +195,15 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
                                     key={item.path}
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    exit={{ 
-                                        opacity: 0, 
+                                    exit={{
+                                        opacity: 0,
                                         x: -20,
                                         transition: {
                                             duration: 0.15,
                                             delay: (menuItems.length - index - 1) * 0.05
                                         }
                                     }}
-                                    transition={{ 
+                                    transition={{
                                         delay: index * 0.1,
                                         duration: 0.2
                                     }}
