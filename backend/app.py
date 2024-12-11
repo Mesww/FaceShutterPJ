@@ -14,7 +14,7 @@ from backend.configs.config import (
     public_key_pem
 )
 from backend.models.user_model import User, Userupdate
-from backend.routes import face_routes, user_routes, history_routes, checkinout_routes,auth_routes
+from backend.routes import face_routes, user_routes, history_routes, checkinout_routes,auth_routes,logs_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
 from backend.services.face_service import Face_service
@@ -94,6 +94,12 @@ app.include_router(
 app.include_router(
     auth_routes.router,  # เพิ่มการรวม user_routes
     prefix="/api/auth",  # Base path for user-related routes
+    tags=["auth"],
+)
+
+app.include_router(
+    logs_routes.router,  # เพิ่มการรวม user_routes
+    prefix="/api/logs",  # Base path for user-related routes
     tags=["auth"],
 )
 

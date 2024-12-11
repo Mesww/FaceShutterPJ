@@ -336,6 +336,14 @@ class Face_service:
         WebSocket handler for face scanning and authentication
         Returns tuple of (user, authentication_message, confidence_score)
         """
+        # เพิ่ม logs สำหรับแต่ละ status
+        logs = {
+            "stopped": [],
+            "error": [],
+            "failed": [],
+            "progress": []
+        }
+
         try:
             # Initialize services
             user_service = UserService()
@@ -344,6 +352,13 @@ class Face_service:
             # Fetch and validate user
             user_response = await user_service.get_user_by_employee_id(employee_id)
             if not user_response.data:
+                log_message = {
+                    "timestamp": datetime.now().isoformat(), 
+                    "employee_id": employee_id, 
+                    "message": "User not found"
+                }
+                logs["failed"].append(log_message)
+                
                 await websocket.send_json(
                     {"data": {"status": "failed", "message": "User not found"}}
                 )
@@ -351,6 +366,13 @@ class Face_service:
 
             user = User(**user_response.data)
             if not user.embeddeds:
+                log_message = {
+                    "timestamp": datetime.now().isoformat(), 
+                    "employee_id": employee_id, 
+                    "message": "No face encodings found for user"
+                }
+                logs["failed"].append(log_message)
+                
                 await websocket.send_json(
                     {
                         "data": {
@@ -374,6 +396,13 @@ class Face_service:
                     # Receive and validate frame data
                     data = await websocket.receive_json()
                     if not data.get("image"):
+                        log_message = {
+                            "timestamp": datetime.now().isoformat(), 
+                            "attempt": attempt_count + 1, 
+                            "message": "No image data received"
+                        }
+                        logs["failed"].append(log_message)
+                        
                         await websocket.send_json(
                             {
                                 "data": {
@@ -390,6 +419,13 @@ class Face_service:
                     )
                     frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
                     if frame is None:
+                        log_message = {
+                            "timestamp": datetime.now().isoformat(), 
+                            "attempt": attempt_count + 1, 
+                            "message": "Invalid image data"
+                        }
+                        logs["failed"].append(log_message)
+                        
                         await websocket.send_json(
                             {
                                 "data": {
@@ -419,6 +455,14 @@ class Face_service:
                         last_confidence = confidence
 
                         # Send progress message
+                        log_message = {
+                            "timestamp": datetime.now().isoformat(), 
+                            "attempt": attempt_count + 1,
+                            "consecutive_successes": consecutive_successes,
+                            "confidence": confidence
+                        }
+                        logs["progress"].append(log_message)
+                        
                         await websocket.send_json(
                             {
                                 "data": {
@@ -432,6 +476,14 @@ class Face_service:
                         if consecutive_successes >= consecutive_successes_needed:
                             return user, "ยืนยันตัวตนสำเร็จ", last_confidence
                     else:
+                        log_message = {
+                            "timestamp": datetime.now().isoformat(), 
+                            "attempt": attempt_count + 1,
+                            "message": message,
+                            "confidence": confidence
+                        }
+                        logs["failed"].append(log_message)
+                        
                         await websocket.send_json(
                             {
                                 "data": {
@@ -443,9 +495,23 @@ class Face_service:
                         )
 
                 except WebSocketDisconnect:
+                    log_message = {
+                        "timestamp": datetime.now().isoformat(), 
+                        "attempt": attempt_count + 1,
+                        "message": "WebSocket disconnected during face scan"
+                    }
+                    logs["error"].append(log_message)
+                    
                     print("WebSocket disconnected during face scan")
                     return None, "Connection lost", 0.0
                 except Exception as e:
+                    log_message = {
+                        "timestamp": datetime.now().isoformat(), 
+                        "attempt": attempt_count + 1,
+                        "message": f"Face scan error: {str(e)}"
+                    }
+                    logs["error"].append(log_message)
+                    
                     print(f"Error during face scan: {str(e)}")
                     await websocket.send_json(
                         {
@@ -459,6 +525,12 @@ class Face_service:
                 attempt_count += 1
 
             # If we've exhausted all attempts
+            log_message = {
+                "timestamp": datetime.now().isoformat(), 
+                "message": "คุณไม่สามารถยืนยันตัวตนได้ - ครบจำนวนครั้งที่กำหนดแล้ว"
+            }
+            logs["stopped"].append(log_message)
+            
             await websocket.send_json(
                 {
                     "data": {
@@ -470,6 +542,12 @@ class Face_service:
             return None, "คุณไม่สามารถยืนยันตัวตนได้ - ครบจำนวนครั้งที่กำหนดแล้ว", 0.0
 
         except Exception as e:
+            log_message = {
+                "timestamp": datetime.now().isoformat(), 
+                "message": f"Fatal error in face_scan_ws: {str(e)}"
+            }
+            logs["error"].append(log_message)
+            
             print(f"Fatal error in face_scan_ws: {str(e)}")
             await websocket.send_json(
                 {
@@ -480,6 +558,160 @@ class Face_service:
                 }
             )
             return None, f"Fatal error: {str(e)}", 0.0
+        
+        # สามารถ return logs เพื่อใช้งานภายนอกฟังก์ชันได้หากต้องการ
+        finally:
+            return logs
+        
+    # async def face_scan_ws(self, websocket: WebSocket, employee_id: str):
+    #     """
+    #     WebSocket handler for face scanning and authentication
+    #     Returns tuple of (user, authentication_message, confidence_score)
+    #     """
+    #     try:
+    #         # Initialize services
+    #         user_service = UserService()
+    #         auth_service = FaceAuthenticationService()
+
+    #         # Fetch and validate user
+    #         user_response = await user_service.get_user_by_employee_id(employee_id)
+    #         if not user_response.data:
+    #             await websocket.send_json(
+    #                 {"data": {"status": "failed", "message": "User not found"}}
+    #             )
+    #             return None, "User not found", 0.0
+
+    #         user = User(**user_response.data)
+    #         if not user.embeddeds:
+    #             await websocket.send_json(
+    #                 {
+    #                     "data": {
+    #                         "status": "failed",
+    #                         "message": "No face encodings found for user",
+    #                     }
+    #                 }
+    #             )
+    #             return None, "No face encodings found", 0.0
+
+    #         # Authentication attempt counter and threshold
+    #         max_attempts = MAX_ATTEMPTS
+    #         attempt_count = 0
+    #         min_confidence_threshold = MIN_CONFIDENCE_THRESHOLD
+    #         consecutive_successes_needed = CONSECUTIVE_SUCCESS_NEEDED
+    #         consecutive_successes = 0
+    #         last_confidence = 0.0
+
+    #         while attempt_count < max_attempts:
+    #             try:
+    #                 # Receive and validate frame data
+    #                 data = await websocket.receive_json()
+    #                 if not data.get("image"):
+    #                     await websocket.send_json(
+    #                         {
+    #                             "data": {
+    #                                 "status": "failed",
+    #                                 "message": "No image data received",
+    #                             }
+    #                         }
+    #                     )
+    #                     continue
+
+    #                 # Process frame
+    #                 frame_bytes = np.frombuffer(
+    #                     bytearray(data["image"]), dtype=np.uint8
+    #                 )
+    #                 frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
+    #                 if frame is None:
+    #                     await websocket.send_json(
+    #                         {
+    #                             "data": {
+    #                                 "status": "failed",
+    #                                 "message": "Invalid image data",
+    #                             }
+    #                         }
+    #                     )
+    #                     continue
+
+    #                 frame = cv2.flip(frame, 1)  # Mirror image
+
+    #                 # Authenticate face
+    #                 is_authenticated, confidence, message = (
+    #                     await auth_service.authenticate_face(
+    #                         websocket, frame, user.embeddeds
+    #                     )
+    #                 )
+
+    #                 # Debug logging
+    #                 print(
+    #                     f"Attempt {attempt_count + 1}: Auth={is_authenticated}, Confidence={confidence:.2f}, Message={message}, consecutive_successes={consecutive_successes}"
+    #                 )
+
+    #                 if is_authenticated and confidence >= min_confidence_threshold:
+    #                     consecutive_successes += 1
+    #                     last_confidence = confidence
+
+    #                     # Send progress message
+    #                     await websocket.send_json(
+    #                         {
+    #                             "data": {
+    #                                 "status": "progress",
+    #                                 "message": f"แสกนสำเร็จ: {consecutive_successes}/{consecutive_successes_needed}",
+    #                                 "confidence": confidence,
+    #                             }
+    #                         }
+    #                     )
+
+    #                     if consecutive_successes >= consecutive_successes_needed:
+    #                         return user, "ยืนยันตัวตนสำเร็จ", last_confidence
+    #                 else:
+    #                     await websocket.send_json(
+    #                         {
+    #                             "data": {
+    #                                 "status": "failed",
+    #                                 "message": message,
+    #                                 "confidence": confidence,
+    #                             }
+    #                         }
+    #                     )
+
+    #             except WebSocketDisconnect:
+    #                 print("WebSocket disconnected during face scan")
+    #                 return None, "Connection lost", 0.0
+    #             except Exception as e:
+    #                 print(f"Error during face scan: {str(e)}")
+    #                 await websocket.send_json(
+    #                     {
+    #                         "data": {
+    #                             "status": "error",
+    #                             "message": f"Face scan error: {str(e)}",
+    #                         }
+    #                     }
+    #                 )
+
+    #             attempt_count += 1
+
+    #         # If we've exhausted all attempts
+    #         await websocket.send_json(
+    #             {
+    #                 "data": {
+    #                     "status": "stopped",
+    #                     "message": "คุณไม่สามารถยืนยันตัวตนได้ - ครบจำนวนครั้งที่กำหนดแล้ว",
+    #                 }
+    #             }
+    #         )
+    #         return None, "คุณไม่สามารถยืนยันตัวตนได้ - ครบจำนวนครั้งที่กำหนดแล้ว", 0.0
+
+    #     except Exception as e:
+    #         print(f"Fatal error in face_scan_ws: {str(e)}")
+    #         await websocket.send_json(
+    #             {
+    #                 "data": {
+    #                     "status": "error",
+    #                     "message": "Internal server error during face scan",
+    #                 }
+    #             }
+    #         )
+    #         return None, f"Fatal error: {str(e)}", 0.0
 
     def generate_encodeings(self, images):
         try:
