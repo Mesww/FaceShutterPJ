@@ -10,11 +10,11 @@ pip install -r requirements.txt
 
 
 # Development
-    uvicorn backend.main:app --reload
+    uvicorn backend.app:app --reload
 ## Window
     uvicorn backend.app:app --reload 
 # Production
-    gunicorn backend.main:app -w 4 -k uvicorn.workers.UvicornWorker
+    gunicorn backend.app:app -w 4 -k uvicorn.workers.UvicornWorker
 
 .env need 
 MONGOURL = database url

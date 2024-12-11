@@ -7,6 +7,7 @@ import THSarabunNew from "/font/THSarabunNew.ttf";
 import * as XLSX from 'xlsx';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header';
+import { BACKEND_URL } from '@/configs/backend';
 
 // Updated interface to match API response
 interface AttendanceRecord {
@@ -48,7 +49,7 @@ const AdminReports = () => {
       setError(null);
       try {
         const response = await axios.get(
-          `http://localhost:8000/api/history/get_all_history_records/${startDate}/${endDate}`
+          `${BACKEND_URL}/api/history/get_all_history_records/${startDate}/${endDate}`
         );
 
         // แก้ไขการดึงข้อมูล

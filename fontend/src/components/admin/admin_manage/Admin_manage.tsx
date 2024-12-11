@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { BACKEND_URL } from '@/configs/backend';
 
 interface User {
   employee_id: string;
@@ -91,7 +92,7 @@ const AdminManage: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:8000/api/users/get_all_user');
+      const response = await axios.get(`${BACKEND_URL}/api/users/get_all_user`);
       setUsers(response.data);
       setLoading(false);
     } catch (err) {
@@ -137,7 +138,7 @@ const AdminManage: React.FC = () => {
 
       // Make API call to update user
       const response = await axios.put(
-        `http://localhost:8000/api/users/update_user_by_employee_id/${originalEmployeeId}`,
+        `${BACKEND_URL}/api/users/update_user_by_employee_id/${originalEmployeeId}`,
         requestBody
       );
 
