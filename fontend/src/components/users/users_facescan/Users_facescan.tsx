@@ -88,6 +88,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         }
         const status = jsonData.data.status;
         const messages = jsonData.data.message;
+        console.log("Status:", status);
+        
         switch (status) {
           case "progress":
             console.log(messages);
@@ -191,7 +193,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           setErrorDirection(errorDetails);
         }
       }
-
       // Existing other message handlers...
       else if (message.startsWith("Image ")) {
         const match = message.match(/Image (\d+) captured for (\w+)/);
@@ -202,11 +203,25 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           setCurrentDirection(direction);
           setInstruction(`${directionInstructions[direction]}`);
           setErrorDirection('')
-
         }
       }
       else if (message.startsWith("User data and images saved successfully")) {
-        handleScanStop();
+        // Show SweetAlert for successful scan
+        Swal.fire({
+          icon: 'success',
+          title: 'บันทึกข้อมูลสำเร็จ',
+          text: 'ระบบได้บันทึกภาพและข้อมูลของคุณเรียบร้อยแล้ว',
+          confirmButtonText: 'ตกลง',
+          confirmButtonColor: '#3085d6',
+          width: '90%',
+          customClass: {
+            popup: 'mobile-popup',
+            title: 'mobile-title',
+            confirmButton: 'mobile-btn',
+          },
+        }).then(() => {
+          handleScanStop();
+        });
       }
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
@@ -230,6 +245,35 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       setLogined(token);
       setIsLogined(true);
       setLogin(true);
+      // Add SweetAlert for successful scan
+      Swal.fire({
+        icon: 'success',
+        title: 'เข้าสู่ระบบสำเร็จ',
+        text: 'การสแกนใบหน้าเข้าสู่ระบบของคุณเสร็จสมบูรณ์',
+        confirmButtonText: 'ตกลง',
+        confirmButtonColor: '#3085d6',
+        width: '90%',
+        customClass: {
+          popup: 'mobile-popup',
+          title: 'mobile-title',
+          confirmButton: 'mobile-btn',
+        },
+      });
+    }
+    else if (!token) {
+      Swal.fire({
+        icon: 'success',
+        title: 'บันทึกข้อมูลสำเร็จ',
+        text: 'ระบบได้บันทึกภาพและข้อมูลของคุณเรียบร้อยแล้ว',
+        confirmButtonText: 'ตกลง',
+        confirmButtonColor: '#3085d6',
+        width: '90%',
+        customClass: {
+          popup: 'mobile-popup',
+          title: 'mobile-title',
+          confirmButton: 'mobile-btn',
+        },
+      });
     }
     handleScanStop();
     fetchCheckinoroutTime();

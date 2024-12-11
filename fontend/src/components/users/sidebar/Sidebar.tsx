@@ -204,11 +204,9 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed, isLogined, logout,
                             )}
                         </div>
                         {item.icon}
-                        {location.pathname === item.path && (
-                            <span className="text-xs font-semibold mt-1">
-                                {item.title}
-                            </span>
-                        )}
+                        <span className={`text-xs font-semibold mt-1 ${location.pathname === item.path ? '' : 'text-[10px]'}`}>
+                            {item.title}
+                        </span>
                     </button>
                 ))}
                 {isLogined && (
@@ -218,6 +216,7 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed, isLogined, logout,
                     >
                         <div className="absolute h-1 w-full top-0 left-0"></div>
                         <LogOut size={20} />
+                        <span className="text-xs mt-1">Logout</span>
                     </button>
                 )}
             </div>

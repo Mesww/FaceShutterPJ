@@ -35,6 +35,10 @@ const EditProfilePage: React.FC = () => {
   const [name, setName] = useState(userData?.name || '');
   const [email, setEmail] = useState(userData?.email || '');
   const [phone, setPhone] = useState(userData?.tel || '');
+
+  const [countdown, setCountdown] = useState<number>(0);
+  const [isCountdownActive, setIsCountdownActive] = useState<boolean>(false);
+
   // console.log(userData)
 
   const [websocket, setWebSocket] = useState<WebSocket | null>(null);
@@ -176,6 +180,19 @@ const EditProfilePage: React.FC = () => {
     await fetchCheckinoroutTime();
     await refreshUserData();
     handleScanStop();
+
+    // Show SweetAlert after successful scan
+    Swal.fire({
+      title: 'สแกนสำเร็จ!',
+      text: 'คุณได้อัปเดตรูปโปรไฟล์เรียบร้อยแล้ว',
+      icon: 'success',
+      confirmButtonText: 'ตกลง',
+      width: '90%',
+      customClass: {
+        popup: 'mobile-popup',
+        title: 'mobile-title',
+      },
+    });
   };
 
   const handleHeadMovementInstruction = (message: string) => {
@@ -370,7 +387,34 @@ const EditProfilePage: React.FC = () => {
     // refreshUserData();
   }, [connectionStatus, errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel]);
 
+  // Countdown logic
+  useEffect(() => {
+    let countdownTimer: NodeJS.Timeout;
 
+    if (isCountdownActive && countdown > 0) {
+      countdownTimer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownTimer);
+            setIsCountdownActive(false);
+            setIsScanning(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (countdownTimer) clearInterval(countdownTimer);
+    };
+  }, [isCountdownActive, countdown]);
+
+  // Modify the start scanning method
+  const startScanningWithCountdown = () => {
+    setCountdown(3); // Start 3-second countdown
+    setIsCountdownActive(true);
+  };
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -427,11 +471,19 @@ const EditProfilePage: React.FC = () => {
                       <UserCircle size={128} className="text-gray-400" />
                     )}
                     <button
-                      onClick={() => setIsScanning(true)}
+                      onClick={startScanningWithCountdown}
                       className="absolute bottom-0 right-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
                     >
                       <Camera size={20} />
                     </button>
+                    {/* Countdown overlay */}
+                    {isCountdownActive && (
+                      <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+                        <div className="text-white text-9xl font-bold animate-pulse">
+                          {countdown}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <p className="text-sm text-gray-600">คลิกที่ไอคอนกล้องเพื่อถ่ายภาพโปรไฟล์</p>
                 </div>
@@ -484,6 +536,16 @@ const EditProfilePage: React.FC = () => {
           {isScanning && (
             (
               <div className="fixed inset-0 bg-gray-900 z-50">
+
+                {/* Countdown overlay
+                {countdown > 0 && (
+                  <div className="absolute inset-0 bg-black/70 z-50 flex items-center justify-center">
+                    <div className="text-white text-9xl font-bold animate-pulse">
+                      {countdown}
+                    </div>
+                  </div>
+                )} */}
+
                 <button
                   onClick={handleClose}
                   className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"

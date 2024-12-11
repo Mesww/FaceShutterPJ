@@ -160,11 +160,9 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
                             )}
                         </div>
                         {item.icon}
-                        {location.pathname === item.path && (
-                            <span className="text-xs font-semibold mt-1">
-                                {item.title}
-                            </span>
-                        )}
+                        <span className={`text-xs mt-1 ${location.pathname === item.path ? 'font-semibold' : ''}`}>
+                            {item.title}
+                        </span>
                     </button>
                 ))}
             </div>
