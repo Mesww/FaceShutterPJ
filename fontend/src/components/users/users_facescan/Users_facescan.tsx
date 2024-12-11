@@ -12,6 +12,7 @@ import Webcam from 'react-webcam';
 import { useUserData } from '@/containers/provideruserdata.js';
 import Swal from 'sweetalert2';
 import "../users_facescan/Users_facescan.css";
+import { BACKEND_WS_URL } from '@/configs/backend.js';
 // import { useUserData } from '@/containers/provideruserdata.js';
 
 const FaceScanPage: React.FC<FaceScanPageProps> = () => {
@@ -336,7 +337,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     };
 
     if (isScanning || isAuthen) {
-      const baseUrl = "ws://localhost:8000/ws";
+
+      const baseUrl = BACKEND_WS_URL;
       const path = isScanning ? '/scan' : '/auth';
       const token = isAuthen ? getLogined() : undefined;
       console.log('Test');

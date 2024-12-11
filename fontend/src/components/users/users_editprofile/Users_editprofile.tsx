@@ -9,6 +9,7 @@ import Webcam from 'react-webcam';
 import { getLogined } from '@/containers/userLogin.js';
 import Swal from 'sweetalert2';
 import "../users_editprofile/Users_editprofile.css";
+import { BACKEND_WS_URL } from '@/configs/backend.js';
 
 const EditProfilePage: React.FC = () => {
   // ====== Provider Data ======
@@ -315,7 +316,7 @@ const EditProfilePage: React.FC = () => {
     };
 
     if (isScanning) {
-      const baseUrl = "ws://localhost:8000/ws";
+      const baseUrl = BACKEND_WS_URL;
       const path = '/edit_image';
       const token = getLogined();
       setupWebSocket(`${baseUrl}${path}`, token);
