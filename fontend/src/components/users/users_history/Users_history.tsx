@@ -4,7 +4,7 @@ import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
 import { useUserData } from '@/containers/provideruserdata.js';
 import axios from 'axios';
-
+import {BACKEND_URL} from '@/configs/backend';
 interface AttendanceRecord {
   _id: { $oid: string };
   employee_id: string;
@@ -152,8 +152,8 @@ const AttendanceHistoryPage = () => {
     setLoading(true);
     setError(null);
 
-    try {
-      const response = await axios.get('http://localhost:8000/api/history/get_history_records', {
+    try { 
+      const response = await axios.get(`${BACKEND_URL}/api/history/get_history_records`, {
         params: {
           employee_id: userData.employee_id,
           start_date: startDate,

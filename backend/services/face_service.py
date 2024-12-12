@@ -390,7 +390,7 @@ class Face_service:
             consecutive_successes_needed = CONSECUTIVE_SUCCESS_NEEDED
             consecutive_successes = 0
             last_confidence = 0.0
-
+        
             while attempt_count < max_attempts:
                 try:
                     # Receive and validate frame data
@@ -539,6 +539,7 @@ class Face_service:
                     }
                 }
             )
+            
             return None, "คุณไม่สามารถยืนยันตัวตนได้ - ครบจำนวนครั้งที่กำหนดแล้ว", 0.0
 
         except Exception as e:

@@ -13,7 +13,7 @@ interface UserDetails {
 }
 
 const CameraCapture: React.FC = () => {
-  const [websocket, setWebSocket] = useState<WebSocket | null>(null);
+  const [, setWebSocket] = useState<WebSocket | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails>({
     employee_id: "",
     name: "",
@@ -136,7 +136,7 @@ const CameraCapture: React.FC = () => {
 
       ws.onmessage = handleWebSocketMessage;
 
-      ws.onclose = (event) => {
+      ws.onclose = () => {
         if (imageInterval) clearInterval(imageInterval);
         setWebSocket(null);
         setConnectionStatus('disconnected');

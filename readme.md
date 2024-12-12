@@ -12,7 +12,7 @@ pip install -r requirements.txt
 # Development
     uvicorn backend.app:app --reload 
 # Production
-    gunicorn backend.main:app -w 4 -k uvicorn.workers.UvicornWorker
+    gunicorn backend.app:app -w 4 -k uvicorn.workers.UvicornWorker
 
 .env need 
 MONGOURL = mongodb://root:1234@faceshuttermongo:27017/
