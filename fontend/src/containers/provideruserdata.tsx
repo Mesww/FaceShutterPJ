@@ -48,7 +48,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (!data) {
         throw new Error('No user data received');
       }
-      // console.log('User data:', data);
+      console.log('User data:', data);
       setUserData(data);
       if (data.images_profile) {
         setProfileImage(`data:image/jpeg;base64,${data.images_profile}`);

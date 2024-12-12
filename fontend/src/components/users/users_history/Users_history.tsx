@@ -24,6 +24,7 @@ const AttendanceHistoryPage = () => {
     isLogined,
     userData,
     logout,
+    profileImage
   } = useUserData();
 
   // State for form fields and data fetching
@@ -213,7 +214,7 @@ const AttendanceHistoryPage = () => {
       {/* Main Content */}
       <div className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
-        <Header currentMenuItem={currentMenuItem} name={name} />
+        <Header profileimage={profileImage} currentMenuItem={currentMenuItem} name={name} />
 
         <div className="w-full p-2 md:p-4 bg-white">
           {/* Filter Section */}

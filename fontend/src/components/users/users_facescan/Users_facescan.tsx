@@ -61,6 +61,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     disableCheckinorouttext,
     fetchCheckinoroutTime,
     logout,
+    profileImage
   } = useUserData();
 
   const directionInstructions: Record<string, string> = {
@@ -579,7 +580,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       {/* Main Content */}
       <main className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
-        <Header currentMenuItem={currentMenuItem} name={userDetails.name} />
+        <Header profileimage={profileImage} currentMenuItem={currentMenuItem} name={userDetails.name} />
         {/* Main content area with proper margin for sidebar */}
         <div className="w-full p-2 md:p-4 bg-white">
           <form onSubmit={handleFormSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

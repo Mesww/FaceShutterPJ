@@ -447,7 +447,7 @@ const EditProfilePage: React.FC = () => {
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
         {isLoading ? (
           <LoadingSpinner message={loadingmessage} />
-        ) : (<Header name={name} currentMenuItem={currentMenuItem} />)}
+        ) : (<Header profileimage={profileImage} name={name} currentMenuItem={currentMenuItem} />)}
 
         <div className="w-full p-2 md:p-4 bg-white">
           <div className="p-4 md:p-6 bg-white rounded-lg shadow">

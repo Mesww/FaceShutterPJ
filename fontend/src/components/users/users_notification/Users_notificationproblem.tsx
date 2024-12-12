@@ -66,7 +66,8 @@ const UserNotificationProblem: React.FC = () => {
  const {
   isLogined,
   userData,
-  logout
+  logout,
+  profileImage
 } = useUserData();
 
 // State for form fields
@@ -161,7 +162,7 @@ const [name, setName] = useState(userData?.name || '');
       {/* Main Content */}
       <div className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
-        <Header currentMenuItem={currentMenuItem} name={name} />
+        <Header profileimage={profileImage} currentMenuItem={currentMenuItem} name={name} />
 
         <div className="w-full p-2 md:p-4 bg-white">
           <div className="p-3 md:p-6 bg-white rounded-lg shadow overflow-hidden">
