@@ -10,14 +10,14 @@ pip install -r requirements.txt
 
 
 # Development
-    uvicorn backend.main:app --reload
-## Window
     uvicorn backend.app:app --reload 
 # Production
     gunicorn backend.main:app -w 4 -k uvicorn.workers.UvicornWorker
 
 .env need 
-MONGOURL = database url
-DB_NAME = database name
+MONGOURL = mongodb://root:1234@faceshuttermongo:27017/
+SECRET_KEY = NeverGonnaGiveYouUp
+ALGORITHM = HS256
+FRONTEND_URL = http://localhost:80/
 
 ==============================================
