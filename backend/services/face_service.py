@@ -561,8 +561,8 @@ class Face_service:
             return None, f"Fatal error: {str(e)}", 0.0
         
         # สามารถ return logs เพื่อใช้งานภายนอกฟังก์ชันได้หากต้องการ
-        finally:
-            return logs
+        # finally:
+            # return logs
         
     # async def face_scan_ws(self, websocket: WebSocket, employee_id: str):
     #     """

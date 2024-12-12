@@ -21,6 +21,8 @@ services:
       - "8000:8000"
     depends_on:
       - database
+    volumes:
+      - images:/app/backend/images
     networks:
       - faceshutter  
     environment:
@@ -48,6 +50,7 @@ services:
   #   restart: unless-stopped
 volumes:
   data:
+  images:
 networks:
   faceshutter:
     driver: bridge
