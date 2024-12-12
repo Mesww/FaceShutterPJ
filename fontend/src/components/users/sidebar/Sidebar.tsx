@@ -37,32 +37,32 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed, isLogined, logout,
     const menuItems = isLogined ? [
         {
             path: '/users/UsersFacescan',
-            title: 'สแกนใบหน้า',
+            title: 'สแกน',
             icon: <Scan size={20} />,
             description: 'บันทึกเวลาด้วยการสแกนใบหน้า'
         },
         {
             path: '/users/UsersEditprofile',
-            title: 'แก้ไขข้อมูลส่วนตัว',
+            title: 'แก้ไข',
             icon: <User size={20} />,
             description: 'อัพเดตข้อมูลส่วนตัว เช่น ชื่อ อีเมล'
         },
         {
             path: '/users/UsersHistory',
-            title: 'ประวัติการเข้างาน',
+            title: 'ประวัติ',
             icon: <History size={20} />,
             description: 'ตรวจสอบประวัติการเข้า-ออกงาน'
         },
         {
             path: '/users/UsersNotification',
-            title: 'การแจ้งเตือน',
+            title: 'แจ้งเตือน',
             icon: <Bell size={20} />,
             description: 'รับการแจ้งเตือนเมื่อมีการเปลี่ยนแปลง'
         }
     ] : [
         {
             path: '/users/UsersFacescan',
-            title: 'สแกนใบหน้า',
+            title: 'สแกน',
             icon: <Scan size={20} />,
             description: 'บันทึกเวลาด้วยการสแกนใบหน้า'
         },
@@ -216,7 +216,7 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed, isLogined, logout,
                     >
                         <div className="absolute h-1 w-full top-0 left-0"></div>
                         <LogOut size={20} />
-                        <span className="text-xs mt-1">Logout</span>
+                        <span className="text-xs mt-1 font-semibold">ออก</span>
                     </button>
                 )}
             </div>

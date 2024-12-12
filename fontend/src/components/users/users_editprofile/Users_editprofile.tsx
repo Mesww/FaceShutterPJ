@@ -368,7 +368,7 @@ const EditProfilePage: React.FC = () => {
     },
   ];
 
-  const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
+  const currentMenuItem = menuItems.find((item) => window.location.pathname.includes(item.path));
 
 
   useEffect(() => {
