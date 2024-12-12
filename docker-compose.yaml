@@ -26,26 +26,26 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - UVICORN_LIFESPAN_ON=1
-  fontend:
-    build: ./fontend/
-    container_name: fontend
-    ports:
-      - 3000:80
-    depends_on:
-      - fastapi
-    networks:
-      - faceshutter
-    restart: unless-stopped
-  nginx:
-    build: ./nginx/
-    image: nginx:alpine
-    ports:
-      - 80:80
-    depends_on:
-      - fontend
-    networks:
-      - faceshutter
-    restart: unless-stopped
+  # fontend:
+  #   build: ./fontend/
+  #   container_name: fontend
+  #   ports:
+  #     - 3000:80
+  #   depends_on:
+  #     - fastapi
+  #   networks:
+  #     - faceshutter
+  #   restart: unless-stopped
+  # nginx:
+  #   build: ./nginx/
+  #   image: nginx:alpine
+  #   ports:
+  #     - 80:80
+  #   depends_on:
+  #     - fontend
+  #   networks:
+  #     - faceshutter
+  #   restart: unless-stopped
 volumes:
   data:
 networks:
