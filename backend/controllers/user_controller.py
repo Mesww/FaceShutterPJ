@@ -128,3 +128,13 @@ class UserController:
             return res
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+    @staticmethod
+    @router.delete("/delete_user/{employee_id}")
+    async def delete_user(employee_id: str):
+        try:
+            res = await UserService.delete_user_by_employee_id(employee_id)
+            if res.status >= 400:
+                raise HTTPException(status_code=400, detail=res.message)
+            return res.to_json()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))

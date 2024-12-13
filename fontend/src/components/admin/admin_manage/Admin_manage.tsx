@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { BACKEND_URL } from '@/configs/backend';
+import Swal from 'sweetalert2';
 
 interface User {
   employee_id: string;
@@ -115,8 +116,48 @@ const AdminManage: React.FC = () => {
   const [isAddAdminModalVisible, setIsAddAdminModalVisible] = useState(false);
   const [newAdminEmployeeId, setNewAdminEmployeeId] = useState('');
 
-  const handleDeleteUser = (userId: string) => {
-    setUsers(users.filter((user) => user.employee_id !== userId));
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      // แสดง Sweet Alert เพื่อยืนยันการลบ
+      const result = await Swal.fire({
+        title: 'Confirm Delete',
+        text: "Are you sure you want to delete this user?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Confirm',
+        cancelButtonText: 'Cancel'
+      });
+
+      // ถ้ากดยืนยัน
+      if (result.isConfirmed) {
+        const response = await axios.delete(`${BACKEND_URL}/api/users/delete_user/${userId}`);
+        
+        if (response.data.status === 200) {
+          // แสดง Sweet Alert เมื่อลบสำเร็จ
+          await Swal.fire({
+            title: 'Success Delete',
+            text: 'Delete user successfully',
+            icon: 'success',
+            timer: 1500
+          });
+          
+          // อัพเดทรายการผู้ใช้ในหน้าเว็บ
+          setUsers(users.filter((user) => user.employee_id !== userId));
+        } else {
+          throw new Error(response.data.message || 'Failed to delete user');
+        }
+      }
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      // แสดง Sweet Alert เมื่อเกิดข้อผิดพลาด
+      await Swal.fire({
+        title: 'Error',
+        text: 'Failed to delete user',
+        icon: 'error'
+      });
+    }
   };
 
   const handleEditUser = (user: User) => {

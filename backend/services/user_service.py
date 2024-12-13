@@ -387,3 +387,25 @@ class UserService:
             return users
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    @staticmethod
+    async def delete_user_by_employee_id(employee_id: str) -> Returnformat:
+        try:
+            db = await connect_to_mongodb()
+            collection = db["users"]
+            
+            # ตรวจสอบว่ามีผู้ใช้อยู่หรือไม่
+            user = await collection.find_one({"employee_id": employee_id})
+            if not user:
+                return Returnformat(400, "User not found", None)
+            
+            # ลบผู้ใช้
+            result = await collection.delete_one({"employee_id": employee_id})
+            
+            if result.deleted_count == 0:
+                return Returnformat(400, "Failed to delete user", None)
+            
+            return Returnformat(200, "User deleted successfully", None)
+            
+        except Exception as e:
+            return Returnformat(400, str(e), None)
