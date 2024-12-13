@@ -451,11 +451,6 @@ const EditProfilePage: React.FC = () => {
 
         <div className="w-full p-2 md:p-4 bg-white">
           <div className="p-4 md:p-6 bg-white rounded-lg shadow">
-            <div className="mb-6 md:mb-8">
-              <h3 className="text-xl md:text-2xl font-semibold mb-2">แก้ไขข้อมูลส่วนตัว</h3>
-              {/* <p className="text-gray-600">อัพเดตข้อมูลและรูปโปรไฟล์ของคุณ</p> */}
-            </div>
-
             {isLoading ? (
               <LoadingSpinner message={loadingmessage} />
             ) : (

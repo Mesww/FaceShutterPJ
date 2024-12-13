@@ -214,11 +214,6 @@ const [name, setName] = useState(userData?.name || '');
 
         <div className="p-4 md:p-6">
           <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">การแจ้งเตือนและสถานะ</h2>
-              <p className="mt-1 text-sm text-gray-500">รายการแจ้งเตือนและสถานะการทำงานของระบบ</p>
-            </div>
-
             <div className="p-4 space-y-3">
               {logEntries.length > 0 ? (
                 getSortedLogs(logEntries).map((logItem, index) => (
