@@ -7,96 +7,80 @@ from typing import List
 import uuid
 import cv2
 import numpy as np
+from skimage.feature import local_binary_pattern
 
 class Phone_Detection:
     def detect_screen_reflection(self, face_region: np.ndarray) -> bool:
-        """
-        Detect potential screen reflections in the face region with improved thresholds
-        and additional validation.
-        """
         try:
+            hsv = cv2.cvtColor(face_region, cv2.COLOR_BGR2HSV)
             gray = cv2.cvtColor(face_region, cv2.COLOR_BGR2GRAY)
-            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
             
-            # Use a more conservative threshold
-            thresholded = cv2.adaptiveThreshold(
-                blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                cv2.THRESH_BINARY, 11, 5  # Increased C parameter to reduce sensitivity
-            )
+            _, v = cv2.threshold(hsv[:,:,2], 200, 255, cv2.THRESH_BINARY)
+            reflection_ratio = np.sum(v) / v.size
             
-            contours, _ = cv2.findContours(
-                thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-            )
+            glare_threshold = cv2.threshold(gray, 220, 255, cv2.THRESH_BINARY)[1]
+            glare_ratio = np.sum(glare_threshold) / glare_threshold.size
             
-            total_reflection_area = 0
-            for contour in contours:
-                area = cv2.contourArea(contour)
-                
-                # Increased minimum area threshold
-                if area < 100:  
-                    continue
-                
-                x, y, w, h = cv2.boundingRect(contour)
-                aspect_ratio = w / h
-                
-                # More stringent aspect ratio and area requirements
-                if 1.6 < aspect_ratio < 2.2 and area > 1000:
-                    # Additional validation: check brightness consistency
-                    roi = gray[y:y+h, x:x+w]
-                    brightness_std = np.std(roi)
-                    if brightness_std < 30:  # Screen-like uniform brightness
-                        return True
-                
-                total_reflection_area += area
-                
-            face_area = face_region.shape[0] * face_region.shape[1]
-            reflection_ratio = total_reflection_area / face_area
+            local_std = cv2.Sobel(gray, cv2.CV_64F, 1, 1, ksize=3)
+            smoothness = np.mean(np.abs(local_std))
             
-            # More conservative reflection ratio threshold
-            return reflection_ratio > 0.3
+            return (reflection_ratio > 0.15 or 
+                   glare_ratio > 0.1 or 
+                   smoothness < 10)
 
         except Exception as e:
             print(f"Error detecting screen reflection: {str(e)}")
             return False
 
     def analyze_texture_frequency(self, face_region: np.ndarray) -> bool:
-        """
-        Enhanced texture analysis with more robust feature extraction.
-        """
-        # Convert to grayscale if not already
-        if len(face_region.shape) > 2:
-            face_region = cv2.cvtColor(face_region, cv2.COLOR_BGR2GRAY)
+        try:
+            gray = cv2.cvtColor(face_region, cv2.COLOR_BGR2GRAY)
             
-        scales = [1, 2, 4, 8]  # Added more scales
+            f_transform = np.fft.fft2(gray)
+            magnitude_spectrum = np.abs(f_transform)
+            
+            high_freq = magnitude_spectrum > np.mean(magnitude_spectrum) * 1.5
+            pattern_score = np.sum(high_freq) / high_freq.size
+            
+            return pattern_score > 0.3
+            
+        except Exception as e:
+            print(f"Error in texture analysis: {str(e)}")
+            return False
+
+    def get_lbp(self, image, n_points, radius):
+        lbp = np.zeros_like(image)
+        for i in range(radius, image.shape[0] - radius):
+            for j in range(radius, image.shape[1] - radius):
+                center = image[i, j]
+                binary = []
+                for k in range(n_points):
+                    angle = 2 * np.pi * k / n_points
+                    x = i + radius * np.cos(angle)
+                    y = j - radius * np.sin(angle)
+                    x1 = int(np.floor(x))
+                    y1 = int(np.floor(y))
+                    binary.append(1 if image[x1, y1] >= center else 0)
+                lbp[i, j] = int(''.join(map(str, binary)), 2)
+        return lbp
+
+    def detect_moire_pattern(self, gray_image: np.ndarray) -> float:
+        frequencies = [0.1, 0.25, 0.4]
         orientations = [0, 45, 90, 135]
-        texture_features = []
+        pattern_responses = []
         
-        # Calculate local binary patterns for additional texture information
-        lbp = cv2.resize(face_region, (64, 64))  # Normalize size
-        
-        for scale in scales:
+        for freq in frequencies:
             for theta in orientations:
                 kernel = cv2.getGaborKernel(
-                    (21, 21), sigma=scale, theta=theta, 
-                    lambd=10.0, gamma=0.5, psi=0, 
-                    ktype=cv2.CV_32F
+                    (21, 21), sigma=4.0, theta=theta,
+                    lambd=1.0/freq, gamma=0.5, psi=0
                 )
-                filtered = cv2.filter2D(face_region, cv2.CV_8UC3, kernel)
-                # Calculate multiple statistical features
-                texture_features.extend([
-                    np.var(filtered),
-                    np.mean(filtered),
-                    np.std(filtered)
-                ])
+                filtered = cv2.filter2D(gray_image, cv2.CV_64F, kernel)
+                pattern_responses.append(np.std(filtered))
         
-        # Combine texture metrics
-        texture_variance = np.var(texture_features)
-        return texture_variance > 0.25  # Increased threshold
-    
+        return np.std(pattern_responses) / np.mean(pattern_responses)
+
     def detect_phone_shape(self,frame: np.ndarray) -> bool:
-        """
-        Detect rectangular shapes with phone-like aspect ratios.
-        """
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray_frame, 50, 150)
         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -105,62 +89,97 @@ class Phone_Detection:
             x, y, w, h = cv2.boundingRect(contour)
             aspect_ratio = w / float(h)
             
-            # Check if aspect ratio matches a phone's typical screen
-            if 0.6 < aspect_ratio < 2.0 and w > 150 and h > 300:  # Adjust size thresholds
+            if 0.6 < aspect_ratio < 2.0 and w > 150 and h > 300:
                 return True
         return False
     
     def detect_uniform_brightness(self,face_region: np.ndarray) -> bool:
-        """
-        Check for uniform brightness typical of phone screens.
-        """
         gray_region = cv2.cvtColor(face_region, cv2.COLOR_BGR2GRAY)
         std_dev = np.std(gray_region)
-        return std_dev < 15  # Adjust threshold for uniformity
+        return std_dev < 15
+
     def detect_phone_in_frame(self, frame: np.ndarray, face_region: np.ndarray) -> bool:
-        """
-        Enhanced phone detection with weighted scoring system.
-        """
-        score = 0
-        total_weights = 0
+        try:
+            # ลดขนาดภาพลงเพื่อเพิ่มความเร็ว
+            scale_factor = 0.5
+            small_face = cv2.resize(face_region, None, fx=scale_factor, fy=scale_factor)
+            
+            # 1. ตรวจสอบการสะท้อนแสงและความสว่าง
+            hsv = cv2.cvtColor(small_face, cv2.COLOR_BGR2HSV)
+            gray = cv2.cvtColor(small_face, cv2.COLOR_BGR2GRAY)
+            
+            # ตรับค่า threshold ของความสว่าง
+            brightness_std = np.std(hsv[:,:,2])
+            if brightness_std < 15:  # ปรับจาก 20 เป็น 15
+                return True
+            
+            # 2. ตรวจสอบขอบภาพ
+            edges = cv2.Canny(gray, 100, 200)
+            edge_density = np.sum(edges > 0) / edges.size
+            if edge_density > 0.15:  # ปรับจาก 0.1 เป็น 0.15
+                return True
+                
+            # 3. ตรวจสอบรูปแบบพิกเซล
+            pixel_pattern = self.check_pixel_patterns(gray)
+            if pixel_pattern:
+                return True
+                
+            # 4. ตรวจสอบความต่อเนื่องของสี
+            color_continuity = self.check_color_continuity(small_face)
+            if color_continuity:
+                return True
+                
+            # 5. ตรวจสอบ Moiré patterns
+            if self.detect_moire_pattern(gray) > 0.4:  # ปรับจาก 0.3 เป็น 0.4
+                return True
+            
+            return False
+
+        except Exception as e:
+            print(f"Error in phone detection: {str(e)}")
+            return False
+
+    def check_pixel_patterns(self, gray_image: np.ndarray) -> bool:
+        radius = 2
+        n_points = 8 * radius
+        lbp = local_binary_pattern(gray_image, n_points, radius, method='uniform')
         
-        # Screen reflection (highest weight)
-        weight = 3
-        if self.detect_screen_reflection(face_region):
-            print("screen reflection")
-            score += weight
-        total_weights += weight
+        hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, n_points + 3), density=True)
+        pattern_uniformity = np.sum(hist > 0.1)
         
-        # Texture analysis (medium weight)
-        weight = 2
-        if not self.analyze_texture_frequency(face_region):
-            print("texture analysis")
-            score += weight
-        total_weights += weight
+        return pattern_uniformity < 4  # ปรับจาก 5 เป็น 4
+
+    def check_color_continuity(self, image: np.ndarray) -> bool:
+        block_size = 8
+        h, w = image.shape[:2]
+        n_blocks_h = h // block_size
+        n_blocks_w = w // block_size
         
-        # Phone shape detection (lower weight)
-        weight = 1
-        if self.detect_phone_shape(frame):
-            print("phone shape")
-            score += weight
-        total_weights += weight
+        color_variations = []
+        for i in range(n_blocks_h):
+            for j in range(n_blocks_w):
+                block = image[i*block_size:(i+1)*block_size, 
+                            j*block_size:(j+1)*block_size]
+                color_variations.append(np.std(block))
         
-        # Uniform brightness (medium weight)
-        weight = 2
-        if self.detect_uniform_brightness(face_region):
-            print("uniform brightness")
-            score += weight
-        total_weights += weight
+        variation_std = np.std(color_variations)
+        return variation_std < 8  # ปรับจาก 10 เป็น 8
+
+    def detect_moire_pattern(self, gray_image: np.ndarray) -> float:
+        """ตรวจจับ Moiré patterns ที่มักพบในภาพถ่ายหน้าจอ"""
+        # ใช้ FFT เพื่อตรวจจับรูปแบบที่ซ้ำกัน
+        f_transform = np.fft.fft2(gray_image)
+        magnitude_spectrum = np.abs(np.fft.fftshift(f_transform))
         
-        # Calculate final weighted score
-        final_score = score / total_weights
-        print(f"Phone detection score: {final_score}")
-        return final_score > 0.4  # Require multiple strong indicators
+        # หาความถี่ที่โดดเด่น
+        threshold = np.mean(magnitude_spectrum) * 2
+        high_freq_ratio = np.sum(magnitude_spectrum > threshold) / magnitude_spectrum.size
+        
+        return high_freq_ratio
 
 class Image_utills:
     @staticmethod
     def convert_cv2_to_base64(image: np.ndarray) -> str:
-        """Convert CV2 image to base64 string"""
         try:
             # Convert image to bytes
             is_success, buffer = cv2.imencode(".jpg", image)
@@ -177,7 +196,6 @@ class Image_utills:
     
     @staticmethod
     async def save_image(image: np.ndarray, filename: str) -> str:
-        """Save image to file"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             base_dir = Path(__file__).resolve().parent.parent
@@ -202,7 +220,6 @@ class Image_utills:
     
     @staticmethod
     def read_image_from_path(image_path: str) -> np.ndarray:
-        """Read image from file"""
         try:
             image = cv2.imread(image_path)
             if image is None:
@@ -213,7 +230,6 @@ class Image_utills:
             raise ValueError("Failed to read image from file")
     @staticmethod
     def remove_image(image_path: str) -> None:
-        """Remove image file"""
         try:
             os.remove(image_path)
             print(f"Successfully removed image: {image_path}")
