@@ -163,7 +163,7 @@ const NotificationProblem = () => {
                     )}
                     {logItem.log.attempt && (
                       <span className="text-xs text-gray-500">
-                        ครั้งที่ {logItem.log.attempt}
+                        พยายามทั้งหมด {logItem.log.attempt} ครั้ง
                       </span>
                     )}
                   </div>

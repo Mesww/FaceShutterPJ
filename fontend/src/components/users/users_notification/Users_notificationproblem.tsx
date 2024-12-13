@@ -239,7 +239,7 @@ const [name, setName] = useState(userData?.name || '');
                             </span>
                             {logItem.log.attempt && (
                               <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-                                ครั้งที่ {logItem.log.attempt}
+                                พยายามทั้งหมด {logItem.log.attempt} ครั้ง
                               </span>
                             )}
                           </div>
