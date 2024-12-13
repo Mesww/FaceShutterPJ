@@ -83,20 +83,20 @@ const NotificationProblem = () => {
   const getStatusText = (status: string): string => {
     switch (status) {
       case 'error':
-        return 'เกิดข้อผิดพลาด';
+        return 'Error';
       case 'stopped':
-        return 'หยุดทำงาน';
+        return 'Stopped';
       default:
         return status;
     }
   };
 
-  // กรอง logs ตาม employee_id
+  // Filter logs by employee_id
   const filteredLogs = logEntries.filter(log =>
     log.employee_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // เพิ่มฟังก์ชันสำหรับจัดเรียงข้อมูล
+  // Add function for sorting data
   const getSortedLogs = (logs: Log[]) => {
     return logs
       .map(entry => {
@@ -113,10 +113,10 @@ const NotificationProblem = () => {
   return (
     <div className="max-h-[80vh] overflow-y-auto">
       <div className="p-3 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">การแจ้งเตือน</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
         <input
           type="text"
-          placeholder="ค้นหาด้วยรหัสพนักงาน"
+          placeholder="Search by Employee ID"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full mt-2 px-3 py-1.5 text-sm rounded-md border border-gray-200 focus:outline-none focus:ring-1 focus:ring-red-500"
@@ -138,10 +138,10 @@ const NotificationProblem = () => {
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="flex justify-between items-start gap-2">
                     <p className="text-sm font-medium text-gray-900">
-                      รหัส: {logItem.employee_id}
+                      ID: {logItem.employee_id}
                     </p>
                     <span className="text-xs text-gray-500 whitespace-nowrap">
-                      {new Date(logItem.created_at).toLocaleString('th-TH', {
+                      {new Date(logItem.created_at).toLocaleString('en-US', {
                         hour: '2-digit',
                         minute: '2-digit'
                       })}
@@ -158,12 +158,12 @@ const NotificationProblem = () => {
                     </span>
                     {logItem.log.confidence && (
                       <span className="text-xs text-gray-500">
-                        ความแม่นยำ {(logItem.log.confidence * 100).toFixed(0)}%
+                        Confidence {(logItem.log.confidence * 100).toFixed(0)}%
                       </span>
                     )}
                     {logItem.log.attempt && (
                       <span className="text-xs text-gray-500">
-                        พยายามทั้งหมด {logItem.log.attempt} ครั้ง
+                        Total attempts: {logItem.log.attempt}
                       </span>
                     )}
                   </div>
@@ -173,7 +173,7 @@ const NotificationProblem = () => {
           ))
         ) : (
           <div className="p-4 text-center text-sm text-gray-500">
-            ไม่พบข้อมูล
+            No data found
           </div>
         )}
       </div>

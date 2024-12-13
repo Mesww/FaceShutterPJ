@@ -354,7 +354,7 @@ class Face_service:
                     log={
                         "action": "face_scan",
                         "status": "error", 
-                        "message": "ไม่พบข้อมูลใบหน้าของผู้ใช้"
+                        "message": "No face data found"
                     }
                 )
                 
@@ -431,7 +431,7 @@ class Face_service:
                         log={
                             "action": "face_scan",
                             "status": "error",
-                            "message": "การเชื่อมต่อขาดหาย",
+                            "message": "Connection lost",
                             "attempt": attempt_count + 1
                         }
                     )
@@ -444,7 +444,7 @@ class Face_service:
                         log={
                             "action": "face_scan", 
                             "status": "error",
-                            "message": f"เกิดข้อผิดพลาด: {str(e)}",
+                            "message": f"Error: {str(e)}",
                             "attempt": attempt_count + 1
                         }
                     )
@@ -465,7 +465,7 @@ class Face_service:
                 log={
                     "action": "face_scan",
                     "status": "stopped",
-                    "message": "ครบจำนวนครั้งที่กำหนดแล้ว",
+                    "message": "Authentication failed - Maximum attempts reached",
                     "attempt": attempt_count
                 }
             )
@@ -488,7 +488,7 @@ class Face_service:
                 log={
                     "action": "face_scan",
                     "status": "error", 
-                    "message": f"เกิดข้อผิดพลาดร้ายแรง: {str(e)}"
+                    "message": f"Error server: {str(e)}"
                 }
             )
             
