@@ -13,21 +13,28 @@ services:
     restart: always
     networks:
       - faceshutter
-  fastapi:
-    build: .
-    container_name: fastapi
-    restart: always
+  sqlite:
+    image: keinos/sqlite3:latest
+    container_name: my-sqlite-container
     ports:
-      - "8000:8000"
-    depends_on:
-      - database
-    volumes:
-      - images:/app/backend/images
-    networks:
-      - faceshutter  
-    environment:
-      - PYTHONUNBUFFERED=1
-      - UVICORN_LIFESPAN_ON=1
+      - "5432:5432"
+    restart: always
+
+  # fastapi:
+  #   build: .
+  #   container_name: fastapi
+  #   restart: always
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     - database
+  #   volumes:
+  #     - images:/app/backend/images
+  #   networks:
+  #     - faceshutter  
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #     - UVICORN_LIFESPAN_ON=1
   # fontend:
   #   build: ./fontend/
   #   container_name: fontend
