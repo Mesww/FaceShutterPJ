@@ -19,5 +19,7 @@ MONGOURL = mongodb://root:1234@faceshuttermongo:27017/
 SECRET_KEY = NeverGonnaGiveYouUp
 ALGORITHM = HS256
 FRONTEND_URL = http://localhost:80/
+OAUTH_CLIENT_ID 
+OAUTH_SECRET
 
 ==============================================
