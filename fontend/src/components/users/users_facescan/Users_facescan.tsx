@@ -580,24 +580,61 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       return;
     }
 
-    const imageSrc = webcamRef.current.getScreenshot();
-    if (!imageSrc) {
-      setInstruction("ไม่สามารถถ่ายภาพได้ กรุณาลองใหม่");
-      return;
-    }
-
     try {
-      const imageData = imageSrc.split(',')[1];
+      const video = webcamRef.current.video;
+      if (!video) {
+        setInstruction("ไม่สามารถเข้าถึงกล้องได้");
+        return;
+      }
+
+      // สร้าง canvas สำหรับครอปภาพ
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) {
+        setInstruction("ไม่สามารถสร้าง canvas ได้");
+        return;
+      }
+
+      // กำหนดขนาดกรอบสี่เหลี่ยมที่ใช้ครอปใบหน้า
+      const frameSize = Math.min(video.videoWidth, video.videoHeight) * 0.7;
+      canvas.width = frameSize;
+      canvas.height = frameSize;
+
+      // คำนวณตำแหน่งกึ่งกลางของวิดีโอ
+      const centerX = (video.videoWidth - frameSize) / 2;
+      const centerY = (video.videoHeight - frameSize) / 2;
+
+      // วาดภาพลงบน canvas โดยครอปเฉพาะส่วนกลาง
+      if (context) {
+        // ทำ mirror ภาพ
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+
+        context.drawImage(
+          video,
+          centerX, centerY, frameSize, frameSize, // source rectangle
+          0, 0, frameSize, frameSize // destination rectangle
+        );
+      }
+
+      // แปลง canvas เป็น base64
+      const croppedImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+      // แปลง base64 เป็น byte array
+      const imageData = croppedImageBase64.split(',')[1];
       const byteCharacters = atob(imageData);
       const byteArray = new Uint8Array(Array.from(byteCharacters).map(char => char.charCodeAt(0)));
       
+      // ส่งข้อมูลไปยังเซิร์ฟเวอร์
       websocket.send(JSON.stringify({
         captured_image: Array.from(byteArray)
       }));
+
       setInstruction("กำลังประมวลผลภาพ...");
+
     } catch (error) {
-      console.error("Error sending image:", error);
-      setInstruction("เกิดข้อผิดพลาดในการส่งภาพ");
+      console.error("Error capturing and sending image:", error);
+      setInstruction("เกิดข้อผิดพลาดในการถ่ายและส่งภาพ");
     }
   }, [webcamRef, websocket]);
 
