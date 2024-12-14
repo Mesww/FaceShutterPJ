@@ -25,7 +25,7 @@ const EditProfilePage: React.FC = () => {
 
   // ================== Add the following code ==================
   const [isScanning, setIsScanning] = useState(false);
-  const [facingMode, setFacingMode] = useState("user");
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [imageFile] = useState<File | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -37,17 +37,14 @@ const EditProfilePage: React.FC = () => {
   const [email, setEmail] = useState(userData?.email || '');
   const [phone, setPhone] = useState(userData?.tel || '');
 
-  const [countdown, setCountdown] = useState<number>(0);
-  const [isCountdownActive, setIsCountdownActive] = useState<boolean>(false);
-
   // console.log(userData)
 
   const [websocket, setWebSocket] = useState<WebSocket | null>(null);
   ;
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
   const [errors, setErrors] = useState<string | null>(null);
-  const [toltalDirection, setToltalDirection] = useState<number>(0);
-  const [imageCount, setImageCount] = useState<number>(0);
+  const [, setToltalDirection] = useState<number>(0);
+  const [, setImageCount] = useState<number>(0);
   const [errorDirectiom, setErrorDirection] = useState<string>("");
 
   const directionInstructions: Record<string, string> = {
@@ -60,9 +57,7 @@ const EditProfilePage: React.FC = () => {
     "Turn_left": "ซ้าย",
     "Turn_right": "ขวา"
   };
-  const [currentDirection, setCurrentDirection] = useState<string>("");
-
-
+  const [, setCurrentDirection] = useState<string>("");
 
 
   const stopCamera = () => {
@@ -74,11 +69,21 @@ const EditProfilePage: React.FC = () => {
   };
 
   const handleClose = () => {
+    if (websocket?.readyState === WebSocket.OPEN) {
+      websocket.send(JSON.stringify({
+        action: "normal_close",
+        message: "User closed camera normally"
+      }));
+      websocket.close();
+    }
+
     stopCamera();
     setIsScanning(false);
-    handleScanStop();
     setErrors(null);
     setImageCount(0);
+    setInstruction("");
+    setErrorDirection("");
+    setCurrentDirection("");
   };
 
 
@@ -117,57 +122,8 @@ const EditProfilePage: React.FC = () => {
   // Camera Controls
   const handleSwitchCamera = () => {
     stopCamera();
-    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+    setFacingMode(prevMode => prevMode === "user" ? "environment" : "user");
   };
-
-  // Image Processing
-  const sendImage = useCallback((ws: WebSocket) => {
-    if (!webcamRef.current || !ws || ws.readyState !== WebSocket.OPEN) return null;
-
-    const imageSrc = webcamRef.current.getScreenshot();
-    if (!imageSrc) return null;
-
-    const canvas = document.createElement('canvas');
-    const video = webcamRef.current.video;
-    if (!video) return null;
-
-    const frameSize = Math.min(video.videoWidth, video.videoHeight) * 0.7;
-    const x = (video.videoWidth - frameSize) / 2;
-    const y = (video.videoHeight - frameSize) / 2;
-
-    canvas.width = frameSize;
-    canvas.height = frameSize;
-    const ctx = canvas.getContext('2d');
-
-    if (ctx) {
-      if (facingMode === 'user') {
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
-      }
-
-      ctx.drawImage(
-        video,
-        x, y, frameSize, frameSize,
-        0, 0, frameSize, frameSize
-      );
-
-      const croppedImageSrc = canvas.toDataURL('image/jpeg');
-
-      try {
-        const byteCharacters = atob(croppedImageSrc.split(",")[1]);
-        const byteArray = new Uint8Array(Array.from(byteCharacters).map(char => char.charCodeAt(0)));
-        ws.send(JSON.stringify({ image: Array.from(byteArray) }));
-        // console.log('Image sent',new Date().toLocaleTimeString());
-        // console.log(video ? 'video' : 'no video');
-      } catch (error) {
-        console.error("Error sending image:", error);
-        setConnectionStatus('disconnected');
-      }
-
-      return croppedImageSrc;
-    }
-    return null;
-  }, [facingMode]);
 
   const handleScanStop = () => {
     setIsScanning(false);
@@ -177,23 +133,47 @@ const EditProfilePage: React.FC = () => {
   };
 
   const handleScanSuccess = async () => {
-    console.log('Scan success');
-    await fetchCheckinoroutTime();
-    await refreshUserData();
-    handleScanStop();
+    try {
+      console.log('Scan success - starting update process');
 
-    // Show SweetAlert after successful scan
-    Swal.fire({
-      title: 'สแกนสำเร็จ!',
-      text: 'คุณได้อัปเดตรูปโปรไฟล์เรียบร้อยแล้ว',
-      icon: 'success',
-      confirmButtonText: 'ตกลง',
-      width: '90%',
-      customClass: {
-        popup: 'mobile-popup',
-        title: 'mobile-title',
-      },
-    });
+      // ปิดการสแกน
+      handleScanStop();
+
+      // รอสักครู่ก่อนดึงข้อมูลใหม่
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // ดึงข้อมูลใหม่
+      await fetchCheckinoroutTime();
+      await refreshUserData();
+
+      // แสดง SweetAlert หลังจากอัพเดทสำเร็จ
+      Swal.fire({
+        title: 'สแกนสำเร็จ!',
+        text: 'คุณได้อัปเดตรูปโปรไฟล์เรียบร้อยแล้ว',
+        icon: 'success',
+        confirmButtonText: 'ตกลง',
+        width: '90%',
+        customClass: {
+          popup: 'mobile-popup',
+          title: 'mobile-title',
+        },
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+
+      // แสดง SweetAlert กรณีเกิดข้อผิดพลาด
+      Swal.fire({
+        title: 'เกิดข้อผิดพลาด!',
+        text: 'ไม่สามารถอัปเดตข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
+        icon: 'error',
+        confirmButtonText: 'ตกลง',
+        width: '90%',
+        customClass: {
+          popup: 'mobile-popup',
+          title: 'mobile-title',
+        },
+      });
+    }
   };
 
   const handleHeadMovementInstruction = (message: string) => {
@@ -227,12 +207,16 @@ const EditProfilePage: React.FC = () => {
             break;
           case "failed":
             console.error("Error:", messages);
+            if (messages.includes("ไม่พบใบหน้า")) {
+              setInstruction("ไม่พบใบหน้าในภาพ กรุณาถ่ายใหม่");
+              setErrorDirection("กรุณาวางใบหน้าให้อยู่ในกรอบและถ่ายใหม่");
+              return;
+            }
             setInstruction("กรุณาวางใบหน้าให้อยู่ในกรอบ");
             break;
           case "stopped":
             handleScanStop();
             break;
-
         }
       }
 
@@ -241,62 +225,52 @@ const EditProfilePage: React.FC = () => {
         const direction = message.replace("Please move your head to: ", "");
         const specificInstruction = directionInstructions[direction] || direction;
         handleHeadMovementInstruction(specificInstruction);
-        // setInstruction(specificInstruction);
-        // reset image count here
         setImageCount(0);
         setCurrentDirection(direction);
       }
       // Handle incorrect direction message
       else if (message.startsWith("Incorrect direction! Detected:")) {
         const match = message.match(/Incorrect direction! Detected: (\w+)/);
-        console.log(match);
         if (match) {
           const direction = match[1];
           const errorDetails = `ท่านหันหน้าไปทาง ${errordirectionInstructions[direction]}`;
           setErrorDirection(errorDetails);
         }
       }
-
-      // Handle image count without affecting camera
+      // Handle image count
       else if (message.startsWith("Image ")) {
         const match = message.match(/Image (\d+) captured for (\w+)/);
         if (match) {
           const count = parseInt(match[1]);
           const direction = match[2];
-          console.log(direction);
-          console.log('dicrection:', directionInstructions[direction]);
           setImageCount(count);
           setCurrentDirection(direction);
           setInstruction(`${directionInstructions[direction]}`);
           setErrorDirection("");
         }
       }
-
-      else if (message.startsWith("User data and images saved successfully")) {
-        console.log('Scan success');
-        await fetchCheckinoroutTime();
-        await refreshUserData();
-        handleScanStop();
-      }
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [directionInstructions, handleScanSuccess, setImageCount]); // Minimize dependencies
+  }, [directionInstructions, handleScanSuccess, setImageCount]);
 
   // WebSocket Setup and Cleanup
   useEffect(() => {
-    let imageInterval: NodeJS.Timeout;
+    // กำหนดค่าเริ่มต้นให้ imageInterval
+    const imageInterval: NodeJS.Timeout | undefined = undefined;
     let ws: WebSocket | null = null;
 
     const cleanup = () => {
       if (imageInterval) clearInterval(imageInterval);
-      if (ws) ws.close();
-      setWebSocket(null);
+      if (ws) {
+        ws.close();
+        setWebSocket(null);
+      }
       setConnectionStatus('disconnected');
     };
 
-    const setupWebSocket = (url: string, token?: string) => {
+    const setupWebSocket = async (url: string, token?: string) => {
       if (!isScanning) return;
 
       cleanup();
@@ -308,28 +282,35 @@ const EditProfilePage: React.FC = () => {
         return;
       }
 
-      const wsUrl = `${url}?token=${encodeURIComponent(token)}`;
-      ws = new WebSocket(wsUrl);
-      setWebSocket(ws);
+      try {
+        const wsUrl = `${url}?token=${encodeURIComponent(token)}`;
+        ws = new WebSocket(wsUrl);
+        setWebSocket(ws);
 
-      ws.onopen = () => {
-        setConnectionStatus('connected');
-        setIsLoadings(false);
-        setLoadingMessage("กำลังสแกนใบหน้า...");
+        ws.onopen = () => {
+          setConnectionStatus('connected');
+          setIsLoadings(false);
+          setLoadingMessage("กำลังสแกนใบหน้า...");
+        };
 
-        imageInterval = setInterval(() => {
-          if (ws?.readyState === WebSocket.OPEN) {
-            sendImage(ws);
-          }
-        }, 1000);
-      };
+        ws.onmessage = handleWebSocketMessage;
 
-      ws.onmessage = handleWebSocketMessage;
-      ws.onclose = cleanup;
-      ws.onerror = () => {
+        ws.onclose = () => {
+          console.log('WebSocket closed');
+          cleanup();
+        };
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          cleanup();
+          setErrors("การเชื่อมต่อล้มเหลว กรุณาลองใหม่อีกครั้ง");
+        };
+
+      } catch (error) {
+        console.error('Error setting up WebSocket:', error);
         cleanup();
-        setErrors("การเชื่อมต่อล้มเหลว กรุณาลองใหม่อีกครั้ง");
-      };
+        setErrors("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+      }
     };
 
     if (isScanning) {
@@ -388,34 +369,36 @@ const EditProfilePage: React.FC = () => {
     // refreshUserData();
   }, [connectionStatus, errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel]);
 
-  // Countdown logic
-  useEffect(() => {
-    let countdownTimer: NodeJS.Timeout;
+  // Modify the start scanning method
+  const startScanning = () => {
+    setIsScanning(true);
+  };
 
-    if (isCountdownActive && countdown > 0) {
-      countdownTimer = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(countdownTimer);
-            setIsCountdownActive(false);
-            setIsScanning(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+  const captureImage = useCallback(() => {
+    if (!webcamRef.current) return;
+
+    const imageSrc = webcamRef.current.getScreenshot();
+    if (!imageSrc && websocket) {
+      setInstruction("ไม่สามารถถ่ายภาพได้ กรุณาลองใหม่");
+      return;
     }
 
-    return () => {
-      if (countdownTimer) clearInterval(countdownTimer);
-    };
-  }, [isCountdownActive, countdown]);
+    try {
+      const imageData = imageSrc!.split(',')[1];
+      const byteCharacters = atob(imageData);
+      const byteArray = new Uint8Array(Array.from(byteCharacters).map(char => char.charCodeAt(0)));
 
-  // Modify the start scanning method
-  const startScanningWithCountdown = () => {
-    setCountdown(3); // Start 3-second countdown
-    setIsCountdownActive(true);
-  };
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({
+          captured_image: Array.from(byteArray)
+        }));
+        setInstruction("กำลังประมวลผลภาพ...");
+      }
+    } catch (error) {
+      console.error("Error sending image:", error);
+      setInstruction("เกิดข้อผิดพลาดในการส่งภาพ");
+    }
+  }, [webcamRef, websocket]);
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -467,19 +450,11 @@ const EditProfilePage: React.FC = () => {
                       <UserCircle size={128} className="text-gray-400" />
                     )}
                     <button
-                      onClick={startScanningWithCountdown}
+                      onClick={startScanning}
                       className="absolute bottom-0 right-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
                     >
                       <Camera size={20} />
                     </button>
-                    {/* Countdown overlay */}
-                    {isCountdownActive && (
-                      <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-                        <div className="text-white text-9xl font-bold animate-pulse">
-                          {countdown}
-                        </div>
-                      </div>
-                    )}
                   </div>
                   <p className="text-sm text-gray-600">คลิกที่ไอคอนกล้องเพื่อถ่ายภาพโปรไฟล์</p>
                 </div>
@@ -533,15 +508,6 @@ const EditProfilePage: React.FC = () => {
             (
               <div className="fixed inset-0 bg-gray-900 z-50">
 
-                {/* Countdown overlay
-                {countdown > 0 && (
-                  <div className="absolute inset-0 bg-black/70 z-50 flex items-center justify-center">
-                    <div className="text-white text-9xl font-bold animate-pulse">
-                      {countdown}
-                    </div>
-                  </div>
-                )} */}
-
                 <button
                   onClick={handleClose}
                   className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
@@ -565,6 +531,11 @@ const EditProfilePage: React.FC = () => {
                       screenshotFormat="image/jpeg"
                       className="absolute inset-0 w-full h-full object-cover"
                       mirrored={true}
+                      videoConstraints={{
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                      }}
                     />
 
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -574,36 +545,38 @@ const EditProfilePage: React.FC = () => {
 
                     <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
                       <div className="text-white text-center">
-                        {currentDirection && imageCount < toltalDirection && (
-                          <p
-                            className="text-xl font-semibold mb-2"
-                            style={{
-                              textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                            }}
-                          >
-                            {`${currentDirection} - Image ${imageCount}/${toltalDirection}`}
-                          </p>
-                        )}
                         <p
                           className="text-2xl font-semibold"
                           style={{
                             textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
                           }}
                         >
-                          {imageCount === toltalDirection ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
+                          {instruction || "กรุณาถ่ายภาพใบหน้าของคุณ"}
                         </p>
-                        <p
-                          className="text-xl font-semibold text-red-500"
-                          style={{
-                            textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                          }}
-                        >
-                          {errorDirectiom}
-                        </p>
+                        {errorDirectiom && (
+                          <p
+                            className="text-xl font-semibold text-red-500"
+                            style={{
+                              textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
+                            }}
+                          >
+                            {errorDirectiom}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </>
                 </div>
+
+                {isScanning && (
+                  <button
+                    onClick={captureImage}
+                    className="absolute bottom-8 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <Camera size={24} />
+                    ถ่ายภาพ
+                  </button>
+                )}
               </div>
             )
           )}
