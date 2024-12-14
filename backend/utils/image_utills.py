@@ -8,8 +8,15 @@ import uuid
 import cv2
 import numpy as np
 from skimage.feature import local_binary_pattern
+import mediapipe as mp
 
 class Phone_Detection:
+    def __init__(self):
+        # ปรับค่า threshold ให้ยืดหยุ่นขึ้น
+        self.IRIS_RATIO_MIN = 0.15  # ลดลงจาก 0.2
+        self.IRIS_RATIO_MAX = 0.8   # เพิ่มขึ้นจาก 0.7
+        self.IRIS_INTENSITY_THRESHOLD = 70  # เพิ่มขึ้นจาก 50
+
     def detect_screen_reflection(self, face_region: np.ndarray) -> bool:
         try:
             hsv = cv2.cvtColor(face_region, cv2.COLOR_BGR2HSV)
@@ -98,41 +105,110 @@ class Phone_Detection:
         std_dev = np.std(gray_region)
         return std_dev < 15
 
+    def detect_iris(self, eye_region: np.ndarray) -> bool:
+        try:
+            # แปลงภาพเป็นโทนเทา
+            gray_eye = cv2.cvtColor(eye_region, cv2.COLOR_BGR2GRAY)
+            
+            # ปรับความคมชัดให้มากขึ้น
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))  # เพิ่ม clipLimit จาก 2.0
+            enhanced_eye = clahe.apply(gray_eye)
+            
+            # ปรับพารามิเตอร์ของ HoughCircles
+            circles = cv2.HoughCircles(
+                enhanced_eye,
+                cv2.HOUGH_GRADIENT,
+                dp=1.2,  # เพิ่มจาก 1
+                minDist=10,  # ลดลงจาก 20
+                param1=40,  # ลดลงจาก 50
+                param2=25,  # ลดลงจาก 30
+                minRadius=int(eye_region.shape[0] * 0.15),  # ลดลงจาก 0.2
+                maxRadius=int(eye_region.shape[0] * 0.45)   # เพิ่มขึ้นจาก 0.4
+            )
+            
+            if circles is not None:
+                circles = np.uint16(np.around(circles))
+                for i in circles[0, :]:
+                    iris_radius = i[2]
+                    eye_width = eye_region.shape[1]
+                    iris_ratio = (iris_radius * 2) / eye_width
+                    
+                    # ตรวจสอบขนาดม่านตาด้วยค่า threshold ที่ปรับใหม่
+                    if not (self.IRIS_RATIO_MIN <= iris_ratio <= self.IRIS_RATIO_MAX):
+                        continue
+                    
+                    # สร้าง mask สำหรับตรวจสอบความเข้มของม่านตา
+                    mask = np.zeros_like(gray_eye)
+                    cv2.circle(mask, (i[0], i[1]), i[2], 255, -1)
+                    iris_intensity = cv2.mean(gray_eye, mask=mask)[0]
+                    
+                    if iris_intensity > self.IRIS_INTENSITY_THRESHOLD:
+                        continue
+                    
+                    return True
+            return False
+            
+        except Exception as e:
+            print(f"Error in iris detection: {str(e)}")
+            return False
+
     def detect_phone_in_frame(self, frame: np.ndarray, face_region: np.ndarray) -> bool:
         try:
-            # ลดขนาดภาพลงเพื่อเพิ่มความเร็ว
-            scale_factor = 0.5
-            small_face = cv2.resize(face_region, None, fx=scale_factor, fy=scale_factor)
+            # ตรับค่า confidence ให้ต่ำลง
+            face_mesh = mp.solutions.face_mesh.FaceMesh(
+                static_image_mode=True,
+                max_num_faces=1,
+                min_detection_confidence=0.3,  # ลดลงจาก 0.5
+                min_tracking_confidence=0.3     # เพิ่มพารามิเตอร์นี้
+            )
             
-            # 1. ตรวจสอบการสะท้อนแสงและความสว่าง
-            hsv = cv2.cvtColor(small_face, cv2.COLOR_BGR2HSV)
-            gray = cv2.cvtColor(small_face, cv2.COLOR_BGR2GRAY)
+            results = face_mesh.process(cv2.cvtColor(face_region, cv2.COLOR_BGR2RGB))
             
-            # ตรับค่า threshold ของความสว่าง
-            brightness_std = np.std(hsv[:,:,2])
-            if brightness_std < 15:  # ปรับจาก 20 เป็น 15
+            if not results.multi_face_landmarks:
+                print("No face landmarks detected")
                 return True
             
-            # 2. ตรวจสอบขอบภาพ
-            edges = cv2.Canny(gray, 100, 200)
-            edge_density = np.sum(edges > 0) / edges.size
-            if edge_density > 0.15:  # ปรับจาก 0.1 เป็น 0.15
+            landmarks = results.multi_face_landmarks[0]
+            
+            # เพิ่มขนาดพื้นที่การตรวจจับตา
+            padding = 15  # เพิ่มจาก 10
+            
+            def extract_eye_region(indices):
+                x_coords = [landmarks.landmark[idx].x for idx in indices]
+                y_coords = [landmarks.landmark[idx].y for idx in indices]
+                
+                x_min = int(min(x_coords) * face_region.shape[1])
+                x_max = int(max(x_coords) * face_region.shape[1])
+                y_min = int(min(y_coords) * face_region.shape[0])
+                y_max = int(max(y_coords) * face_region.shape[0])
+                
+                x_min = max(0, x_min - padding)
+                x_max = min(face_region.shape[1], x_max + padding)
+                y_min = max(0, y_min - padding)
+                y_max = min(face_region.shape[0], y_max + padding)
+                
+                return face_region[y_min:y_max, x_min:x_max]
+            
+            left_eye_region = extract_eye_region([362, 385, 387, 263, 373, 380])
+            right_eye_region = extract_eye_region([33, 160, 158, 133, 153, 144])
+            
+            # ตรวจสอบขนาดของภาพตาก่อนประมวลผล
+            min_eye_size = 30
+            if (left_eye_region.shape[0] < min_eye_size or 
+                left_eye_region.shape[1] < min_eye_size or
+                right_eye_region.shape[0] < min_eye_size or 
+                right_eye_region.shape[1] < min_eye_size):
+                print("Eye regions too small")
+                return True
+            
+            left_iris_detected = self.detect_iris(left_eye_region)
+            right_iris_detected = self.detect_iris(right_eye_region)
+            
+            # ต่านการตรวจสอบถ้าตรวจพบม่านตาอย่างน้อยหนึ่งข้าง
+            if not (left_iris_detected or right_iris_detected):
+                print("No iris detected")
                 return True
                 
-            # 3. ตรวจสอบรูปแบบพิกเซล
-            pixel_pattern = self.check_pixel_patterns(gray)
-            if pixel_pattern:
-                return True
-                
-            # 4. ตรวจสอบความต่อเนื่องของสี
-            color_continuity = self.check_color_continuity(small_face)
-            if color_continuity:
-                return True
-                
-            # 5. ตรวจสอบ Moiré patterns
-            if self.detect_moire_pattern(gray) > 0.4:  # ปรับจาก 0.3 เป็น 0.4
-                return True
-            
             return False
 
         except Exception as e:
