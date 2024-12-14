@@ -14,7 +14,7 @@ services:
     networks:
       - faceshutter
   sqlite:
-    image: keinos/sqlite3:latest
+    build: ./sqlite/
     container_name: my-sqlite-container
     ports:
       - "5432:5432"

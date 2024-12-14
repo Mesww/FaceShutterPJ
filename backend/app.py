@@ -118,15 +118,14 @@ app.include_router(
 
 @app.post('/login')
 def login():
-    oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_CALLBACK_URL)
+    oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_CALLBACK_URL,
+            scope=['openid', 'email', 'profile'])
     authorization_url, state = oauth.authorization_url(OAUTH_AUTHORIZE_URL)
     return {"authorization_url": authorization_url, "state": state}
 
 @app.get('/callback')
 def callback(request: Request):
-    
-    oauth = OAuth2Session(OAUTH_CLIENT_ID,state="sTZRxbftQwjdnw2SbpYt4tgpbwhseu", redirect_uri=OAUTH_CALLBACK_URL)
-    
+    oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_CALLBACK_URL)
     try:
         token = oauth.fetch_token(
             OAUTH_TOKEN_URL,
