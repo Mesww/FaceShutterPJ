@@ -101,6 +101,7 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed, isLogined, logout,
                         email: '',
                         password: '',
                         tel: '',
+                        roles: '',
                     });
                 }
                 logout();
