@@ -16,19 +16,19 @@ class FaceAuthenticationService:
         self.face_mesh = mp.solutions.face_mesh.FaceMesh(
             static_image_mode=False,
             max_num_faces=1,
-            refine_landmarks=True,
+            refine_landmarks=False,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
         
         # Constants for face authentication
-        self.FACE_MATCH_THRESHOLD = 0.45  # Lower is more strict
-        self.EYE_BLINK_THRESHOLD = 0.26   # Threshold for eye blink detection
-        self.MIN_FACE_SIZE = 80           # Minimum face size in pixels
+        self.FACE_MATCH_THRESHOLD = 0.5  # Lower is more strict
+        self.EYE_BLINK_THRESHOLD = 0.3   # Threshold for eye blink detection
+        self.MIN_FACE_SIZE = 60           # Minimum face size in pixels
         
         # Store recent EAR values for blink detection
         self.recent_ear_values = []
-        self.MAX_EAR_HISTORY = 10
+        self.MAX_EAR_HISTORY = 5
         
         # Additional anti-spoofing parameters
         self.frame_buffer = []
@@ -188,93 +188,92 @@ class FaceAuthenticationService:
 
     async def authenticate_face(self, websocket: WebSocket, frame: np.ndarray, 
                               user_embeddeds: Union[List, np.ndarray]) -> Tuple[bool, float, str]:
-        """Enhanced face authentication with anti-spoofing measures"""
         try:
             # Process frame
             height, width = frame.shape[:2]
-            target_width = 640
+            target_width = 480
             scale = target_width / width
             dimensions = (target_width, int(height * scale))
             imgS = cv2.resize(frame, dimensions)
             rgb_frame = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
             
-            # สร้าง instance ของ Phone_Detection
-            phone_detection = Phone_Detection()
+            # เพิ่มการตรวจจับรูปจาพแบบละเอียด
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             
-            # ตรวจสอบใบหน้า
-            results = self.face_mesh.process(rgb_frame)
-            if not results.multi_face_landmarks:
-                return False, 0.0, "ไม่พบใบหน้าในภาพ"
+            # 1. ตรวจสอบการสะท้อนแสง (glare detection)
+            glare_threshold = 250
+            glare_pixels = np.sum(gray > glare_threshold)
+            glare_ratio = glare_pixels / (gray.shape[0] * gray.shape[1])
+            if glare_ratio > 0.05:
+                return False, 0.0, "ตรวจพบการสะท้อนแสงผิดปกติ"
 
-            # เก็บการเคลื่อนไหวของ landmarks
-            if len(self.natural_movement_buffer) > self.MIN_MOVEMENT_FRAMES:
-                self.natural_movement_buffer.pop(0)
-            self.natural_movement_buffer.append(results.multi_face_landmarks[0].landmark)
+            # 2. ตรวจสอบความคมชัด (sharpness detection)
+            laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+            if laplacian_var < 50:  # ภาพไม่คมชัดพอ
+                return False, 0.0, "คุณภาพภาพไม่ชัดเจนพอ"
 
-            # ตรวจสอบการเคลื่อนไหวที่เป็นธรรมชาติ
-            if len(self.natural_movement_buffer) >= self.MIN_MOVEMENT_FRAMES:
-                movement = self._calculate_natural_movement()
-                if movement < self.NATURAL_MOVEMENT_THRESHOLD:
-                    return False, 0.0, "กรุณาขยับใบหน้าเล็กน้อยเพื่อยืนยันว่าเป็นใบหน้าจริง"
+            # 3. ตรวจสอบลายแบบซ้ำ (pattern detection)
+            fft = np.fft.fft2(gray)
+            fft_shift = np.fft.fftshift(fft)
+            magnitude_spectrum = 20 * np.log(np.abs(fft_shift))
+            if np.max(magnitude_spectrum) > 1000:  # มีลายแบบซ้ำมากเกินไป
+                return False, 0.0, "ตรวจพบลักษณะของภาพถ่ายซ้ำ"
 
-            # ตรวจสอบความมีชีวิต
-            is_live, liveness_msg = await self._check_liveness(results.multi_face_landmarks[0])
-            if not is_live:
-                return False, 0.0, liveness_msg
+            # 4. ตรวจสอบความสม่ำเสมอของพื้นผิว
+            blocks = []
+            block_size = 32
+            for i in range(0, gray.shape[0]-block_size, block_size):
+                for j in range(0, gray.shape[1]-block_size, block_size):
+                    block = gray[i:i+block_size, j:j+block_size]
+                    blocks.append(np.std(block))
+            texture_variance = np.std(blocks)
+            if texture_variance < 10:  # พื้นผิวเรียบเกินไป
+                return False, 0.0, "ตรวจพบลักษณะของภาพถ่าย"
 
-            # ตรวจจับใบหน้า
-            face_locations = face_recognition.face_locations(rgb_frame, model="hog")
+            # 5. ตรวจสอบขอบภาพ
+            edges = cv2.Canny(gray, 100, 200)
+            edge_density = np.mean(edges) / 255
+            if edge_density < 0.01 or edge_density > 0.15:
+                return False, 0.0, "ลักษณะขอบภาพผิดปกติ"
+
+            # ดำเนินการตรวจสอบใบหน้าตามปกติ
+            face_locations = face_recognition.face_locations(rgb_frame, model="hog", number_of_times_to_upsample=1)
             if not face_locations:
                 return False, 0.0, "ไม่พบใบหน้าในภาพ"
 
-            # แยกส่วนใบหน้าสำหรับการวิเคราะห์
+            # ตรวจสอบขนาดใบหน้า
             top, right, bottom, left = face_locations[0]
-            face_region = rgb_frame[top:bottom, left:right]
+            face_height = bottom - top
+            if face_height < self.MIN_FACE_SIZE:
+                return False, 0.0, "กรุณาเข้าใกล้กล้องมากขึ้น"
 
-            # ตรวจสอบการใช้มือถือด้วยวิธีการที่ปรับปรุงใหม่
-            if phone_detection.detect_phone_in_frame(rgb_frame, face_region):
-                return False, 0.0, "ตรวจพบว่าเป็นภาพจากหน้าจอมือถือ กรุณาใช้ใบหน้าจริง"
+            # ตรวจสอบการมีชีวิต
+            results = self.face_mesh.process(rgb_frame)
+            if not results.multi_face_landmarks:
+                return False, 0.0, "ไม่สามารถตรวจจับจุดสำคัญบนใบหน้า"
 
-            # Check face quality and texture
-            if not self.check_face_quality(rgb_frame, face_locations[0]):
-                return False, 0.0, "ภาพไม่ชัดหรือหน้าอยู่ใกล้เกินไป"
+            landmarks = results.multi_face_landmarks[0]
             
-            if not self.analyze_texture_frequency(face_region):
-                return False, 0.0, "พบเจอหน้าจอโทรศัพท์"
-            
-            # Check for natural head movements
-            # if not self.check_natural_movement():
-            #     return False, 0.0, "คุณเคลื่อนไหวไม่ธรรมชาติ"
+            # บังคับให้ต้องมีการกะพริบตา
+            is_live, message = await self._check_liveness(landmarks)
+            if not is_live:
+                return False, 0.0, message
 
-            # Get face encoding
+            # เมื่อผ่านการตรวจสอบทั้งหมด จึงทำการเปรียบเทียบใบหน้า
             current_encoding = face_recognition.face_encodings(rgb_frame, face_locations)[0]
             
-            # Prepare user embeddings
             if isinstance(user_embeddeds, list):
                 user_embeddeds = np.array(user_embeddeds)
             if len(user_embeddeds.shape) == 1:
                 user_embeddeds = np.array([user_embeddeds])
 
-            # Compare against all stored embeddings
-            best_match_confidence = 0.0
             for embed in user_embeddeds:
-                # Calculate face distance
                 face_distance = face_recognition.face_distance([embed], current_encoding)[0]
-                matches = face_recognition.compare_faces([embed], current_encoding, 
-                                                      tolerance=self.FACE_MATCH_THRESHOLD)
-                
-                print(f"Face distance: {face_distance:.3f}")
-                print(f"Match result: {matches[0]}")
-                
-                if matches[0] and face_distance < self.FACE_MATCH_THRESHOLD:
+                if face_distance < self.FACE_MATCH_THRESHOLD:
                     confidence = float(1 - face_distance)
-                    best_match_confidence = max(best_match_confidence, confidence)
+                    return True, confidence, "ยืนยันตัวตนสำเร็จ"
 
-            # Return authentication result
-            if best_match_confidence > 0:
-                return True, best_match_confidence, "หน้าตรงกับฐานข้อมูล"
-            else:
-                return False, 0.0, "หน้าไม่ตรงกับฐานข้อมูล"
+            return False, 0.0, "ใบหน้าไม่ตรงกับฐานข้อมูล"
             
         except Exception as e:
             print(f"Authentication error: {str(e)}")
