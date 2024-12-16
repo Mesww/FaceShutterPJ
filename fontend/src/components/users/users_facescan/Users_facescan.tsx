@@ -790,7 +790,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   {isScanning && !isAuthen && (
                     <button
                       onClick={captureImage}
-                      className="absolute bottom-8 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      className="absolute bottom-12 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center gap-2"
                     >
                       <Camera size={24} />
                       ถ่ายภาพ
