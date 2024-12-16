@@ -36,7 +36,7 @@ const EditProfilePage: React.FC = () => {
   const [name, setName] = useState(userData?.name || '');
   const [email, setEmail] = useState(userData?.email || '');
   const [phone, setPhone] = useState(userData?.tel || '');
-
+  const [role,setRole] = useState(userData?.roles || '');
   // console.log(userData)
 
   const [websocket, setWebSocket] = useState<WebSocket | null>(null);
@@ -89,8 +89,11 @@ const EditProfilePage: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
     try {
-      await edituserdata(userData?.employee_id || '', name, email, phone, imageFile, userData?.role || '');
+     
+      await edituserdata(userData?.employee_id || '', name, email, phone, imageFile, role);
+
       await refreshUserData();
       Swal.fire({
         title: 'สำเร็จ!',
@@ -359,6 +362,7 @@ const EditProfilePage: React.FC = () => {
     setName(userData?.name || '');
     setEmail(userData?.email || '');
     setPhone(userData?.tel || '');
+    setRole(userData?.roles || '');
     console.log('FaceScan State:', {
       isScanning,
       isLoadings,
@@ -367,7 +371,7 @@ const EditProfilePage: React.FC = () => {
       errors
     });
     // refreshUserData();
-  }, [connectionStatus, errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel]);
+  }, [connectionStatus, errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel,userData?.roles]);
 
   // Modify the start scanning method
   const startScanning = () => {

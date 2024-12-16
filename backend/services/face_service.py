@@ -361,7 +361,7 @@ class Face_service:
                 await websocket.send_json(
                     {
                         "data": {
-                            "status": "failed",
+                            "status": "stopped",
                             "message": "ไม่พบข้อมูลใบหน้าของผู้ใช้",
                         }
                     }

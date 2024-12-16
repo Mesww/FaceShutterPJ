@@ -116,12 +116,14 @@ export const edituserdata = async (employee_id: string, name: string, email: str
         if (!token) {
             throw new Error('No token found');
         }
+        console.log(role);
+
         const body = {
             'employee_id': employee_id ?? null,
             'name': name ?? null,
             'email': email ?? null,
             'tel': phone ?? null,
-            'role': role ?? null,
+            'roles': role ?? null,
         }
         const response = await fetch(`${BACKEND_URL}/api/users/update_user`, {
         method: 'PUT',

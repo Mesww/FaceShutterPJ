@@ -9,7 +9,7 @@ export interface User{
   email: string;
   password: string;
   tel: string;
-  role: string;
+  roles: string;
 }
  
 export interface Responsedata{

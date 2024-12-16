@@ -83,7 +83,7 @@ const RegisModal: React.FC<{
 
     const handleModalCancel = () => {
         setErrors({});
-        setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
+        setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "",roles:"" });
         setIsRegister(false);
     }
 
