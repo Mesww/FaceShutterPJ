@@ -24,7 +24,7 @@ class FaceAuthenticationService:
         # Constants for face authentication
         self.FACE_MATCH_THRESHOLD = 0.5  # Lower is more strict
         self.EYE_BLINK_THRESHOLD = 0.3   # Threshold for eye blink detection
-        self.MIN_FACE_SIZE = 60           # Minimum face size in pixels
+        self.MIN_FACE_SIZE = 80           # Minimum face size in pixels
         
         # Store recent EAR values for blink detection
         self.recent_ear_values = []
