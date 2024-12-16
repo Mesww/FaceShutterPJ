@@ -33,6 +33,35 @@ export const removeLogined = () => {
 }
 
 
+export const addAdmin = async (employeeId:string, password:string) => {
+    try {
+        // Fetch public key from the backend
+        const { data: { public_key } } = await axios.get(BACKEND_URL+"/get_public_key");
+        const publicKey = forge.pki.publicKeyFromPem(public_key);
+
+        // Encrypt employeeId and password
+        const encryptedEmployeeId = publicKey.encrypt(employeeId, "RSA-OAEP", {
+            md: forge.md.sha256.create(),
+        });
+        const encryptedPassword = publicKey.encrypt(password, "RSA-OAEP", {
+            md: forge.md.sha256.create(),
+        });
+
+        // Convert to hex for transmission
+        const encryptedData = {
+            employee_id: forge.util.bytesToHex(encryptedEmployeeId),
+            password: forge.util.bytesToHex(encryptedPassword),
+        };
+
+        // Send encrypted data to backend
+        const response = await axios.post(BACKEND_URL+"/api/users/add_admin", encryptedData);
+        alert(response.data.message);
+    } catch (error) {
+        console.error(error);
+        alert("Register failed!");
+    }
+}
+
 export const adminLogin = async (employeeId:string, password:string) =>  {
     try {
         

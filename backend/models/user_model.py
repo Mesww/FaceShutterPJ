@@ -36,6 +36,8 @@ class User(BaseModel):
     roles: Optional[RoleEnum] = RoleEnum.USER  # Default to USER role
     create_at: datetime = Field(default_factory=datetime.now)  # Default to current time
     update_at: Optional[datetime] = None
+    password: Optional[str] = None
+    
     
 class Userupdate(BaseModel):
     name: Optional[str] = None
@@ -45,3 +47,4 @@ class Userupdate(BaseModel):
     embeddeds: Optional[List] = []
     roles: Optional[RoleEnum] = RoleEnum.USER 
     update_at: Optional[datetime] = Field(default_factory=datetime.now)  # Default to current time
+    password: Optional[str] = None

@@ -1,7 +1,9 @@
 import logging
 from fastapi import HTTPException
+from backend.configs.config import DEFAULT_TIMEZONE
 from backend.configs.db import connect_to_mongodb
 from datetime import datetime
+import pytz
 
 class Logservice:
     async def get_logs(self):
@@ -19,17 +21,24 @@ class Logservice:
         db = await connect_to_mongodb()
         collection = db["logs"]
         try:
+            # กำหนดเวลาไทย
+            tz = pytz.timezone(DEFAULT_TIMEZONE)
+            current_time = datetime.now(tz)
+            
+            # แปลงเวลาเป็น ISO format
+            thai_time_str = current_time.isoformat()
+
             # Add a new log entry for the employee
             log_entry = {
                 "employee_id": employee_id,
                 "logs": [
                     {
                         "log": log,
-                        "created_at": datetime.utcnow(),
+                        "created_at": thai_time_str,
                     }
                 ],
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
+                "created_at": thai_time_str,
+                "updated_at": thai_time_str,
             }
             result = await collection.insert_one(log_entry)
             return {"status": "success", "inserted_id": str(result.inserted_id)}
@@ -45,8 +54,12 @@ class Logservice:
             if not employee_logs or "logs" not in employee_logs or log_index >= len(employee_logs["logs"]):
                 raise HTTPException(status_code=404, detail="Log entry not found.")
 
+            # กำหนดเวลาไทย
+            tz = pytz.timezone(DEFAULT_TIMEZONE)
+            current_time = datetime.now(tz)
+
             employee_logs["logs"][log_index]["log"] = new_log
-            employee_logs["logs"][log_index]["updated_at"] = datetime.utcnow()
+            employee_logs["logs"][log_index]["updated_at"] = current_time
 
             await collection.replace_one({"employee_id": employee_id}, employee_logs)
 

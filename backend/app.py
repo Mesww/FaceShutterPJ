@@ -4,15 +4,17 @@ import datetime
 from pathlib import Path
 import time
 from dotenv import dotenv_values, load_dotenv
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 import jwt
 import numpy as np
+from requests_oauthlib import OAuth2Session
 from backend.configs.config import (
     IMAGE_PER_DIRECTION,
     SCAN_DIRECTION,
     ConnectionManager,
     public_key_pem
 )
+
 from backend.models.user_model import User, Userupdate
 from backend.routes import face_routes, user_routes, history_routes, checkinout_routes,auth_routes,logs_routes
 import mediapipe as mp
@@ -34,6 +36,11 @@ config = dotenv_values()
 FONTEND_URL = config.get("FRONTEND_URL", "http://localhost:5173")
 SECRET_KEY = config.get("SECRET_KEY", "RickAstley")
 ALGORITHM = config.get("ALGORITHM", "HS256")
+OAUTH_CLIENT_ID = config.get("OAUTH_CLIENT_ID","")
+OAUTH_SECRET = config.get("OAUTH_SECRET","")
+OAUTH_CALLBACK_URL = config.get("OAUTH_CALLBACK_URL","")
+OAUTH_AUTHORIZE_URL = config.get("OAUTH_AUTHORIZE_URL","")
+OAUTH_TOKEN_URL = config.get("OAUTH_TOKEN_URL","")
 
 app = FastAPI()
 
@@ -103,6 +110,33 @@ app.include_router(
     tags=["auth"],
 )
 
+"""
+
+    Testing OAuth2 Authorization Code Flow
+
+"""
+
+@app.post('/login')
+def login():
+    oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_CALLBACK_URL,
+            scope=['openid', 'email', 'profile'])
+    authorization_url, state = oauth.authorization_url(OAUTH_TOKEN_URL)
+    return {"authorization_url": authorization_url, "state": state}
+
+@app.get('/callback')
+def callback(request: Request):
+    oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_CALLBACK_URL)
+    try:
+        token = oauth.fetch_token(
+            OAUTH_TOKEN_URL,
+            authorization_response=str(request.url),
+            client_secret=OAUTH_SECRET,
+            include_client_id=True,
+            scope=['openid', 'email', 'profile']
+        )
+        return {"token": token}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 # Create a scheduler instance
@@ -143,6 +177,9 @@ face_mesh = mp_face_mesh.FaceMesh(
     refine_landmarks=True,
     min_detection_confidence=0.5,
 )
+
+
+
 
 
 
@@ -189,15 +226,7 @@ async def websocket_endpoint(websocket: WebSocket):
     face_service = Face_service()
     user_service = UserService()
     await websocket.accept()
-    scan_directions = SCAN_DIRECTION
-    current_direction_idx = 0
-    images_per_direction = IMAGE_PER_DIRECTION  # Number of images per direction
-    image_count = 0  # Counter for images saved in the current direction
-
-    # Delay time for saving data per frame
-    delay_time = 0.25  # Delay time in seconds
-    last_saved_time = time.time()
-
+    
     # Request user information
     await websocket.send_text(
         "Provide user details (employee_id, name, email, password):"
@@ -206,13 +235,12 @@ async def websocket_endpoint(websocket: WebSocket):
         {
             "data": {
                 "status": "register",
-                "scan_directions": scan_directions,
-                "totaldirection": images_per_direction,
+                "scan_directions": SCAN_DIRECTION,
+                "totaldirection": IMAGE_PER_DIRECTION,
             }
         }
     )
     user_details = await websocket.receive_json()
-    print("receive user_details : ", user_details)
     employee_id = user_details["employee_id"]
     name = user_details["name"]
     email = user_details["email"]
@@ -220,83 +248,113 @@ async def websocket_endpoint(websocket: WebSocket):
     password = ""
 
     try:
-      encode,images = await face_service.face_registation(websocket=websocket)  
-    #   len(images)
-      user_id = await user_service.save_user_and_images(employee_id=employee_id, name=name, email=email,images=images, tel=tel, password=password, face_encoding=encode)
-      await websocket.send_json({"data": {"status": "success", "message": f"User data and images saved successfully with ID: {user_id}"}})
+        encode, images = await face_service.face_registation(websocket=websocket)
+        
+        # ตรวจสอบว่ามีการถ่ายภาพสำเร็จหรือไม่
+        if not images:
+            await websocket.close()
+            return
+            
+        user_id = await user_service.save_user_and_images(
+            employee_id=employee_id,
+            name=name,
+            email=email,
+            images=images,
+            tel=tel,
+            password=password,
+            face_encoding=encode
+        )
+        
+        await websocket.send_json({
+            "data": {
+                "status": "success",
+                "message": f"User data and images saved successfully with ID: {user_id}"
+            }
+        })
+        
     except WebSocketDisconnect:
-            print("WebSocket disconnected.")
+        print("WebSocket disconnected.")
 
 
 @app.websocket("/ws/edit_image")
 async def websocket_endpoint(websocket: WebSocket):
     face_service = Face_service()
     user_service = UserService()
+    image_utills = Image_utills()
+    
     await websocket.accept()
-    # Extract token from query parameters
+    
+    # ตรวจสอบ token และ employee_id
     token: Optional[str] = websocket.query_params.get("token")
     employee_id = None
     if token:
         try:
-            # Decode the JWT token
             decoded_token = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
             employee_id = decoded_token.get("sub")
-        except jwt.ExpiredSignatureError:
-            print("Token has expired.")
-        except jwt.InvalidTokenError as e:
-            print(f"Invalid token: {e}")
         except Exception as e:
-            print(f"Unexpected error decoding token: {e}")
+            print(f"Token error: {e}")
             token = None
             employee_id = None
+
     scan_directions = SCAN_DIRECTION
     current_direction_idx = 0
     images = []
-    embeddings = []
-    images_per_direction = IMAGE_PER_DIRECTION
-    image_count = 0
-    await websocket.send_json(
-        {
-            "data": {
-                "status": "register",
-                "scan_directions": scan_directions,
-                "totaldirection": images_per_direction,
-            }
+    
+    await websocket.send_json({
+        "data": {
+            "status": "register",
+            "scan_directions": scan_directions,
+            "totaldirection": IMAGE_PER_DIRECTION,
         }
-    )
+    })
+
     try:
-        encode,images = await face_service.face_registation(websocket=websocket)  
-        print("All images captured successfully.")
-        print("Saving user data and images...", len(images))
-        image_utills = Image_utills()
+        # รับภาพใหม่
+        encode, images = await face_service.face_registation(websocket=websocket)
+        
+        if not images:
+            await websocket.close()
+            return
+
         user = await user_service.get_user_by_employee_id(employee_id)
-        # Save images to disk
         saved_image_paths = []
+
+        # บันทึกภาพใหม่
         for img_data in images:
             direction = img_data["direction"]
             frame = img_data["frame"]
-
-            # Generate a unique filename for each image
             filepath = await image_utills.save_image(
                 image=frame,
                 filename=f"{employee_id}_{direction.replace(' ', '_').lower()}.jpg",
             )
-
-            # Append the path to the list
             saved_image_paths.append({"path": filepath, "direction": direction})
 
-        for existing_image in user.data["images"]:
-            image_utills.remove_image(existing_image["path"])
-        # Save all images and user data at once
-        user_update = Userupdate(images=saved_image_paths,embeddeds=encode)
-
+        # อัพเดทข้อมูลผู้ใช้
+        user_update = Userupdate(images=saved_image_paths, embeddeds=encode,roles=user.data["roles"])
         user_id = await user_service.update_user_by_employee_id(
-            employee_id=employee_id, request=user_update
+            employee_id=employee_id, 
+            request=user_update
         )
-        await websocket.send_json({"data": {"status": "success", "message": f"User data and images saved successfully with ID: {user_id}"}})
+
+        # ลบรูปภาพเก่าหลังจากบันทึกข้อมูลใหม่สำเร็จ
+        if user_id and user.data["images"]:
+            for existing_image in user.data["images"]:
+                image_utills.remove_image(existing_image["path"])
+
+        await websocket.send_json({
+            "data": {
+                "status": "success", 
+                "message": f"User data and images saved successfully with ID: {user_id}"
+            }
+        })
 
     except WebSocketDisconnect:
         print("WebSocket disconnected.")
+        # ในกรณีที่เกิด disconnect ไม่ต้องลบรูปภาพเก่า
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        # ในกรณีที่เกิดข้อผิดพลาด ไม่ต้องลบรูปภาพเก่า
+        await websocket.close()
 
 
 

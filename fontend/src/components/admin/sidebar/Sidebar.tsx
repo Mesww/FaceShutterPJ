@@ -22,7 +22,7 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
     const menuItems = [
         {
             path: "/admin/AdminManage",
-            title: "User Management",
+            title: "Manages",
             icon: <Users size={20} />,
             description: "Add, delete, edit user information",
         },
@@ -34,7 +34,7 @@ const Sidebar = ({ isSidebarCollapsed, setIsSidebarCollapsed }: SidebarProps) =>
         },
         {
             path: "/admin/AdminSettings",
-            title: "System Settings",
+            title: "Settings",
             icon: <Settings size={20} />,
             description: "Configure general system settings",
         },

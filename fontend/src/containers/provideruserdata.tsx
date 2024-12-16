@@ -50,6 +50,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
       console.log('User data:', data);
       setUserData(data);
+      console.log(data.images_profile !== null);
       if (data.images_profile) {
         setProfileImage(`data:image/jpeg;base64,${data.images_profile}`);
       }

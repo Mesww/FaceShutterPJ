@@ -1,64 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { Camera, Zap, User, Clock, AlertTriangle } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header.js';
 import { useUserData } from '@/containers/provideruserdata.js';
+import axios from 'axios';
+import { AlertTriangle, Zap } from 'lucide-react';
 
-type NotificationType = 'error' | 'warning' | 'success';
-type NotificationStatus = 'รอการแก้ไข' | 'แก้ไขแล้ว' | 'สำเร็จ';
-
-interface Notification {
-  id: number;
-  time: string;
-  problem: string;
-  status: NotificationStatus;
-  icon: React.ReactNode;
-  type: NotificationType;
+interface Log {
+  _id: string;
+  employee_id: string;
+  logs: Array<{
+    log: {
+      action: string;
+      status: string;
+      message: string;
+      confidence?: number;
+      attempt?: number;
+    };
+    created_at: string;
+  }>;
+  created_at: string;
+  updated_at: string;
 }
-
-const notifications: Notification[] = [
-
-  {
-    id: 1,
-    time: "09:15:23",
-    problem: "ไม่สามารถตรวจจับใบหน้าได้ กล้องอาจมีปัญหา",
-    status: "รอการแก้ไข",
-    icon: <Camera className="w-5 h-5 md:w-6 md:h-6 text-red-500" />,
-    type: "error"
-  },
-  {
-    id: 2,
-    time: "08:30:45",
-    problem: "ระบบออฟไลน์ชั่วคราว อาจเกิดจากปัญหาการเชื่อมต่อ",
-    status: "แก้ไขแล้ว",
-    icon: <Zap className="w-5 h-5 md:w-6 md:h-6 text-yellow-500" />,
-    type: "warning"
-  },
-  {
-    id: 3,
-    time: "13:45:12",
-    problem: "การยืนยันตัวตนล้มเหลว โปรดลองใหม่อีกครั้ง",
-    status: "รอการแก้ไข",
-    icon: <User className="w-5 h-5 md:w-6 md:h-6 text-red-500" />,
-    type: "error"
-  },
-  {
-    id: 4,
-    time: "10:30:15",
-    problem: "บันทึกเวลาเข้างานเรียบร้อยแล้ว",
-    status: "สำเร็จ",
-    icon: <Clock className="w-5 h-5 md:w-6 md:h-6 text-green-500" />,
-    type: "success"
-  },
-  {
-    id: 5,
-    time: "14:20:33",
-    problem: "แสงสว่างไม่เพียงพอ กรุณาสแกนในที่ที่มีแสงสว่างมากกว่านี้",
-    status: "รอการแก้ไข",
-    icon: <AlertTriangle className="w-5 h-5 md:w-6 md:h-6 text-yellow-500" />,
-    type: "warning"
-  }
-];
 
 const UserNotificationProblem: React.FC = () => {
 
@@ -74,35 +36,28 @@ const UserNotificationProblem: React.FC = () => {
 const [name, setName] = useState(userData?.name || '');
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [logEntries, setLogEntries] = useState<Log[]>([]);
 
-  const getNotificationStyles = (type: NotificationType): string => {
-    switch (type) {
+  const getNotificationStyles = (status: string): string => {
+    switch (status) {
       case 'error':
         return 'bg-red-50 border-red-100';
-      case 'warning':
+      case 'stopped':
         return 'bg-yellow-50 border-yellow-100';
-      case 'success':
-        return 'bg-green-50 border-green-100';
       default:
         return 'bg-gray-50 border-gray-100';
     }
   };
 
-  const getStatusStyles = (status: NotificationStatus): string => {
+  const getStatusStyles = (status: string): string => {
     switch (status) {
-      case 'รอการแก้ไข':
+      case 'error':
         return 'bg-red-500 text-white';
-      case 'แก้ไขแล้ว':
-        return 'bg-green-500 text-white';
-      case 'สำเร็จ':
-        return 'bg-blue-500 text-white';
+      case 'stopped':
+        return 'bg-yellow-500 text-white';
       default:
         return 'bg-gray-500 text-white';
     }
-  };
-
-  const handleNotificationClick = (id: number): void => {
-    console.log(`Action for notification ${id}`);
   };
 
   const menuItems = [
@@ -128,12 +83,101 @@ const [name, setName] = useState(userData?.name || '');
     },
   ];
 
-  const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
+  const currentMenuItem = menuItems.find((item) => window.location.pathname.includes(item.path));
 
   useEffect(() => {
     setName(userData?.name || '');
   }, [userData?.name]);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/logs/getlogs`, {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        const logs = Array.isArray(response.data) ? response.data : 
+                    Array.isArray(response.data.data) ? response.data.data : [];
+        
+        const userLogs = logs.filter((log: Log) => {
+          return log.employee_id === userData?.employee_id && 
+                 log.logs.some(item => ['error', 'stopped'].includes(item.log.status));
+        }).map((log: Log) => ({
+          ...log,
+          logs: log.logs.filter(item => ['error', 'stopped'].includes(item.log.status))
+        }));
+
+        setLogEntries(userLogs);
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+      }
+    };
+
+    if (userData?.employee_id) {
+      fetchLogs();
+      const interval = setInterval(fetchLogs, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [userData?.employee_id]);
   
+  const getIcon = (status: string) => {
+    switch (status) {
+      case 'error':
+        return <AlertTriangle className="w-5 h-5 md:w-6 md:h-6 text-red-500" />;
+      case 'stopped':
+        return <Zap className="w-5 h-5 md:w-6 md:h-6 text-yellow-500" />;
+      default:
+        return <AlertTriangle className="w-5 h-5 md:w-6 md:h-6 text-gray-500" />;
+    }
+  };
+
+  const getStatusText = (status: string): string => {
+    switch (status) {
+      case 'error':
+        return 'เกิดข้อผิดพลาด';
+      case 'failed':
+        return 'ไม่สำเร็จ';
+      case 'success':
+        return 'สำเร็จ';
+      case 'progress':
+        return 'กำลังดำเนินการ';
+      case 'stopped':
+        return 'หยุดทำงาน';
+      default:
+        return status;
+    }
+  };
+
+  const getActionText = (action: string): string => {
+    switch (action) {
+      case 'face_scan':
+        return 'สแกนใบหน้า';
+      default:
+        return action;
+    }
+  };
+
+  // สร้างฟังก์ชันสำหรับจัดเรียงข้อมูล
+  const getSortedLogs = (logs: Log[]) => {
+    return logs
+      .map(entry => {
+        // แปลง logs array เป็น array ของ notifications พร้อมข้อมูล employee_id
+        return entry.logs.map(logItem => ({
+          ...logItem,
+          employee_id: entry.employee_id,
+          _id: entry._id
+        }));
+      })
+      .flat() // รวม array ทั้งหมดเข้าด้วยกัน
+      .sort((a, b) => {
+        // เรียงตามเวลาล่าสุดไปเก่าสุด
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+  };
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
 
@@ -162,46 +206,74 @@ const [name, setName] = useState(userData?.name || '');
       {/* Main Content */}
       <div className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
-        <Header profileimage={profileImage} currentMenuItem={currentMenuItem} name={name} />
+        <Header 
+          profileimage={profileImage} 
+          currentMenuItem={currentMenuItem} 
+          name={name} 
+        />
 
-        <div className="w-full p-2 md:p-4 bg-white">
-          <div className="p-3 md:p-6 bg-white rounded-lg shadow overflow-hidden">
-            <h2 className="text-lg font-semibold mb-4">การแจ้งเตือนและสถานะ</h2>
-            <div className="space-y-3 md:space-y-4">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`p-3 md:p-4 rounded-lg border shadow-sm transition-all hover:shadow-md ${getNotificationStyles(notification.type)}`}
-                >
-                  <div className="flex flex-col md:flex-row md:items-start space-y-2 md:space-y-0 md:space-x-4">
-                    <div className="flex-shrink-0">
-                      {notification.icon}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col md:flex-row justify-between items-start">
-                        <div className="w-full md:pr-4">
-                          <p className="text-sm text-gray-600 mb-1 md:mb-0">{notification.problem}</p>
-                        </div>
-                        <span className="text-xs md:text-sm text-gray-500 whitespace-nowrap">{notification.time}</span>
+        <div className="p-4 md:p-6">
+          <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm">
+            <div className="p-4 space-y-3">
+              {logEntries.length > 0 ? (
+                getSortedLogs(logEntries).map((logItem, index) => (
+                  <div
+                    key={`${logItem._id}-${index}`}
+                    className={`p-4 rounded-lg border transition-all hover:shadow-md ${getNotificationStyles(logItem.log.status)}`}
+                  >
+                    <div className="flex gap-4">
+                      <div className="flex-shrink-0">
+                        {getIcon(logItem.log.status)}
                       </div>
 
-                      <div className="mt-2 flex flex-col md:flex-row justify-between items-start md:items-center space-y-2 md:space-y-0">
-                        <span className={`px-2 md:px-3 py-1 text-xs md:text-sm font-medium rounded-full ${getStatusStyles(notification.status)}`}>
-                          {notification.status}
-                        </span>
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getStatusStyles(logItem.log.status)}`}>
+                              {getStatusText(logItem.log.status)}
+                            </span>
+                            {logItem.log.attempt && (
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+                                พยายามทั้งหมด {logItem.log.attempt} ครั้ง
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {new Date(logItem.created_at).toLocaleString('th-TH')}
+                          </span>
+                        </div>
 
-                        <button
-                          className="text-xs md:text-sm text-gray-500 hover:text-gray-700"
-                          onClick={() => handleNotificationClick(notification.id)}
-                        >
-                          ดูรายละเอียด
-                        </button>
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-900 font-medium">
+                            {getActionText(logItem.log.action)}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {logItem.log.message}
+                          </p>
+                        </div>
+
+                        {logItem.log.confidence && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-blue-500 rounded-full"
+                                style={{ width: `${logItem.log.confidence * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-500 min-w-[4rem] text-right">
+                              ความแม่นยำ {(logItem.log.confidence * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-sm">ไม่พบการแจ้งเตือน</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

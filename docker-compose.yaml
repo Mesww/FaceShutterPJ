@@ -13,10 +13,9 @@ services:
     restart: always
     networks:
       - faceshutter
-  fastapi:
-    build: .
-    container_name: fastapi
-    restart: always
+  sqlite:
+    build: ./sqlite/
+    container_name: my-sqlite-container
     ports:
       - "8000:8000"
     depends_on:

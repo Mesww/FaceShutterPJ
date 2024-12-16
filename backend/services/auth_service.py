@@ -36,6 +36,11 @@ class FaceAuthenticationService:
         self.MOVEMENT_THRESHOLD = 0.02
         self.TEXTURE_THRESHOLD = 0.15
         self.REFLECTION_THRESHOLD = 0.1
+        
+        # เพิ่ม threshold สำหรับการตรวจจับความเป็นธรรมชาติ
+        self.NATURAL_MOVEMENT_THRESHOLD = 0.015
+        self.MIN_MOVEMENT_FRAMES = 10
+        self.natural_movement_buffer = []
 
   
     def calculate_eye_aspect_ratio(self, eye_landmarks: List[Tuple[float, float]]) -> float:
@@ -185,8 +190,7 @@ class FaceAuthenticationService:
                               user_embeddeds: Union[List, np.ndarray]) -> Tuple[bool, float, str]:
         """Enhanced face authentication with anti-spoofing measures"""
         try:
-            
-            # Process face landmarks
+            # Process frame
             height, width = frame.shape[:2]
             target_width = 640
             scale = target_width / width
@@ -194,37 +198,43 @@ class FaceAuthenticationService:
             imgS = cv2.resize(frame, dimensions)
             rgb_frame = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
             
-            phone_detecttion = Phone_Detection()
-
+            # สร้าง instance ของ Phone_Detection
+            phone_detection = Phone_Detection()
             
-            
+            # ตรวจสอบใบหน้า
             results = self.face_mesh.process(rgb_frame)
             if not results.multi_face_landmarks:
-                return False, 0.0, "ไม่พบหน้าในภาพ"
+                return False, 0.0, "ไม่พบใบหน้าในภาพ"
 
-            # Check liveness
+            # เก็บการเคลื่อนไหวของ landmarks
+            if len(self.natural_movement_buffer) > self.MIN_MOVEMENT_FRAMES:
+                self.natural_movement_buffer.pop(0)
+            self.natural_movement_buffer.append(results.multi_face_landmarks[0].landmark)
+
+            # ตรวจสอบการเคลื่อนไหวที่เป็นธรรมชาติ
+            if len(self.natural_movement_buffer) >= self.MIN_MOVEMENT_FRAMES:
+                movement = self._calculate_natural_movement()
+                if movement < self.NATURAL_MOVEMENT_THRESHOLD:
+                    return False, 0.0, "กรุณาขยับใบหน้าเล็กน้อยเพื่อยืนยันว่าเป็นใบหน้าจริง"
+
+            # ตรวจสอบความมีชีวิต
             is_live, liveness_msg = await self._check_liveness(results.multi_face_landmarks[0])
-            print(f"Liveness check: {is_live}, {liveness_msg}")
             if not is_live:
-                return False, 0.0, f"ห้ามใช้รูปภาพ: กรุณากระพริบตา"
-            
-            # Store landmarks for movement analysis
-            self.frame_buffer.append(results.multi_face_landmarks[0].landmark)
-            if len(self.frame_buffer) > self.FRAME_BUFFER_SIZE:
-                self.frame_buffer.pop(0)
+                return False, 0.0, liveness_msg
 
-            # Detect face locations
+            # ตรวจจับใบหน้า
             face_locations = face_recognition.face_locations(rgb_frame, model="hog")
             if not face_locations:
-                return False, 0.0, "ไม่พบหน้าในภาพ"
-                
-            # Extract face region for texture analysis
+                return False, 0.0, "ไม่พบใบหน้าในภาพ"
+
+            # แยกส่วนใบหน้าสำหรับการวิเคราะห์
             top, right, bottom, left = face_locations[0]
             face_region = rgb_frame[top:bottom, left:right]
-            
-            if phone_detecttion.detect_phone_in_frame(rgb_frame,face_region=face_region):
-                return False, 0.0, "พบหน้าจอโทรศัพท์"
-            
+
+            # ตรวจสอบการใช้มือถือด้วยวิธีการที่ปรับปรุงใหม่
+            if phone_detection.detect_phone_in_frame(rgb_frame, face_region):
+                return False, 0.0, "ตรวจพบว่าเป็นภาพจากหน้าจอมือถือ กรุณาใช้ใบหน้าจริง"
+
             # Check face quality and texture
             if not self.check_face_quality(rgb_frame, face_locations[0]):
                 return False, 0.0, "ภาพไม่ชัดหรือหน้าอยู่ใกล้เกินไป"
@@ -267,8 +277,25 @@ class FaceAuthenticationService:
                 return False, 0.0, "หน้าไม่ตรงกับฐานข้อมูล"
             
         except Exception as e:
-            print(f"Enhanced authentication error: {str(e)}")
-            return False, 0.0, f"Authentication error: {str(e)}"
+            print(f"Authentication error: {str(e)}")
+            return False, 0.0, f"เกิดข้อผิดพลาด: {str(e)}"
+
+    def _calculate_natural_movement(self) -> float:
+        """คำนวณการเคลื่อนไหวที่เป็นธรรมชาติจาก landmarks"""
+        movements = []
+        for i in range(1, len(self.natural_movement_buffer)):
+            prev = self.natural_movement_buffer[i-1]
+            curr = self.natural_movement_buffer[i]
+            
+            # คำนวณการเคลื่อนที่เฉลี่ยของ landmarks
+            movement = np.mean([
+                np.sqrt((curr[j].x - prev[j].x)**2 + 
+                       (curr[j].y - prev[j].y)**2)
+                for j in range(len(curr))
+            ])
+            movements.append(movement)
+            
+        return np.mean(movements) if movements else 0.0
 
 
 class AdminAuthenticationService:

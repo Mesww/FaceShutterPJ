@@ -34,6 +34,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     email: "",
     password: "",
     tel: "",
+    roles: "",
   });
   const [employeeId, setEmployeeId] = useState<string>('');
   const [isAuthen, setIsAuthen] = useState(false);
@@ -47,7 +48,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
   // Camera States
   const webcamRef = useRef<Webcam>(null);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   // const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [websocket, setWebSocket] = useState<WebSocket | null>(null);
 
@@ -235,7 +236,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     setIsScanning(false);
     setIsAuthen(false);
     setInstruction("");
-    setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
+    setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "",roles: "" });
     setConnectionStatus('disconnected');
     setErrorsMessage('');
     if (websocket) websocket.close();
@@ -288,6 +289,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
   // Image Processing
   const sendImage = useCallback((ws: WebSocket) => {
+    if (isScanning && !isAuthen) return null;
+
     if (!webcamRef.current || !ws || ws.readyState !== WebSocket.OPEN) return null;
 
     const imageSrc = webcamRef.current.getScreenshot();
@@ -331,7 +334,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       return croppedImageSrc;
     }
     return null;
-  }, [facingMode]);
+  }, [facingMode, isScanning, isAuthen]);
 
   // WebSocket Setup and Cleanup
   useEffect(() => {
@@ -424,23 +427,79 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   };
 
   // Camera Controls
-  const handleSwitchCamera = () => {
-    stopCamera();
-    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  const handleSwitchCamera = async () => {
+    try {
+      // เก็บสถานะปัจจุบัน
+      const currentFacingMode = facingMode;
+      const wasScanning = isScanning;
+      
+      // หยุดกล้องและปิด WebSocket เดิม
+      if (websocket?.readyState === WebSocket.OPEN) {
+        websocket.close();
+      }
+      stopCamera();
+
+      // สลับโหมดกล้อง
+      setFacingMode(currentFacingMode === "user" ? "environment" : "user");
+
+      // รอให้กล้องเปลี่ยนโหมดเสร็จ
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // ถ้ากำลังสแกนอยู่ ให้เริ่ม WebSocket ใหม่
+      if (wasScanning) {
+        const baseUrl = BACKEND_WS_URL;
+        const path = '/scan';
+        const wsUrl = `${baseUrl}${path}`;
+        
+        const ws = new WebSocket(wsUrl);
+        setWebSocket(ws);
+        
+        ws.onopen = () => {
+          setConnectionStatus('connected');
+          setIsLoadings(false);
+          if (userDetails) {
+            ws.send(JSON.stringify(userDetails));
+          }
+        };
+        
+        ws.onmessage = handleWebSocketMessage;
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          setErrors("การเชื่อมต่อล้มเหลว กรุณาลองใหม่อีกครั้ง");
+        };
+      }
+    } catch (error) {
+      console.error('Error switching camera:', error);
+      setErrors("เกิดข้อผิดพลาดในการสลับกล้อง");
+    }
   };
 
   const stopCamera = () => {
     if (webcamRef.current?.video) {
       const mediaStream = webcamRef.current.video.srcObject as MediaStream;
-      mediaStream?.getTracks().forEach(track => track.stop());
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+      }
     }
   };
 
   const handleClose = () => {
+    if (websocket?.readyState === WebSocket.OPEN) {
+      websocket.send(JSON.stringify({
+        action: "normal_close",
+        message: "User closed camera normally"
+      }));
+      websocket.close();
+    }
     stopCamera();
     setIsScanning(false);
     setIsAuthen(false);
-    handleScanStop()
+    setErrors(null);
+    setImageCount(0);
+    setInstruction("");
+    setErrorDirection("");
+    setCurrentDirection("");
+    setWebSocket(null); // เพิ่มบรรทัดนี้
   };
 
   // Registration Handlers
@@ -514,6 +573,71 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   }, [isScanning, isLoadings, connectionStatus, instruction, userData]);
 
   const currentMenuItem = menuItems.find(item => window.location.pathname.includes(item.path));
+
+  // เพิ่มฟังก์ชัน captureImage สำหรับการถ่ายภาพ
+  const captureImage = useCallback(() => {
+    if (!webcamRef.current || !websocket || websocket.readyState !== WebSocket.OPEN) {
+      setInstruction("กรุณารอการเชื่อมต่อกล้อง");
+      return;
+    }
+
+    try {
+      const video = webcamRef.current.video;
+      if (!video) {
+        setInstruction("ไม่สามารถเข้าถึงกล้องได้");
+        return;
+      }
+
+      // สร้าง canvas สำหรับครอปภาพ
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) {
+        setInstruction("ไม่สามารถสร้าง canvas ได้");
+        return;
+      }
+
+      // กำหนดขนาดกรอบสี่เหลี่ยมที่ใช้ครอปใบหน้า
+      const frameSize = Math.min(video.videoWidth, video.videoHeight) * 0.7;
+      canvas.width = frameSize;
+      canvas.height = frameSize;
+
+      // คำนวณตำแหน่งกึ่งกลางของวิดีโอ
+      const centerX = (video.videoWidth - frameSize) / 2;
+      const centerY = (video.videoHeight - frameSize) / 2;
+
+      // วาดภาพลงบน canvas โดยครอปเฉพาะส่วนกลาง
+      if (context) {
+        // ทำ mirror ภาพ
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+
+        context.drawImage(
+          video,
+          centerX, centerY, frameSize, frameSize, // source rectangle
+          0, 0, frameSize, frameSize // destination rectangle
+        );
+      }
+
+      // แปลง canvas เป็น base64
+      const croppedImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+      // แปลง base64 เป็น byte array
+      const imageData = croppedImageBase64.split(',')[1];
+      const byteCharacters = atob(imageData);
+      const byteArray = new Uint8Array(Array.from(byteCharacters).map(char => char.charCodeAt(0)));
+      
+      // ส่งข้อมูลไปยังเซิร์ฟเวอร์
+      websocket.send(JSON.stringify({
+        captured_image: Array.from(byteArray)
+      }));
+
+      setInstruction("กำลังประมวลผลภาพ...");
+
+    } catch (error) {
+      console.error("Error capturing and sending image:", error);
+      setInstruction("เกิดข้อผิดพลาดในการถ่ายและส่งภาพ");
+    }
+  }, [webcamRef, websocket]);
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -644,7 +768,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                 {isLoadings && (
                   <LoadingSpinner message={loadingmessage} />
                 )}
-                (
                 <>
                   <Webcam
                     ref={webcamRef}
@@ -652,16 +775,31 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                     screenshotFormat="image/jpeg"
                     className="absolute inset-0 w-full h-full object-cover"
                     mirrored={true}
+                    videoConstraints={{
+                      facingMode: facingMode,
+                      width: { ideal: 1280 },
+                      height: { ideal: 720 }
+                    }}
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl top-[-50px]">
                     </div>
                   </div>
 
-                  {/* Updated instruction display */}
+                  {/* แสดงปุ่มถ่ายภาพเฉพาะในโหมดลงทะเบียน */}
+                  {isScanning && !isAuthen && (
+                    <button
+                      onClick={captureImage}
+                      className="absolute bottom-8 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    >
+                      <Camera size={24} />
+                      ถ่ายภาพ
+                    </button>
+                  )}
+
+                  {/* คำแนะนำและสถานะ */}
                   <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
                     <div className="text-white text-center">
-                      {/* Current direction and image count */}
                       {currentDirection && imageCount < toltalDirection && (
                         <p
                           className="text-xl font-semibold mb-2"
@@ -672,15 +810,15 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                           {`${currentDirection} - Image ${imageCount}/${toltalDirection}`}
                         </p>
                       )}
-                      {/* Main instruction */}
                       <p
                         className="text-2xl font-semibold"
                         style={{
                           textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
                         }}
                       >
-                        {isScanning && imageCount === toltalDirection ? "กรุณาวางใบหน้าให้อยู่ในกรอบ" : instruction}
-                        {isAuthen ?? instruction}
+                        {isScanning && !isAuthen 
+                          ? (instruction || "กรุณาถ่ายภาพใบหน้าของคุณ")
+                          : instruction}
                       </p>
                       <p
                         className="text-xl font-semibold text-red-500"
@@ -693,7 +831,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                     </div>
                   </div>
                 </>
-                )
               </div>
             </div>
           )}

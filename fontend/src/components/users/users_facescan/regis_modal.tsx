@@ -1,5 +1,5 @@
 import { User } from "@/interfaces/users_facescan.interface";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 const RegisModal: React.FC<{ 
     employeeId: string, 
@@ -18,7 +18,6 @@ const RegisModal: React.FC<{
 }) => {
    
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
-    const [countdown, setCountdown] = useState<number | null>(null);
 
     const validateInput = (field: keyof User, value: string) => {
         if (value.trim() === '') {
@@ -78,34 +77,15 @@ const RegisModal: React.FC<{
             return;
         }
 
-        // Start countdown before scanning
-        setCountdown(3);
+        setIsRegister(false);
+        setIsScanning(true);
     }
 
     const handleModalCancel = () => {
         setErrors({});
-        setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "" });
+        setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "",roles:"" });
         setIsRegister(false);
     }
-
-    // Countdown effect
-    useEffect(() => {
-        let timer: NodeJS.Timeout;
-        
-        if (countdown !== null && countdown > 0) {
-            timer = setTimeout(() => {
-                setCountdown(prev => prev !== null ? prev - 1 : null);
-            }, 1000);
-        } else if (countdown === 0) {
-            // When countdown reaches 0, start scanning
-            setIsRegister(false);
-            setIsScanning(true);
-        }
-
-        return () => {
-            if (timer) clearTimeout(timer);
-        };
-    }, [countdown, setIsRegister, setIsScanning]);
 
     return (
         <div
@@ -115,15 +95,6 @@ const RegisModal: React.FC<{
                     : "opacity-0 pointer-events-none"
             }`}
         >
-            {/* Show countdown overlay if countdown is active */}
-            {countdown !== null && (
-                <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
-                    <div className="text-white text-9xl font-bold animate-pulse">
-                        {countdown}
-                    </div>
-                </div>
-            )}
-
             <div
                 className={`bg-gradient-to-br from-white to-gray-50 w-full max-w-md mx-auto p-4 sm:p-6 md:p-8 rounded-2xl shadow-xl transform transition-all duration-500 ${
                     isRegister 
@@ -146,7 +117,6 @@ const RegisModal: React.FC<{
                         />
                     </div>
 
-                    {/* Rest of the form remains the same as in the original code */}
                     <div className="space-y-1">
                         <label className="block text-sm font-medium text-gray-700">Name:</label>
                         <input
@@ -163,7 +133,6 @@ const RegisModal: React.FC<{
                         )}
                     </div>
 
-                    {/* Other input fields remain the same */}
                     <div className="space-y-1">
                         <label className="block text-sm font-medium text-gray-700">Email:</label>
                         <input
