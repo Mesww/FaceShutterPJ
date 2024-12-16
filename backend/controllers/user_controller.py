@@ -3,10 +3,13 @@ from typing import Optional
 from fastapi import APIRouter, File, Form, HTTPException, Depends, Header, UploadFile
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
+from backend.services.auth_service import AdminAuthenticationService
 from backend.services.user_service import UserService
-from backend.models.user_model import  User, Userupdate
+from backend.models.user_model import  RoleEnum, User, Userupdate
 import json
-
+from backend.configs.config import private_key
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 # โมเดลสำหรับการลงทะเบียนผู้ใช้
 
 
@@ -14,6 +17,49 @@ router = APIRouter()
 
 class UserController:
     security = HTTPBearer()
+    
+    @staticmethod
+    @router.post("/add_admin")
+    async def add_admin(
+        request: User,
+    ):
+        try:
+            data = request.model_dump()
+            adminAuthenserive = AdminAuthenticationService()
+            # encrypted employee_id and password
+            encrypted_employee_id = bytes.fromhex(data['employee_id'])
+            encrypted_password = bytes.fromhex(data['password'])
+            employee_id = private_key.decrypt(
+            encrypted_employee_id,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )).decode('utf-8')
+            password = private_key.decrypt(
+            encrypted_password,
+            padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )).decode('utf-8')
+            
+            # hash password
+            password = adminAuthenserive.hash_password(password)
+            
+            request.employee_id = employee_id
+            request.password = password
+            request.roles = RoleEnum.ADMIN
+            
+            res = await UserService.add_admin(
+                request
+            )   
+            if res.status >= 400:
+                raise HTTPException(status_code=400, detail=res.message)
+            return res
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
     @staticmethod
     @router.post("/register")
     async def register_user(
@@ -36,12 +82,26 @@ class UserController:
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
     @staticmethod
-    @router.put("/update")
+    @router.put("/update_user_by_employee_id/{employee_id}")
     async def update_user_by_employee_id(
         employee_id: str,
         request: Userupdate,
     ):
         try:
+            data = request.model_dump()
+            if data['password']:
+                adminAuthenserive = AdminAuthenticationService()
+                encrypted_password = bytes.fromhex(data['password'])
+                password = private_key.decrypt(
+                encrypted_password,
+                padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )).decode('utf-8')
+                password = adminAuthenserive.hash_password(password)
+                request.password = password
+                
             res = await UserService.update_user_by_employee_id(
                 employee_id,
                 request
@@ -104,6 +164,7 @@ class UserController:
             # return {"status": 200, "message": "success"}
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+    
     # @staticmethod
     # @router.put("/update_user_by_employee_id/{employee_id}")
     # async def update_user(

@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/table"
 import { BACKEND_URL } from '@/configs/backend';
 import Swal from 'sweetalert2';
+import { addAdmin } from '@/containers/userLogin';
+import forge from "node-forge";
+
 
 interface User {
   employee_id: string;
@@ -21,6 +24,8 @@ interface User {
   email: string;
   tel: string;
   roles: string;
+  password?: string;
+  is_password:boolean;
 }
 
 // Separate component for role selection dropdown
@@ -94,6 +99,7 @@ const AdminManage: React.FC = () => {
     try {
       setLoading(true);
       const response = await axios.get(`${BACKEND_URL}/api/users/get_all_user`);
+      console.log(response.data);
       setUsers(response.data);
       setLoading(false);
     } catch (err) {
@@ -115,6 +121,7 @@ const AdminManage: React.FC = () => {
   // New state for Add Admin modal
   const [isAddAdminModalVisible, setIsAddAdminModalVisible] = useState(false);
   const [newAdminEmployeeId, setNewAdminEmployeeId] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
 
   const handleDeleteUser = async (userId: string) => {
     try {
@@ -168,14 +175,27 @@ const AdminManage: React.FC = () => {
 
   const handleSaveUser = async (updatedUser: User) => {
     try {
+      // console.log(updatedUser.password);
+ 
       // Prepare the request body to match the API requirements
       const requestBody = {
         name: updatedUser.name,
         email: updatedUser.email,
         tel: updatedUser.tel,
         roles: updatedUser.roles,
-        images: null  // Add this if needed, or fetch from existing user data
+        images: null , // Add this if needed, or fetch from existing user data
+        password: updatedUser.password?.trim() ?? null,
       };
+      // encrypt password
+      if (requestBody.password) {
+        const { data: { public_key } } = await axios.get(BACKEND_URL+"/get_public_key");
+        const publicKey = forge.pki.publicKeyFromPem(public_key);
+        const encryptedPassword = publicKey.encrypt(requestBody.password, "RSA-OAEP", {
+                      md: forge.md.sha256.create(),
+                  });
+        requestBody.password = forge.util.bytesToHex(encryptedPassword);
+      }
+
 
       // Make API call to update user
       const response = await axios.put(
@@ -194,6 +214,13 @@ const AdminManage: React.FC = () => {
         setIsEditFormVisible(false);
         setEditingUser(null);
         setOriginalEmployeeId('');
+        Swal.fire({
+          title:'Edit successfully',
+          timer: 5000,
+          icon:'success'
+
+        })
+
       } else {
         throw new Error(response.data.message || 'Failed to update user');
       }
@@ -207,9 +234,10 @@ const AdminManage: React.FC = () => {
     setEditingUser(null);
     setIsEditFormVisible(false);
     setOriginalEmployeeId('');
+
   };
 
-  const handleAddAdmin = () => {
+  const handleAddAdmin = async () => {
     // Find if the employee already exists
     const existingUser = users.find(user => user.employee_id === newAdminEmployeeId);
 
@@ -220,17 +248,24 @@ const AdminManage: React.FC = () => {
           ? { ...user, roles: 'ADMIN' }
           : user
       ));
+      Swal.fire({
+        title: 'User already exists',
+        text: 'User already exists and has been updated to an admin.',
+        icon: 'info',
+        timer: 1500
+      });
     } else {
       // If user doesn't exist, add a new admin with minimal information
       setUsers([...users, {
         employee_id: newAdminEmployeeId,
         name: 'New Admin',
-        email: `${newAdminEmployeeId}@company.com`,
+        email: `${newAdminEmployeeId}@mfu.ac.th`,
         tel: '',
-        roles: 'ADMIN'
+        roles: 'ADMIN',
+        is_password: true
       }]);
+      await addAdmin(newAdminEmployeeId, newAdminPassword);
     }
-
     // Close the modal and reset the input
     setIsAddAdminModalVisible(false);
     setNewAdminEmployeeId('');
@@ -239,10 +274,10 @@ const AdminManage: React.FC = () => {
   const filteredUsers = users.filter(user =>
     (selectedRole === 'ALL' || user.roles === selectedRole) &&
     (
-      user.name.toLowerCase().includes(searchUserTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchUserTerm.toLowerCase()) ||
-      user.tel.includes(searchUserTerm) ||
-      user.employee_id.includes(searchUserTerm)
+      (user.name ? user.name.toLowerCase().includes(searchUserTerm.toLowerCase()) : '' )||
+      (user.email?user.email.toLowerCase().includes(searchUserTerm.toLowerCase()):'' )||
+      ( user.tel?user.tel.includes(searchUserTerm):'') ||
+      (user.employee_id? user.employee_id.includes(searchUserTerm):'')
     )
   );
 
@@ -422,6 +457,7 @@ const AdminManage: React.FC = () => {
                         name="password"
                         className="w-full p-2 border rounded"
                         placeholder="Enter password."
+                        onChange={(e) => setNewAdminPassword(e.target.value)}
                         required
                       />
                     </div>
@@ -462,7 +498,9 @@ const AdminManage: React.FC = () => {
                       name: formData.get('name') as string,
                       email: formData.get('email') as string,
                       tel: formData.get('tel') as string,
-                      roles: formData.get('roles') as string
+                      roles: formData.get('roles') as string,
+                      password: formData.get('password') as string,
+                      is_password: formData.get('roles') as string === 'ADMIN'
                     };
                     handleSaveUser(updatedUser);
                   }}>
@@ -533,7 +571,7 @@ const AdminManage: React.FC = () => {
                             name="password"
                             className="w-full p-2 border rounded"
                             placeholder="Enter password."
-                            required={editingUser.roles === 'ADMIN'}
+                            required={editingUser.roles === 'ADMIN' && !editingUser.is_password}
                           />
                         </div>
                       )}

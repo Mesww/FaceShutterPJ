@@ -90,7 +90,7 @@ const EditProfilePage: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
-      await edituserdata(userData?.employee_id || '', name, email, phone, imageFile);
+      await edituserdata(userData?.employee_id || '', name, email, phone, imageFile, userData?.role || '');
       await refreshUserData();
       Swal.fire({
         title: 'สำเร็จ!',
