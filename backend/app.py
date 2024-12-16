@@ -120,7 +120,7 @@ app.include_router(
 def login():
     oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_CALLBACK_URL,
             scope=['openid', 'email', 'profile'])
-    authorization_url, state = oauth.authorization_url(OAUTH_TOKEN_URL)
+    authorization_url, state = oauth.authorization_url(OAUTH_AUTHORIZE_URL)
     return {"authorization_url": authorization_url, "state": state}
 
 @app.get('/callback')
