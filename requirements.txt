@@ -51,6 +51,7 @@ Jinja2==3.1.4
 joblib==1.4.2
 keras==3.7.0
 kiwisolver==1.4.7
+ldap3==2.9.1
 libclang==18.1.1
 lz4==4.3.3
 Markdown==3.7
@@ -64,6 +65,7 @@ motor==3.6.0
 mtcnn==1.0.0
 namex==0.0.8
 numpy==1.26.4
+oauthlib==3.2.2
 opencv-contrib-python==4.10.0.84
 opencv-python==4.10.0.84
 opt_einsum==3.4.0
@@ -90,6 +92,7 @@ python-multipart==0.0.16
 pytz==2024.2
 PyYAML==6.0.2
 requests==2.32.3
+requests-oauthlib==2.0.0
 retina-face==0.0.17
 rich==13.9.3
 scipy==1.14.1

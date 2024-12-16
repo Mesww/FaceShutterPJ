@@ -4,15 +4,17 @@ import datetime
 from pathlib import Path
 import time
 from dotenv import dotenv_values, load_dotenv
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 import jwt
 import numpy as np
+from requests_oauthlib import OAuth2Session
 from backend.configs.config import (
     IMAGE_PER_DIRECTION,
     SCAN_DIRECTION,
     ConnectionManager,
     public_key_pem
 )
+
 from backend.models.user_model import User, Userupdate
 from backend.routes import face_routes, user_routes, history_routes, checkinout_routes,auth_routes,logs_routes
 import mediapipe as mp
@@ -34,6 +36,11 @@ config = dotenv_values()
 FONTEND_URL = config.get("FRONTEND_URL", "http://localhost:5173")
 SECRET_KEY = config.get("SECRET_KEY", "RickAstley")
 ALGORITHM = config.get("ALGORITHM", "HS256")
+OAUTH_CLIENT_ID = config.get("OAUTH_CLIENT_ID","")
+OAUTH_SECRET = config.get("OAUTH_SECRET","")
+OAUTH_CALLBACK_URL = config.get("OAUTH_CALLBACK_URL","")
+OAUTH_AUTHORIZE_URL = config.get("OAUTH_AUTHORIZE_URL","")
+OAUTH_TOKEN_URL = config.get("OAUTH_TOKEN_URL","")
 
 app = FastAPI()
 
@@ -103,6 +110,33 @@ app.include_router(
     tags=["auth"],
 )
 
+"""
+
+    Testing OAuth2 Authorization Code Flow
+
+"""
+
+@app.post('/login')
+def login():
+    oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_CALLBACK_URL,
+            scope=['openid', 'email', 'profile'])
+    authorization_url, state = oauth.authorization_url(OAUTH_AUTHORIZE_URL)
+    return {"authorization_url": authorization_url, "state": state}
+
+@app.get('/callback')
+def callback(request: Request):
+    oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_CALLBACK_URL)
+    try:
+        token = oauth.fetch_token(
+            OAUTH_TOKEN_URL,
+            authorization_response=str(request.url),
+            client_secret=OAUTH_SECRET,
+            include_client_id=True,
+            scope=['openid', 'email', 'profile']
+        )
+        return {"token": token}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 # Create a scheduler instance
@@ -143,6 +177,9 @@ face_mesh = mp_face_mesh.FaceMesh(
     refine_landmarks=True,
     min_detection_confidence=0.5,
 )
+
+
+
 
 
 
