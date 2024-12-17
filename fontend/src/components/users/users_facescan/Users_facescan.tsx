@@ -92,7 +92,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         const status = jsonData.data.status;
         const messages = jsonData.data.message;
         console.log("Status:", status);
-        
+
         switch (status) {
           case "progress":
             console.log(messages);
@@ -236,7 +236,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     setIsScanning(false);
     setIsAuthen(false);
     setInstruction("");
-    setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "",roles: "" });
+    setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "", roles: "" });
     setConnectionStatus('disconnected');
     setErrorsMessage('');
     if (websocket) websocket.close();
@@ -432,7 +432,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       // เก็บสถานะปัจจุบัน
       const currentFacingMode = facingMode;
       const wasScanning = isScanning;
-      
+
       // หยุดกล้องและปิด WebSocket เดิม
       if (websocket?.readyState === WebSocket.OPEN) {
         websocket.close();
@@ -450,10 +450,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
         const baseUrl = BACKEND_WS_URL;
         const path = '/scan';
         const wsUrl = `${baseUrl}${path}`;
-        
+
         const ws = new WebSocket(wsUrl);
         setWebSocket(ws);
-        
+
         ws.onopen = () => {
           setConnectionStatus('connected');
           setIsLoadings(false);
@@ -461,7 +461,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
             ws.send(JSON.stringify(userDetails));
           }
         };
-        
+
         ws.onmessage = handleWebSocketMessage;
         ws.onerror = (error) => {
           console.error('WebSocket error:', error);
@@ -602,7 +602,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
 
       // คำนวณขนาดกรอบที่ต้องการ (380x380 pixels หรือตามที่แสดงในหน้าจอ)
       const frameSize = Math.min(videoWidth, videoHeight) * 0.6;
-      
+
       // กำหนดขนาด canvas ให้ตรงกับกรอบที่แสดง
       canvas.width = frameSize;
       canvas.height = frameSize;
@@ -632,7 +632,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       const imageData = croppedImageBase64.split(',')[1];
       const byteCharacters = atob(imageData);
       const byteArray = new Uint8Array(Array.from(byteCharacters).map(char => char.charCodeAt(0)));
-      
+
       websocket.send(JSON.stringify({
         captured_image: Array.from(byteArray)
       }));
@@ -787,6 +787,19 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                       height: { ideal: 720 }
                     }}
                   />
+                  {/* ย้ายปุ่มถ่ายภาพมาไว้นอก div ที่มี position relative */}
+                  {isScanning && !isAuthen && (
+                    <div className="fixed bottom-0 left-0 right-0 mb-8 flex justify-center z-[60]">
+                      <button
+                        onClick={captureImage}
+                        className="px-8 py-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 
+                transition-colors flex items-center gap-3 text-lg font-semibold shadow-lg"
+                      >
+                        <Camera size={28} />
+                        ถ่ายภาพ
+                      </button>
+                    </div>
+                  )}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="relative w-[380px] h-[380px] border-4 border-blue-500 rounded-lg shadow-xl top-[-50px]">
                       {/* กรอบวงกลมสำหรับแนวนำการจัดวางใบหน้า */}
@@ -799,7 +812,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* เพิ่มเส้นแนวนำที่มุม */}
                       <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white/50"></div>
                       <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white/50"></div>
@@ -826,7 +839,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                           textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
                         }}
                       >
-                        {isScanning && !isAuthen 
+                        {isScanning && !isAuthen
                           ? (instruction || "วางใบหน้าในกรอบ")
                           : instruction}
                       </p>
@@ -841,7 +854,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                     </div>
                   </div>
 
-                  {isScanning && !isAuthen && (
+                  {/* {isScanning && !isAuthen && (
                     <button
                       onClick={captureImage}
                       className="absolute bottom-10 left-1/2 transform -translate-x-1/2 px-8 py-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center gap-3 text-lg font-semibold shadow-lg"
@@ -849,7 +862,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                       <Camera size={28} />
                       ถ่ายภาพ
                     </button>
-                  )}
+                  )} */}
                 </>
               </div>
             </div>
