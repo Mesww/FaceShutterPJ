@@ -23,13 +23,13 @@ class FaceAuthenticationService:
         )
         
         # Constants for face authentication
-        self.FACE_MATCH_THRESHOLD = 0.6
+        self.FACE_MATCH_THRESHOLD = 0.65
         self.EYE_BLINK_THRESHOLD = 0.2
-        self.MIN_FACE_SIZE = 60
-        self.TEXTURE_THRESHOLD = 5
+        self.MIN_FACE_SIZE = 40
+        self.TEXTURE_THRESHOLD = 4
         self.REFLECTION_THRESHOLD = 0.1
         self.EDGE_THRESHOLD = 0.1
-        self.COLOR_VAR_THRESHOLD = 25
+        self.COLOR_VAR_THRESHOLD = 20
         self.MOIRE_THRESHOLD = 0.1
         
         # Store recent EAR values for blink detection
@@ -189,8 +189,8 @@ class FaceAuthenticationService:
                               user_embeddeds: Union[List, np.ndarray]) -> Tuple[bool, float, str]:
         try:
             # 1. ลดขนาดภาพลงเพื่อเพิ่มความเร็ว แต่ยังคงความละเอียดพอสมควร
+            target_width = 320  # ลดลงจาก 400
             height, width = frame.shape[:2]
-            target_width = 400  # ปรับขนาดให้เหมาะสม
             scale = target_width / width
             dimensions = (target_width, int(height * scale))
             imgS = cv2.resize(frame, dimensions)

@@ -513,7 +513,7 @@ class Face_service:
                 await websocket.send_json({
                     "data": {
                         "status": "scanning",
-                        "instructions": f"กรุณาถ่ายภาพใบหน้าของคุณ",
+                        "instructions": f"ถ่ายภาพใบหน้าของคุณ",
                     }
                 })
                 
