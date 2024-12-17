@@ -348,16 +348,7 @@ class Face_service:
 
             user = User(**user_response.data)
             if not user.embeddeds:
-                # บันทึก log สถานะ error
-                await log_service.create_log(
-                    employee_id=employee_id,
-                    log={
-                        "action": "face_scan",
-                        "status": "error", 
-                        "message": "No face data found"
-                    }
-                )
-                
+                # บบการบันทึก log กรณีไม่พบข้อมูลใบหน้า
                 await websocket.send_json(
                     {
                         "data": {
@@ -425,20 +416,11 @@ class Face_service:
                         )
 
                 except WebSocketDisconnect:
-                    # บันทึก log สถานะ error เมื่อการเชื่อมต่อหลุด
-                    await log_service.create_log(
-                        employee_id=employee_id,
-                        log={
-                            "action": "face_scan",
-                            "status": "error",
-                            "message": "Connection lost",
-                            "attempt": attempt_count + 1
-                        }
-                    )
+                    # บบการบันทึก log กรณีการเชื่อมต่อหลุด
                     return None, "การเชื่อมต่อขาดหาย", 0.0
                     
                 except Exception as e:
-                    # บันทึก log สถานะ error เมื่อเกิดข้อผิดพลาด
+                    # บังคงบันทึก log กรณีเกิดข้อผิดพลาดอื่นๆ
                     await log_service.create_log(
                         employee_id=employee_id,
                         log={
@@ -482,7 +464,7 @@ class Face_service:
             return None, "คุณไม่สามารถยืนยันตัวตนได้ - ครบจำนวนครั้งที่กำหนดแล้ว", 0.0
 
         except Exception as e:
-            # บันทึก log สถานะ error เมื่อเกิดข้อผิดพลาดร้ายแรง
+            # บังคงบันทึก log กรณีเกิดข้อผิดพลาดร้ายแรง
             await log_service.create_log(
                 employee_id=employee_id,
                 log={
@@ -531,7 +513,7 @@ class Face_service:
                 await websocket.send_json({
                     "data": {
                         "status": "scanning",
-                        "instructions": f"กรุณาถ่ายภาพใบหน้าของคุณ",
+                        "instructions": f"ถ่ายภาพใบหน้าของคุณ",
                     }
                 })
                 

@@ -7,6 +7,7 @@ import numpy as np
 from typing import Tuple, List, Union
 import time
 from werkzeug.security import generate_password_hash, check_password_hash
+from skimage.feature import local_binary_pattern
 from backend.services.user_service import UserService
 from backend.utils.image_utills import Phone_Detection
 
@@ -22,22 +23,23 @@ class FaceAuthenticationService:
         )
         
         # Constants for face authentication
-        self.FACE_MATCH_THRESHOLD = 0.45  # Lower is more strict
-        self.EYE_BLINK_THRESHOLD = 0.26   # Threshold for eye blink detection
-        self.MIN_FACE_SIZE = 80           # Minimum face size in pixels
+        self.FACE_MATCH_THRESHOLD = 0.65
+        self.EYE_BLINK_THRESHOLD = 0.2
+        self.MIN_FACE_SIZE = 40
+        self.TEXTURE_THRESHOLD = 4
+        self.REFLECTION_THRESHOLD = 0.1
+        self.EDGE_THRESHOLD = 0.1
+        self.COLOR_VAR_THRESHOLD = 20
+        self.MOIRE_THRESHOLD = 0.1
         
         # Store recent EAR values for blink detection
         self.recent_ear_values = []
-        self.MAX_EAR_HISTORY = 10
+        self.MAX_EAR_HISTORY = 5
         
         # Additional anti-spoofing parameters
         self.frame_buffer = []
         self.FRAME_BUFFER_SIZE = 30  # Store 1 second at 30fps
         self.MOVEMENT_THRESHOLD = 0.02
-        self.TEXTURE_THRESHOLD = 0.15
-        self.REFLECTION_THRESHOLD = 0.1
-        
-        # เพิ่ม threshold สำหรับการตรวจจับความเป็นธรรมชาติ
         self.NATURAL_MOVEMENT_THRESHOLD = 0.015
         self.MIN_MOVEMENT_FRAMES = 10
         self.natural_movement_buffer = []
@@ -160,125 +162,175 @@ class FaceAuthenticationService:
         print(f"Texture variance: {texture_variance:.3f}")
         return texture_variance > self.TEXTURE_THRESHOLD
     
-    def check_natural_movement(self) -> bool:
-        """Detect natural head movements and micro-movements"""
-        if len(self.frame_buffer) < self.FRAME_BUFFER_SIZE:
+    def check_natural_movement(self, landmarks_history) -> bool:
+        if len(landmarks_history) < 10:  # ต้องมีการเก็บประวัติจุด landmarks อย่างน้อย 10 เฟรม
             return False
-            
-        # Calculate facial landmarks movement
-        movements = []
-        for i in range(1, len(self.frame_buffer)):
-            prev_landmarks = self.frame_buffer[i-1]
-            curr_landmarks = self.frame_buffer[i]
-            
-            if prev_landmarks and curr_landmarks:
-                # Calculate average landmark movement
-                movement = np.mean([
-                    np.sqrt((curr.x - prev.x)**2 + (curr.y - prev.y)**2)
-                    for prev, curr in zip(prev_landmarks, curr_landmarks)
-                ])
-                movements.append(movement)
         
-        if not movements:
-            return False
+        movements = []
+        for i in range(1, len(landmarks_history)):
+            prev = landmarks_history[i-1]
+            curr = landmarks_history[i]
             
-        # Check for natural variation in movements
+            # คำนวณการเคลื่อนที่ของจุดสำคัญ
+            movement = np.mean([
+                np.sqrt((curr[j].x - prev[j].x)**2 + (curr[j].y - prev[j].y)**2)
+                for j in range(len(curr))
+            ])
+            movements.append(movement)
+        
+        # ตรวจสอบการเคลื่อนไหวที่เป็นธรรมชาติ
         movement_std = np.std(movements)
-        return movement_std > self.MOVEMENT_THRESHOLD
+        movement_mean = np.mean(movements)
+        
+        # การเคลื่อนไหวต้องไม่นิ่งเกินไปและไม่กระตุกเกินไป
+        return 0.0001 < movement_mean < 0.01 and 0.00005 < movement_std < 0.005
 
     async def authenticate_face(self, websocket: WebSocket, frame: np.ndarray, 
                               user_embeddeds: Union[List, np.ndarray]) -> Tuple[bool, float, str]:
-        """Enhanced face authentication with anti-spoofing measures"""
         try:
-            # Process frame
+            # 1. ลดขนาดภาพลงเพื่อเพิ่มความเร็ว แต่ยังคงความละเอียดพอสมควร
+            target_width = 320  # ลดลงจาก 400
             height, width = frame.shape[:2]
-            target_width = 640
             scale = target_width / width
             dimensions = (target_width, int(height * scale))
             imgS = cv2.resize(frame, dimensions)
             rgb_frame = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
             
-            # สร้าง instance ของ Phone_Detection
-            phone_detection = Phone_Detection()
+            # 2. ตรวจจับใบหน้าด้วย HOG (เร็วกว่า CNN)
+            face_locations = face_recognition.face_locations(rgb_frame, model="hog", number_of_times_to_upsample=1)
+            if not face_locations:
+                return False, 0.0, "กรุณาวางใบหน้าให้อยู่ในกรอบ"
+
+            # 3. ตรวจสอบขนาดและตำแหน่งใบหน้าอย่างง่าย
+            top, right, bottom, left = face_locations[0]
+            face_height = bottom - top
+            face_width = right - left
             
-            # ตรวจสอบใบหน้า
+            # ตรวจสอบขนาดขั้นต่ำ
+            if face_height < self.MIN_FACE_SIZE or face_width < self.MIN_FACE_SIZE:
+                return False, 0.0, "กรุณาเข้าใกล้กล้องมากขึ้น"
+
+            # 4. ตรวจสอบการใช้ภาพถ่ายอย่างรวดเร็ว
+            face_region = imgS[top:bottom, left:right]
+            if self.quick_spoof_detection(face_region):
+                return False, 0.0, "กรุณาใช้ใบหน้าจริงเท่านั้น"
+
+            # 5. ตรวจสอบการมีชีวิตแบบเร็ว
             results = self.face_mesh.process(rgb_frame)
             if not results.multi_face_landmarks:
-                return False, 0.0, "ไม่พบใบหน้าในภาพ"
+                return False, 0.0, "กรุณาหันหน้าเข้าหากล้อง"
 
-            # เก็บการเคลื่อนไหวของ landmarks
-            if len(self.natural_movement_buffer) > self.MIN_MOVEMENT_FRAMES:
-                self.natural_movement_buffer.pop(0)
-            self.natural_movement_buffer.append(results.multi_face_landmarks[0].landmark)
-
-            # ตรวจสอบการเคลื่อนไหวที่เป็นธรรมชาติ
-            if len(self.natural_movement_buffer) >= self.MIN_MOVEMENT_FRAMES:
-                movement = self._calculate_natural_movement()
-                if movement < self.NATURAL_MOVEMENT_THRESHOLD:
-                    return False, 0.0, "กรุณาขยับใบหน้าเล็กน้อยเพื่อยืนยันว่าเป็นใบหน้าจริง"
-
-            # ตรวจสอบความมีชีวิต
-            is_live, liveness_msg = await self._check_liveness(results.multi_face_landmarks[0])
+            landmarks = results.multi_face_landmarks[0]
+            is_live, message = await self._check_liveness_simple(landmarks)
             if not is_live:
-                return False, 0.0, liveness_msg
+                return False, 0.0, message
 
-            # ตรวจจับใบหน้า
-            face_locations = face_recognition.face_locations(rgb_frame, model="hog")
-            if not face_locations:
-                return False, 0.0, "ไม่พบใบหน้าในภาพ"
-
-            # แยกส่วนใบหน้าสำหรับการวิเคราะห์
-            top, right, bottom, left = face_locations[0]
-            face_region = rgb_frame[top:bottom, left:right]
-
-            # ตรวจสอบการใช้มือถือด้วยวิธีการที่ปรับปรุงใหม่
-            if phone_detection.detect_phone_in_frame(rgb_frame, face_region):
-                return False, 0.0, "ตรวจพบว่าเป็นภาพจากหน้าจอมือถือ กรุณาใช้ใบหน้าจริง"
-
-            # Check face quality and texture
-            if not self.check_face_quality(rgb_frame, face_locations[0]):
-                return False, 0.0, "ภาพไม่ชัดหรือหน้าอยู่ใกล้เกินไป"
-            
-            if not self.analyze_texture_frequency(face_region):
-                return False, 0.0, "พบเจอหน้าจอโทรศัพท์"
-            
-            # Check for natural head movements
-            # if not self.check_natural_movement():
-            #     return False, 0.0, "คุณเคลื่อนไหวไม่ธรรมชาติ"
-
-            # Get face encoding
+            # 6. เปรียบเทียบใบหน้า
             current_encoding = face_recognition.face_encodings(rgb_frame, face_locations)[0]
             
-            # Prepare user embeddings
             if isinstance(user_embeddeds, list):
                 user_embeddeds = np.array(user_embeddeds)
             if len(user_embeddeds.shape) == 1:
                 user_embeddeds = np.array([user_embeddeds])
 
-            # Compare against all stored embeddings
-            best_match_confidence = 0.0
+            # ตรวจสอบความเหมือนกับทุก embedding
+            min_distance = float('inf')
             for embed in user_embeddeds:
-                # Calculate face distance
                 face_distance = face_recognition.face_distance([embed], current_encoding)[0]
-                matches = face_recognition.compare_faces([embed], current_encoding, 
-                                                      tolerance=self.FACE_MATCH_THRESHOLD)
-                
-                print(f"Face distance: {face_distance:.3f}")
-                print(f"Match result: {matches[0]}")
-                
-                if matches[0] and face_distance < self.FACE_MATCH_THRESHOLD:
+                min_distance = min(min_distance, face_distance)
+                if face_distance < self.FACE_MATCH_THRESHOLD:
                     confidence = float(1 - face_distance)
-                    best_match_confidence = max(best_match_confidence, confidence)
+                    return True, confidence, "ใบหน้าไม่ตรงกับฐานข้อมูล"
 
-            # Return authentication result
-            if best_match_confidence > 0:
-                return True, best_match_confidence, "หน้าตรงกับฐานข้อมูล"
-            else:
-                return False, 0.0, "หน้าไม่ตรงกับฐานข้อมูล"
+            # กรณีใบหน้าไม่ตรงกับที่ลงทะเบียนไว้
+            return False, 0.0, "ใบหน้าไม่ตรงกับฐานข้อมูล"
             
         except Exception as e:
             print(f"Authentication error: {str(e)}")
             return False, 0.0, f"เกิดข้อผิดพลาด: {str(e)}"
+
+    def quick_spoof_detection(self, face_region: np.ndarray) -> bool:
+        try:
+            # 1. ตรวจสอบความมีชีวิตด้วยการวิเคราะห์สี
+            hsv = cv2.cvtColor(face_region, cv2.COLOR_BGR2HSV)
+            s_channel = hsv[:,:,1]
+            v_channel = hsv[:,:,2]
+            
+            # ตรวจจับความอิ่มตัวของสีที่ผิดปกติ (ภาพถ่ายมักมีความอิ่มตัวต่ำ)
+            sat_mean = np.mean(s_channel)
+            if sat_mean < 25 or sat_mean > 230:
+                return True
+
+            # 2. ตรวจสอบ rPPG (remote PhotoPlethysmoGraphy)
+            # เก็บค่าสีเฉลี่ยของแต่ละช่องสีในพื้นที่ผิวหนัง
+            skin_mask = cv2.inRange(hsv, (0, 15, 0), (20, 170, 255))
+            rgb = cv2.cvtColor(face_region, cv2.COLOR_BGR2RGB)
+            r_mean = np.mean(rgb[:,:,0][skin_mask > 0])
+            g_mean = np.mean(rgb[:,:,1][skin_mask > 0])
+            b_mean = np.mean(rgb[:,:,2][skin_mask > 0])
+            
+            # ตรวจสอบอัตราส่วนสีที่ผิดปกติ (ภาพถ่ายมักมีอัตราส่วนสีที่ผิดธรรมชาติ)
+            rg_ratio = r_mean / (g_mean + 1e-6)
+            if rg_ratio < 0.9 or rg_ratio > 1.3:
+                return True
+
+            # 3. ตรวจสอบ Texture ด้วย LBP
+            gray = cv2.cvtColor(face_region, cv2.COLOR_BGR2GRAY)
+            radius = 1
+            n_points = 8 * radius
+            lbp = local_binary_pattern(gray, n_points, radius, method='uniform')
+            hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, n_points + 3), density=True)
+            
+            # ตาพจริงต้องมี texture ที่หลากหลาย
+            texture_variety = np.sum(hist > 0.01)
+            if texture_variety < 6:
+                return True
+
+            # 4. ตรวจสอบ Moiré pattern
+            f_transform = np.fft.fft2(gray)
+            magnitude_spectrum = np.abs(np.fft.fftshift(f_transform))
+            high_freq_ratio = np.sum(magnitude_spectrum > np.mean(magnitude_spectrum) * 2) / magnitude_spectrum.size
+            if high_freq_ratio > 0.08:  # ปรับค่าให้เข้มงวดขึ้น
+                return True
+
+            # 5. ตรวจสอบการสะท้อนแสง
+            glare_pixels = np.sum(v_channel > 240)
+            glare_ratio = glare_pixels / v_channel.size
+            if glare_ratio > 0.08:
+                return True
+
+            # 6. ตรวจสอบความคมชัดที่ผิดปกติ
+            laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+            if laplacian_var > 500:  # ภาพถ่ายมักมีความคมชัดสูงผิดปกติ
+                return True
+
+            return False
+
+        except Exception as e:
+            print(f"Spoof detection error: {str(e)}")
+            return True
+
+    async def _check_liveness_simple(self, landmarks) -> Tuple[bool, str]:
+        """ตรวจสอบการมีชีวิตแบบง่ายและรวดเร็ว"""
+        try:
+            # ตรวจสอบตาทั้งสองข้าง
+            left_eye = [landmarks.landmark[i] for i in [362, 385, 387, 263, 373, 380]]
+            right_eye = [landmarks.landmark[i] for i in [33, 160, 158, 133, 153, 144]]
+
+            # คำนวณ EAR แบบง่าย
+            left_ear = self.calculate_eye_aspect_ratio([(lm.x, lm.y) for lm in left_eye])
+            right_ear = self.calculate_eye_aspect_ratio([(lm.x, lm.y) for lm in right_eye])
+            current_ear = (left_ear + right_ear) / 2.0
+
+            # ตรวจสอบวารเปิดตา
+            if current_ear > self.EYE_BLINK_THRESHOLD:
+                return True, "ตรวจพบใบหน้า"
+            
+            return False, "กรุณาเปิดตาให้ชัดเจน"
+
+        except Exception as e:
+            print(f"Liveness check error: {str(e)}")
+            return False, "ไม่สามารถตรวจสอบใบหน้าได้"
 
     def _calculate_natural_movement(self) -> float:
         """คำนวณการเคลื่อนไหวที่เป็นธรรมชาติจาก landmarks"""
@@ -296,6 +348,61 @@ class FaceAuthenticationService:
             movements.append(movement)
             
         return np.mean(movements) if movements else 0.0
+
+    def detect_moire_pattern(self, gray_image: np.ndarray) -> float:
+        """ตรวจจับลาย Moiré ที่มักพบในภาพถ่ายจากหน้าจอ"""
+        # ใช้ FFT เพื่อตรวจจับรูปแบบที่ซ้ำกัน
+        f_transform = np.fft.fft2(gray_image)
+        magnitude_spectrum = np.abs(np.fft.fftshift(f_transform))
+        
+        # หาความถี่ที่โดดเด่น
+        threshold = np.mean(magnitude_spectrum) * 2
+        high_freq_ratio = np.sum(magnitude_spectrum > threshold) / magnitude_spectrum.size
+        
+        return high_freq_ratio
+
+    def detect_screen_reflection(self, image: np.ndarray) -> bool:
+        """ตรวจจับการสะท้อนแสงที่ผิดปกติ"""
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        
+        # ตรวจสอบความสว่างที่ผิดปกติ
+        v_channel = hsv[:,:,2]
+        bright_pixels = np.sum(v_channel > 250)
+        total_pixels = v_channel.size
+        
+        # ถ้ามีพื้นที่สว่างมากเกินไป อาจเป็นการสะท้อนจากหน้าจอ
+        reflection_ratio = bright_pixels / total_pixels
+        return reflection_ratio > 0.1
+
+    def analyze_face_texture(self, face_region: np.ndarray) -> bool:
+        """วิเคราะห์ texture ของผิวหน้าเพื่อตรวจจับภาพถ่าย"""
+        gray_face = cv2.cvtColor(face_region, cv2.COLOR_BGR2GRAY)
+        
+        # ใช้ Local Binary Pattern
+        radius = 1
+        n_points = 8 * radius
+        lbp = local_binary_pattern(gray_face, n_points, radius, method='uniform')
+        
+        # คำนวณ histogram ของ LBP
+        hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, n_points + 3), density=True)
+        
+        # ตรวจสอบความหลากหลายของ texture
+        texture_variety = np.sum(hist > 0.01)
+        return texture_variety >= 4
+
+    def check_face_depth(self, landmarks) -> bool:
+        """ตรวจสอบความลึกของใบหน้าจาก landmarks"""
+        # เลือกจุดสำคัญที่แสดงความลึก
+        nose_tip = landmarks.landmark[4]
+        left_eye = landmarks.landmark[33]
+        right_eye = landmarks.landmark[263]
+        
+        # คำนวณระยะห่างระหว่างจุด
+        eye_dist = math.sqrt((left_eye.x - right_eye.x)**2 + (left_eye.y - right_eye.y)**2)
+        nose_depth = abs(nose_tip.z - (left_eye.z + right_eye.z)/2)
+        
+        # ตรวจสอบความสมเหตุสมผลของความลึก
+        return nose_depth > 0.01 and nose_depth < 0.1 and eye_dist > 0.1
 
 
 class AdminAuthenticationService:

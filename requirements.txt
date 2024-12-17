@@ -113,7 +113,7 @@ t61codec==1.0.1
 tensorboard==2.18.0
 tensorboard-data-server==0.7.2
 tensorflow==2.18.0
-tensorflow-io-gcs-filesystem==0.37.1
+# tensorflow-io-gcs-filesystem==0.37.1
 termcolor==2.5.0
 tf_keras==2.18.0
 tifffile==2024.12.12
@@ -124,7 +124,7 @@ tzdata==2024.2
 tzlocal==5.2
 urllib3==2.2.3
 uvicorn==0.32.0
-uvloop==0.21.0
+# uvloop==0.21.0
 watchfiles==0.24.0
 websockets==13.1
 Werkzeug==3.1.3

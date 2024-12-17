@@ -399,21 +399,28 @@ const EditProfilePage: React.FC = () => {
         return;
       }
 
-      // กำหนดขนาดกรอบสี่เหลี่ยมที่ใช้ครอปใบหน้า
-      const frameSize = Math.min(video.videoWidth, video.videoHeight) * 0.7;
+      // กนาดของวิดีโอ
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+
+      // คำนวณขนาดกรอบที่ต้องการ (380x380 pixels หรือตามที่แสดงในหน้าจอ)
+      const frameSize = Math.min(videoWidth, videoHeight) * 0.6;
+      
+      // กำหนดขนาด canvas ให้ตรงกับกรอบที่แสดง
       canvas.width = frameSize;
       canvas.height = frameSize;
 
-      // คำนวณตำแหน่งกึ่งกลางของวิดีโอ
-      const centerX = (video.videoWidth - frameSize) / 2;
-      const centerY = (video.videoHeight - frameSize) / 2;
+      // คำนวณตำแหน่งกึ่งกลางเพื่อให้ตรงกับกรอบที่แสดง
+      const centerX = (videoWidth - frameSize) / 2;
+      const centerY = (videoHeight - frameSize) / 2;
 
-      // วาดภาพลงบน canvas โดยครอปเฉพาะส่วนกลาง
+      // วาดภาพลงบน canvas
       if (context) {
         // ทำ mirror ภาพ
         context.translate(canvas.width, 0);
         context.scale(-1, 1);
 
+        // วาดภาพเฉพาะส่วนที่อยู่ในกรอบ
         context.drawImage(
           video,
           centerX, centerY, frameSize, frameSize, // source rectangle
@@ -422,14 +429,13 @@ const EditProfilePage: React.FC = () => {
       }
 
       // แปลง canvas เป็น base64
-      const croppedImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+      const croppedImageBase64 = canvas.toDataURL('image/jpeg', 0.9);
 
       // แปลง base64 เป็น byte array
       const imageData = croppedImageBase64.split(',')[1];
       const byteCharacters = atob(imageData);
       const byteArray = new Uint8Array(Array.from(byteCharacters).map(char => char.charCodeAt(0)));
       
-      // ส่งข้อมูลไปยังเซิร์ฟเวอร์
       websocket.send(JSON.stringify({
         captured_image: Array.from(byteArray)
       }));
@@ -547,80 +553,90 @@ const EditProfilePage: React.FC = () => {
           </div>
 
           {isScanning && (
-            (
-              <div className="fixed inset-0 bg-gray-900 z-50">
+            <div className="fixed inset-0 bg-gray-900 z-50">
+              <button
+                onClick={handleClose}
+                className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
+              >
+                <X size={32} />
+              </button>
 
-                <button
-                  onClick={handleClose}
-                  className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
-                >
-                  <X size={32} />
-                </button>
+              <button
+                onClick={handleSwitchCamera}
+                className="absolute top-4 left-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
+              >
+                <FlipHorizontal size={24} />
+              </button>
 
-                <button
-                  onClick={handleSwitchCamera}
-                  className="absolute top-4 left-4 w-12 h-12 flex items-center justify-center bg-black/20 text-white hover:bg-black/40 rounded-full transition-colors z-50"
-                >
-                  <FlipHorizontal size={24} />
-                </button>
+              <div className="relative h-screen">
+                {isLoadings && <LoadingSpinner message={loadingmessage} />}
+                <>
+                  <Webcam
+                    ref={webcamRef}
+                    audio={false}
+                    screenshotFormat="image/jpeg"
+                    className="absolute inset-0 w-full h-full object-cover"
+                    mirrored={true}
+                    videoConstraints={{
+                      facingMode: facingMode,
+                      width: { ideal: 1280 },
+                      height: { ideal: 720 }
+                    }}
+                  />
 
-                <div className="relative h-screen">
-                  {isLoadings && <LoadingSpinner message={loadingmessage} />}
-                  <>
-                    <Webcam
-                      ref={webcamRef}
-                      audio={false}
-                      screenshotFormat="image/jpeg"
-                      className="absolute inset-0 w-full h-full object-cover"
-                      mirrored={true}
-                      videoConstraints={{
-                        facingMode: facingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                      }}
-                    />
-
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="relative w-[420px] h-[420px] border-4 border-blue-500 rounded-lg shadow-xl top-[-50px]">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative w-[380px] h-[380px] border-4 border-blue-500 rounded-lg shadow-xl top-[-50px]">
+                      {/* วงกลมแนวนำการจัดวางใบหน้า */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-1/2 h-1/2 border-2 border-dashed border-white/50 rounded-full">
+                          <div className="absolute inset-0">
+                            <div className="absolute left-1/2 top-0 bottom-0 w-px border-l border-white/30"></div>
+                            <div className="absolute top-1/2 left-0 right-0 h-px border-t border-white/30"></div>
+                          </div>
+                        </div>
                       </div>
+                      
+                      {/* เส้นแนวนำที่มุม */}
+                      <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white/50"></div>
+                      <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white/50"></div>
+                      <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white/50"></div>
+                      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white/50"></div>
                     </div>
+                  </div>
 
-                    <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
-                      <div className="text-white text-center">
+                  <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
+                    <div className="text-white text-center">
+                      <p
+                        className="text-2xl font-semibold"
+                        style={{
+                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
+                        }}
+                      >
+                        {instruction || "ถ่ายภาพใบหน้าของคุณ"}
+                      </p>
+                      {errorDirectiom && (
                         <p
-                          className="text-2xl font-semibold"
+                          className="text-xl font-semibold text-red-500"
                           style={{
                             textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
                           }}
                         >
-                          {instruction || "กรุณาถ่ายภาพใบหน้าของคุณ"}
+                          {errorDirectiom}
                         </p>
-                        {errorDirectiom && (
-                          <p
-                            className="text-xl font-semibold text-red-500"
-                            style={{
-                              textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                            }}
-                          >
-                            {errorDirectiom}
-                          </p>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  </>
-                </div>
-
-                {isScanning && (
-                  <button
-                    onClick={captureImage}
-                    className="absolute bottom-8 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center gap-2"
-                  >
-                    <Camera size={24} />
-                    ถ่ายภาพ
-                  </button>
-                )}
+                  </div>
+                </>
               </div>
-            )
+
+              <button
+                onClick={captureImage}
+                className="absolute bottom-8 left-1/2 transform -translate-x-1/2 px-8 py-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center gap-3 text-lg font-semibold shadow-lg"
+              >
+                <Camera size={28} />
+                ถ่ายภาพ
+              </button>
+            </div>
           )}
         </div>
       </div >

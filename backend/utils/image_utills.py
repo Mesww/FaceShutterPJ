@@ -12,10 +12,10 @@ import mediapipe as mp
 
 class Phone_Detection:
     def __init__(self):
-        # ปรับค่า threshold ให้ยืดหยุ่นขึ้น
-        self.IRIS_RATIO_MIN = 0.15  # ลดลงจาก 0.2
-        self.IRIS_RATIO_MAX = 0.8   # เพิ่มขึ้นจาก 0.7
-        self.IRIS_INTENSITY_THRESHOLD = 70  # เพิ่มขึ้นจาก 50
+        # ปรับค่า threshold ให้เหมาะสมกับระยะใกล้
+        self.IRIS_RATIO_MIN = 0.12  # ลดลงจาก 0.15
+        self.IRIS_RATIO_MAX = 0.85  # เพิ่มขึ้นจาก 0.8
+        self.IRIS_INTENSITY_THRESHOLD = 80  # เพิ่มขึ้นจาก 70
 
     def detect_screen_reflection(self, face_region: np.ndarray) -> bool:
         try:
@@ -118,12 +118,12 @@ class Phone_Detection:
             circles = cv2.HoughCircles(
                 enhanced_eye,
                 cv2.HOUGH_GRADIENT,
-                dp=1.2,  # เพิ่มจาก 1
-                minDist=10,  # ลดลงจาก 20
-                param1=40,  # ลดลงจาก 50
-                param2=25,  # ลดลงจาก 30
-                minRadius=int(eye_region.shape[0] * 0.15),  # ลดลงจาก 0.2
-                maxRadius=int(eye_region.shape[0] * 0.45)   # เพิ่มขึ้นจาก 0.4
+                dp=1.1,  # ลดลงจาก 1.2
+                minDist=8,  # ลดลงจาก 10
+                param1=35,  # ลดลงจาก 40
+                param2=20,  # ลดลงจาก 25
+                minRadius=int(eye_region.shape[0] * 0.12),  # ลดลงจาก 0.15
+                maxRadius=int(eye_region.shape[0] * 0.5)   # เพิ่มขึ้นจาก 0.45
             )
             
             if circles is not None:
