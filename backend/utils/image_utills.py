@@ -12,10 +12,10 @@ import mediapipe as mp
 
 class Phone_Detection:
     def __init__(self):
-        # ปรับค่า threshold ให้เหมาะสมกับระยะใกล้
-        self.IRIS_RATIO_MIN = 0.12  # ลดลงจาก 0.15
-        self.IRIS_RATIO_MAX = 0.85  # เพิ่มขึ้นจาก 0.8
-        self.IRIS_INTENSITY_THRESHOLD = 80  # เพิ่มขึ้นจาก 70
+        # ปรับค่า threshold ให้ผ่อนคลายลง
+        self.IRIS_RATIO_MIN = 0.08  # ลดลงจาก 0.12
+        self.IRIS_RATIO_MAX = 0.9   # เพิ่มขึ้นจาก 0.85
+        self.IRIS_INTENSITY_THRESHOLD = 100  # เพิ่มขึ้นจาก 80
 
     def detect_screen_reflection(self, face_region: np.ndarray) -> bool:
         try:
@@ -107,30 +107,34 @@ class Phone_Detection:
 
     def detect_iris(self, eye_region: np.ndarray) -> bool:
         try:
-            # แปลงภาพเป็นโทนเทา
-            gray_eye = cv2.cvtColor(eye_region, cv2.COLOR_BGR2GRAY)
+            # ลดขนาดภาพตาลงกากขึ้น
+            scale_factor = 0.6  # ลดลงจาก 0.7
+            eye_region_small = cv2.resize(eye_region, None, 
+                                        fx=scale_factor, fy=scale_factor)
             
-            # ปรับความคมชัดให้มากขึ้น
-            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))  # เพิ่ม clipLimit จาก 2.0
+            gray_eye = cv2.cvtColor(eye_region_small, cv2.COLOR_BGR2GRAY)
+            
+            # ลดการปรับแต่งภาพลง
+            clahe = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(2,2))  # ลดลงจาก (4,4)
             enhanced_eye = clahe.apply(gray_eye)
             
-            # ปรับพารามิเตอร์ของ HoughCircles
+            # ปรับพารามิเตอร์ให้ผ่อนคลายลงอีก
             circles = cv2.HoughCircles(
                 enhanced_eye,
                 cv2.HOUGH_GRADIENT,
-                dp=1.1,  # ลดลงจาก 1.2
-                minDist=8,  # ลดลงจาก 10
-                param1=35,  # ลดลงจาก 40
-                param2=20,  # ลดลงจาก 25
-                minRadius=int(eye_region.shape[0] * 0.12),  # ลดลงจาก 0.15
-                maxRadius=int(eye_region.shape[0] * 0.5)   # เพิ่มขึ้นจาก 0.45
+                dp=1.5,      # เพิ่มจาก 1.2
+                minDist=4,   # ลดลงจาก 6
+                param1=25,   # ลดลงจาก 30
+                param2=12,   # ลดลงจาก 15
+                minRadius=int(eye_region_small.shape[0] * 0.08),  # ลดลงจาก 0.1
+                maxRadius=int(eye_region_small.shape[0] * 0.7)    # เพิ่มขึ้นจาก 0.6
             )
             
             if circles is not None:
                 circles = np.uint16(np.around(circles))
                 for i in circles[0, :]:
                     iris_radius = i[2]
-                    eye_width = eye_region.shape[1]
+                    eye_width = eye_region_small.shape[1]
                     iris_ratio = (iris_radius * 2) / eye_width
                     
                     # ตรวจสอบขนาดม่านตาด้วยค่า threshold ที่ปรับใหม่
@@ -154,43 +158,46 @@ class Phone_Detection:
 
     def detect_phone_in_frame(self, frame: np.ndarray, face_region: np.ndarray) -> bool:
         try:
-            # ตรับค่า confidence ให้ต่ำลง
+            # ตดขนาดภาพลงมากขึ้น
+            scale_factor = 0.4  # ลดลงจาก 0.5
+            face_region_small = cv2.resize(face_region, None, 
+                                         fx=scale_factor, fy=scale_factor)
+            
+            # ลดความเข้มงวดในการตรวจจับ landmarks
             face_mesh = mp.solutions.face_mesh.FaceMesh(
-                static_image_mode=True,
+                static_image_mode=False,
                 max_num_faces=1,
-                min_detection_confidence=0.3,  # ลดลงจาก 0.5
-                min_tracking_confidence=0.3     # เพิ่มพารามิเตอร์นี้
+                refine_landmarks=False,
+                min_detection_confidence=0.2,  # ลดลงอีก
+                min_tracking_confidence=0.2
             )
             
-            results = face_mesh.process(cv2.cvtColor(face_region, cv2.COLOR_BGR2RGB))
+            results = face_mesh.process(cv2.cvtColor(face_region_small, cv2.COLOR_BGR2RGB))
             
             if not results.multi_face_landmarks:
-                print("No face landmarks detected")
                 return True
             
-            landmarks = results.multi_face_landmarks[0]
+            # ปรับขนาด padding ลง
+            padding = 10  # ลดลงจาก 15
             
-            # เพิ่มขนาดพื้นที่การตรวจจับตา
-            padding = 15  # เพิ่มจาก 10
-            
-            def extract_eye_region(indices):
+            def extract_eye_region(landmarks, indices):
                 x_coords = [landmarks.landmark[idx].x for idx in indices]
                 y_coords = [landmarks.landmark[idx].y for idx in indices]
                 
-                x_min = int(min(x_coords) * face_region.shape[1])
-                x_max = int(max(x_coords) * face_region.shape[1])
-                y_min = int(min(y_coords) * face_region.shape[0])
-                y_max = int(max(y_coords) * face_region.shape[0])
+                x_min = int(min(x_coords) * face_region_small.shape[1])
+                x_max = int(max(x_coords) * face_region_small.shape[1])
+                y_min = int(min(y_coords) * face_region_small.shape[0])
+                y_max = int(max(y_coords) * face_region_small.shape[0])
                 
                 x_min = max(0, x_min - padding)
-                x_max = min(face_region.shape[1], x_max + padding)
+                x_max = min(face_region_small.shape[1], x_max + padding)
                 y_min = max(0, y_min - padding)
-                y_max = min(face_region.shape[0], y_max + padding)
+                y_max = min(face_region_small.shape[0], y_max + padding)
                 
-                return face_region[y_min:y_max, x_min:x_max]
+                return face_region_small[y_min:y_max, x_min:x_max]
             
-            left_eye_region = extract_eye_region([362, 385, 387, 263, 373, 380])
-            right_eye_region = extract_eye_region([33, 160, 158, 133, 153, 144])
+            left_eye_region = extract_eye_region(results.multi_face_landmarks[0], [362, 385, 387, 263, 373, 380])
+            right_eye_region = extract_eye_region(results.multi_face_landmarks[0], [33, 160, 158, 133, 153, 144])
             
             # ตรวจสอบขนาดของภาพตาก่อนประมวลผล
             min_eye_size = 30
@@ -243,7 +250,7 @@ class Phone_Detection:
 
     def detect_moire_pattern(self, gray_image: np.ndarray) -> float:
         """ตรวจจับ Moiré patterns ที่มักพบในภาพถ่ายหน้าจอ"""
-        # ใช้ FFT เพื่อตรวจจับรูปแบบที่ซ้ำกัน
+        # ใช้ FFT เพื่อตรวจจับรปแบบที่ซ้ำกัน
         f_transform = np.fft.fft2(gray_image)
         magnitude_spectrum = np.abs(np.fft.fftshift(f_transform))
         

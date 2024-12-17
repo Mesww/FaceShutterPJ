@@ -10,6 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from skimage.feature import local_binary_pattern
 from backend.services.user_service import UserService
 from backend.utils.image_utills import Phone_Detection
+import random
 
 class FaceAuthenticationService:   
     def __init__(self):
@@ -17,15 +18,15 @@ class FaceAuthenticationService:
         self.face_mesh = mp.solutions.face_mesh.FaceMesh(
             static_image_mode=False,
             max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+            refine_landmarks=False,
+            min_detection_confidence=0.3,
+            min_tracking_confidence=0.3
         )
         
         # Constants for face authentication
-        self.FACE_MATCH_THRESHOLD = 0.65
-        self.EYE_BLINK_THRESHOLD = 0.2
-        self.MIN_FACE_SIZE = 40
+        self.FACE_MATCH_THRESHOLD = 0.75
+        self.EYE_BLINK_THRESHOLD = 0.15
+        self.MIN_FACE_SIZE = 30
         self.TEXTURE_THRESHOLD = 4
         self.REFLECTION_THRESHOLD = 0.1
         self.EDGE_THRESHOLD = 0.1
@@ -43,6 +44,13 @@ class FaceAuthenticationService:
         self.NATURAL_MOVEMENT_THRESHOLD = 0.015
         self.MIN_MOVEMENT_FRAMES = 10
         self.natural_movement_buffer = []
+        
+        # เพิ่ม attributes สำหรับการตรวจจับท่าทาง
+        self.POSE_TYPES = ['หันซ้าย', 'หันขวา']
+        self.current_pose = None
+        self.pose_completed = False
+        self.pose_start_time = None
+        self.POSE_TIMEOUT = 5  # timeout 5 วินาที
 
   
     def calculate_eye_aspect_ratio(self, eye_landmarks: List[Tuple[float, float]]) -> float:
@@ -188,127 +196,165 @@ class FaceAuthenticationService:
     async def authenticate_face(self, websocket: WebSocket, frame: np.ndarray, 
                               user_embeddeds: Union[List, np.ndarray]) -> Tuple[bool, float, str]:
         try:
-            # 1. ลดขนาดภาพลงเพื่อเพิ่มความเร็ว แต่ยังคงความละเอียดพอสมควร
-            target_width = 320  # ลดลงจาก 400
+            # 1. ลดขนาดภาพลงมากขึ้นเพื่อเพิ่มความเร็ว
+            target_width = 200
             height, width = frame.shape[:2]
             scale = target_width / width
             dimensions = (target_width, int(height * scale))
             imgS = cv2.resize(frame, dimensions)
             rgb_frame = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
             
-            # 2. ตรวจจับใบหน้าด้วย HOG (เร็วกว่า CNN)
-            face_locations = face_recognition.face_locations(rgb_frame, model="hog", number_of_times_to_upsample=1)
+            # 2. ตรัจจับใบหน้า
+            face_locations = face_recognition.face_locations(rgb_frame, model="hog", number_of_times_to_upsample=0)
             if not face_locations:
                 return False, 0.0, "กรุณาวางใบหน้าให้อยู่ในกรอบ"
 
-            # 3. ตรวจสอบขนาดและตำแหน่งใบหน้าอย่างง่าย
+            # 3. ตรวจสอบขนาดและตำแหน่งใบหน้า
             top, right, bottom, left = face_locations[0]
             face_height = bottom - top
             face_width = right - left
             
-            # ตรวจสอบขนาดขั้นต่ำ
             if face_height < self.MIN_FACE_SIZE or face_width < self.MIN_FACE_SIZE:
                 return False, 0.0, "กรุณาเข้าใกล้กล้องมากขึ้น"
 
-            # 4. ตรวจสอบการใช้ภาพถ่ายอย่างรวดเร็ว
+            # 4. ตรวจสอบการใช้ภาพถ่าย
             face_region = imgS[top:bottom, left:right]
             if self.quick_spoof_detection(face_region):
                 return False, 0.0, "กรุณาใช้ใบหน้าจริงเท่านั้น"
 
-            # 5. ตรวจสอบการมีชีวิตแบบเร็ว
+            # 5. ตรวจสอบการมีชีวิต
             results = self.face_mesh.process(rgb_frame)
             if not results.multi_face_landmarks:
                 return False, 0.0, "กรุณาหันหน้าเข้าหากล้อง"
 
             landmarks = results.multi_face_landmarks[0]
-            is_live, message = await self._check_liveness_simple(landmarks)
-            if not is_live:
-                return False, 0.0, message
 
-            # 6. เปรียบเทียบใบหน้า
-            current_encoding = face_recognition.face_encodings(rgb_frame, face_locations)[0]
+            # 6. ตรวจสอบท่าทาง
+            if not self.current_pose:
+                # สุ่มท่าทางใหม่
+                pose = self.generate_random_pose()
+                await websocket.send_json({
+                    "status": "pose_required",
+                    "pose": pose,
+                    "message": f"กรุณาทำท่าทาง: {pose}"
+                })
+                return False, 0.0, f"กรุณาทำท่าทาง: {pose}"
+
+            # ตรวจสอบว่าท่าทางถูกต้องหรือไม่
+            pose_success, pose_message = self.check_pose(landmarks)
+            if not pose_success:
+                return False, 0.0, pose_message
+
+            # 7. ถ้าทำท่าทางถูกต้อง ดำเนินการตรวจสอบใบหน้า
+            if self.pose_completed:
+                # รีเซ็ตท่าทางสำหรับครั้งต่อไป
+                self.current_pose = None
+                self.pose_completed = False
+
+                # 8. เปรียบเทียบใบหน้า
+                current_encoding = face_recognition.face_encodings(rgb_frame, face_locations)[0]
+                
+                if isinstance(user_embeddeds, list):
+                    user_embeddeds = np.array(user_embeddeds)
+                if len(user_embeddeds.shape) == 1:
+                    user_embeddeds = np.array([user_embeddeds])
+
+                # ตรวจสอบความเหมือนกับทุก embedding
+                min_distance = float('inf')
+                for embed in user_embeddeds:
+                    face_distance = face_recognition.face_distance([embed], current_encoding)[0]
+                    min_distance = min(min_distance, face_distance)
+                    if face_distance < self.FACE_MATCH_THRESHOLD:
+                        confidence = float(1 - face_distance)
+                        return True, confidence, "ใบหน้าไม่ตรงกับฐานข้อมูล"
+
+                return False, 0.0, "ใบหน้าไม่ตรงกับฐานข้อมูล"
             
-            if isinstance(user_embeddeds, list):
-                user_embeddeds = np.array(user_embeddeds)
-            if len(user_embeddeds.shape) == 1:
-                user_embeddeds = np.array([user_embeddeds])
+            return False, 0.0, "กรุณาทำท่าทางให้ถูกต้อง"
 
-            # ตรวจสอบความเหมือนกับทุก embedding
-            min_distance = float('inf')
-            for embed in user_embeddeds:
-                face_distance = face_recognition.face_distance([embed], current_encoding)[0]
-                min_distance = min(min_distance, face_distance)
-                if face_distance < self.FACE_MATCH_THRESHOLD:
-                    confidence = float(1 - face_distance)
-                    return True, confidence, "ใบหน้าไม่ตรงกับฐานข้อมูล"
-
-            # กรณีใบหน้าไม่ตรงกับที่ลงทะเบียนไว้
-            return False, 0.0, "ใบหน้าไม่ตรงกับฐานข้อมูล"
-            
         except Exception as e:
             print(f"Authentication error: {str(e)}")
             return False, 0.0, f"เกิดข้อผิดพลาด: {str(e)}"
 
     def quick_spoof_detection(self, face_region: np.ndarray) -> bool:
         try:
-            # 1. ตรวจสอบความมีชีวิตด้วยการวิเคราะห์สี
-            hsv = cv2.cvtColor(face_region, cv2.COLOR_BGR2HSV)
-            s_channel = hsv[:,:,1]
-            v_channel = hsv[:,:,2]
+            # 1. ตรับความสว่างและคอนทราสต์อัตโนมัติ
+            lab = cv2.cvtColor(face_region, cv2.COLOR_BGR2LAB)
+            l_channel = lab[:,:,0]
             
-            # ตรวจจับความอิ่มตัวของสีที่ผิดปกติ (ภาพถ่ายมักมีความอิ่มตัวต่ำ)
-            sat_mean = np.mean(s_channel)
-            if sat_mean < 25 or sat_mean > 230:
-                return True
-
-            # 2. ตรวจสอบ rPPG (remote PhotoPlethysmoGraphy)
-            # เก็บค่าสีเฉลี่ยของแต่ละช่องสีในพื้นที่ผิวหนัง
-            skin_mask = cv2.inRange(hsv, (0, 15, 0), (20, 170, 255))
-            rgb = cv2.cvtColor(face_region, cv2.COLOR_BGR2RGB)
-            r_mean = np.mean(rgb[:,:,0][skin_mask > 0])
-            g_mean = np.mean(rgb[:,:,1][skin_mask > 0])
-            b_mean = np.mean(rgb[:,:,2][skin_mask > 0])
+            # ปรับความสว่างอัตโนมัติ
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+            enhanced_l = clahe.apply(l_channel)
             
-            # ตรวจสอบอัตราส่วนสีที่ผิดปกติ (ภาพถ่ายมักมีอัตราส่วนสีที่ผิดธรรมชาติ)
-            rg_ratio = r_mean / (g_mean + 1e-6)
-            if rg_ratio < 0.9 or rg_ratio > 1.3:
-                return True
+            # รวมภาพที่ปรับแสงแล้ว
+            lab[:,:,0] = enhanced_l
+            enhanced_face = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+            
+            # 2. ปรับขนาดภาพให้เหมาะสม
+            target_size = (256, 256)
+            face_region = cv2.resize(enhanced_face, target_size)
 
-            # 3. ตรวจสอบ Texture ด้วย LBP
+            # 3. ตรวจสอบความมีชีวิตด้วย Depth Information
             gray = cv2.cvtColor(face_region, cv2.COLOR_BGR2GRAY)
-            radius = 1
-            n_points = 8 * radius
-            lbp = local_binary_pattern(gray, n_points, radius, method='uniform')
-            hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, n_points + 3), density=True)
+            gradients = np.gradient(gray)
+            depth_score = np.mean(np.abs(gradients[0]) + np.abs(gradients[1]))
             
-            # ตาพจริงต้องมี texture ที่หลากหลาย
-            texture_variety = np.sum(hist > 0.01)
-            if texture_variety < 6:
+            if depth_score < 3:  # ลดค่าลงเพื่อรองรับแสงน้อย
                 return True
 
-            # 4. ตรวจสอบ Moiré pattern
-            f_transform = np.fft.fft2(gray)
-            magnitude_spectrum = np.abs(np.fft.fftshift(f_transform))
-            high_freq_ratio = np.sum(magnitude_spectrum > np.mean(magnitude_spectrum) * 2) / magnitude_spectrum.size
-            if high_freq_ratio > 0.08:  # ปรับค่าให้เข้มงวดขึ้น
+            # 4. ตรวจสอบ Skin Texture แบบยืดหยุ่น
+            radius = 1
+            n_points = 8
+            lbp = local_binary_pattern(gray, n_points, radius, method='uniform')
+            texture_var = np.var(lbp)
+            
+            # ปรับค่าตามความสว่าง
+            brightness = np.mean(gray)
+            if brightness < 50:  # แสงน้อย
+                min_texture = 1.0
+            elif brightness > 200:  # แสงมาก
+                min_texture = 3.0
+            else:  # แสงปกติ
+                min_texture = 2.0
+                
+            if texture_var < min_texture:
                 return True
 
-            # 5. ตรวจสอบการสะท้อนแสง
-            glare_pixels = np.sum(v_channel > 240)
-            glare_ratio = glare_pixels / v_channel.size
-            if glare_ratio > 0.08:
+            # 5. ตรวจสอบสีผิวแบบปรับตามแสง
+            hsv = cv2.cvtColor(face_region, cv2.COLOR_BGR2HSV)
+            
+            # ปรับช่วงการตรวจจับสีผิวตามความสว่าง
+            if brightness < 50:  # แสงน้อย
+                skin_mask = cv2.inRange(hsv, (0, 10, 30), (25, 250, 250))
+            elif brightness > 200:  # แสงมาก
+                skin_mask = cv2.inRange(hsv, (0, 10, 50), (25, 200, 250))
+            else:  # แสงปกติ
+                skin_mask = cv2.inRange(hsv, (0, 10, 40), (25, 230, 250))
+            
+            skin_ratio = np.sum(skin_mask > 0) / skin_mask.size
+            if skin_ratio < 0.15:  # ลดค่าลงเพื่อรองรับแสงน้อย
                 return True
 
-            # 6. ตรวจสอบความคมชัดที่ผิดปกติ
-            laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-            if laplacian_var > 500:  # ภาพถ่ายมักมีความคมชัดสูงผิดปกติ
+            # 6. ตรวจสอบคอนทราสต์แบบปรับตามแสง
+            v_channel = hsv[:,:,2]
+            contrast = np.std(v_channel)
+            
+            # ปรับค่าต่ำสุดของคอนทราสต์ตามความสว่าง
+            if brightness < 50:
+                min_contrast = 5
+            elif brightness > 200:
+                min_contrast = 15
+            else:
+                min_contrast = 10
+                
+            if contrast < min_contrast:
                 return True
 
             return False
 
         except Exception as e:
             print(f"Spoof detection error: {str(e)}")
-            return True
+            return False
 
     async def _check_liveness_simple(self, landmarks) -> Tuple[bool, str]:
         """ตรวจสอบการมีชีวิตแบบง่ายและรวดเร็ว"""
@@ -403,6 +449,43 @@ class FaceAuthenticationService:
         
         # ตรวจสอบความสมเหตุสมผลของความลึก
         return nose_depth > 0.01 and nose_depth < 0.1 and eye_dist > 0.1
+
+    def generate_random_pose(self) -> str:
+        """สุ่มท่าทางที่ต้องการให้ผู้ใช้ทำ"""
+        self.current_pose = random.choice(self.POSE_TYPES)
+        self.pose_completed = False
+        self.pose_start_time = time.time()
+        return self.current_pose
+
+    def check_pose(self, landmarks) -> Tuple[bool, str]:
+        """ตรวจสอบว่าผู้ใช้ทำท่าทางถูกต้องหรือไม่"""
+        if not self.current_pose or self.pose_completed:
+            return False, "กรุณารอการสุ่มท่าทางใหม่"
+
+        # ตรวจสอบ timeout
+        if time.time() - self.pose_start_time > self.POSE_TIMEOUT:
+            self.current_pose = None
+            return False, "หมดเวลา กรุณาลองใหม่"
+
+        # คำนวณการหันซ้าย-ขวาจาก landmarks
+        nose_tip = landmarks.landmark[4]
+        left_eye = landmarks.landmark[33]
+        right_eye = landmarks.landmark[263]
+
+        # ตรวจสอบแต่ละท่าทาง
+        if self.current_pose == 'หันซ้าย':
+            head_turn = (right_eye.x - nose_tip.x) / (right_eye.x - left_eye.x)
+            if head_turn > 0.7:
+                self.pose_completed = True
+                return True, "ทำท่าทางถูกต้อง"
+
+        elif self.current_pose == 'หันขวา':
+            head_turn = (nose_tip.x - left_eye.x) / (right_eye.x - left_eye.x)
+            if head_turn > 0.7:
+                self.pose_completed = True
+                return True, "ทำท่าทางถูกต้อง"
+
+        return False, "กรุณา" + self.current_pose
 
 
 class AdminAuthenticationService:
