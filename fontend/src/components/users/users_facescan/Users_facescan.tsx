@@ -105,7 +105,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           case "failed":
             console.error("Error:", messages);
             setErrorsMessage(messages);
-            setInstruction("กรุณาวางใบหน้าให้อยู่ในกรอบ");
+            setInstruction("วางใบหน้าในกรอบ");
             break;
           case "stopped":
             handleScanStop();

@@ -50,7 +50,7 @@ class FaceAuthenticationService:
         self.current_pose = None
         self.pose_completed = False
         self.pose_start_time = None
-        self.POSE_TIMEOUT = 5  # timeout 5 วินาที
+        self.POSE_TIMEOUT = 10  # timeout 10 วินาที
 
   
     def calculate_eye_aspect_ratio(self, eye_landmarks: List[Tuple[float, float]]) -> float:
@@ -207,7 +207,7 @@ class FaceAuthenticationService:
             # 2. ตรัจจับใบหน้า
             face_locations = face_recognition.face_locations(rgb_frame, model="hog", number_of_times_to_upsample=0)
             if not face_locations:
-                return False, 0.0, "กรุณาวางใบหน้าให้อยู่ในกรอบ"
+                return False, 0.0, "กรุณาวางใบหน้าให้อยู่ในกรอบ","failed"
 
             # 3. ตรวจสอบขนาดและตำแหน่งใบหน้า
             top, right, bottom, left = face_locations[0]
@@ -225,7 +225,7 @@ class FaceAuthenticationService:
             # 5. ตรวจสอบการมีชีวิต
             results = self.face_mesh.process(rgb_frame)
             if not results.multi_face_landmarks:
-                return False, 0.0, "กรุณาหันหน้าเข้าหากล้อง"
+                return False, 0.0, "กรุณาหันหน้าเข้าหากล้อง","failed"
 
             landmarks = results.multi_face_landmarks[0]
 
@@ -233,12 +233,7 @@ class FaceAuthenticationService:
             if not self.current_pose:
                 # สุ่มท่าทางใหม่
                 pose = self.generate_random_pose()
-                await websocket.send_json({
-                    "status": "pose_required",
-                    "pose": pose,
-                    "message": f"กรุณาทำท่าทาง: {pose}"
-                })
-                return False, 0.0, f"กรุณาทำท่าทาง: {pose}"
+                return False, 0.0, f"กรุณาทำท่าทาง: {pose}","pose_required"
 
             # ตรวจสอบว่าท่าทางถูกต้องหรือไม่
             pose_success, pose_message = self.check_pose(landmarks)
@@ -462,8 +457,11 @@ class FaceAuthenticationService:
         if not self.current_pose or self.pose_completed:
             return False, "กรุณารอการสุ่มท่าทางใหม่"
 
-        # ตรวจสอบ timeout
-        if time.time() - self.pose_start_time > self.POSE_TIMEOUT:
+        # ตรวจสอบ timeout และคำนวณเวลาที่เหลือ
+        time_elapsed = time.time() - self.pose_start_time
+        time_remaining = max(0, self.POSE_TIMEOUT - time_elapsed)
+        
+        if time_elapsed > self.POSE_TIMEOUT:
             self.current_pose = None
             return False, "หมดเวลา กรุณาลองใหม่"
 
@@ -485,7 +483,8 @@ class FaceAuthenticationService:
                 self.pose_completed = True
                 return True, "ทำท่าทางถูกต้อง"
 
-        return False, "กรุณา" + self.current_pose
+        # แสดงเวลาที่เหลือพร้อมคำแนะนำ
+        return False, f"กรุณา{self.current_pose} (เหลือเวลา {time_remaining:.1f} วินาที)"
 
 
 class AdminAuthenticationService:
