@@ -322,11 +322,11 @@ class UserService:
         return token
     def extract_token(self,token: str):
         try:
-            print(token)
+            # print(token)
             SECRET_KEY = self.config.get("SECRET_KEY", "RickAstley")
-            print(SECRET_KEY)
+            # print(SECRET_KEY)
             ALGORITHM = self.config.get("ALGORITHM", "HS256")
-            print(ALGORITHM)
+            # print(ALGORITHM)
             # Decode the JWT
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             return payload  # Return the payload if valid

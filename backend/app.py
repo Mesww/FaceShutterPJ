@@ -15,6 +15,7 @@ from backend.configs.config import (
     public_key_pem
 )
 
+from backend.middleware.usermiddleware import UserMiddleware
 from backend.models.user_model import User, Userupdate
 from backend.routes import face_routes, user_routes, history_routes, checkinout_routes,auth_routes,logs_routes
 import mediapipe as mp
@@ -56,7 +57,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-
+app.add_middleware(UserMiddleware)
 # Health check endpoint
 @app.get("/health")
 async def health_check():
