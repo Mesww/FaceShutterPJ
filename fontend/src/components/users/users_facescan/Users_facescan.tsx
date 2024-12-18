@@ -822,47 +822,24 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   </div>
 
                   <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
-                    <div className="text-white text-center">
+                    <div className="text-center">
                       {currentDirection && imageCount < toltalDirection && (
-                        <p
-                          className="text-xl font-semibold mb-2"
-                          style={{
-                            textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                          }}
-                        >
+                        <p className="custom-direction-text">
                           {`${currentDirection} - Image ${imageCount}/${toltalDirection}`}
                         </p>
                       )}
-                      <p
-                        className="text-2xl font-semibold"
-                        style={{
-                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                        }}
-                      >
-                        {isScanning && !isAuthen
-                          ? (instruction || "วางใบหน้าในกรอบ")
-                          : instruction}
-                      </p>
-                      <p
-                        className="text-xl font-semibold text-red-500"
-                        style={{
-                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                        }}
-                      >
-                        {errorDirectiom || errorsMessage}
-                      </p>
+                      {(isScanning && !isAuthen ? instruction || "วางใบหน้าในกรอบ" : instruction) && (
+                        <p className="custom-instruction-text">
+                          {isScanning && !isAuthen ? instruction || "วางใบหน้าในกรอบ" : instruction}
+                        </p>
+                      )}
+                      {errorDirectiom || errorsMessage ? (
+                        <p className="custom-error-text mt-1">
+                          {errorDirectiom || errorsMessage}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
-
-                  {/* {isScanning && !isAuthen && (
-                    <button
-                      onClick={captureImage}
-                      className="absolute bottom-10 left-1/2 transform -translate-x-1/2 px-8 py-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center gap-3 text-lg font-semibold shadow-lg"
-                    >
-                      <Camera size={28} />
-                      ถ่ายภาพ
-                    </button>
-                  )} */}
                 </>
               </div>
             </div>

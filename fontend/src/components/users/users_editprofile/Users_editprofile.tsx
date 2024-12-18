@@ -36,7 +36,7 @@ const EditProfilePage: React.FC = () => {
   const [name, setName] = useState(userData?.name || '');
   const [email, setEmail] = useState(userData?.email || '');
   const [phone, setPhone] = useState(userData?.tel || '');
-  const [role,setRole] = useState(userData?.roles || '');
+  const [role, setRole] = useState(userData?.roles || '');
   // console.log(userData)
 
   const [websocket, setWebSocket] = useState<WebSocket | null>(null);
@@ -91,7 +91,7 @@ const EditProfilePage: React.FC = () => {
     event.preventDefault();
 
     try {
-     
+
       await edituserdata(userData?.employee_id || '', name, email, phone, imageFile, role);
 
       await refreshUserData();
@@ -371,7 +371,7 @@ const EditProfilePage: React.FC = () => {
       errors
     });
     // refreshUserData();
-  }, [connectionStatus, errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel,userData?.roles]);
+  }, [connectionStatus, errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel, userData?.roles]);
 
   // Modify the start scanning method
   const startScanning = () => {
@@ -405,7 +405,7 @@ const EditProfilePage: React.FC = () => {
 
       // คำนวณขนาดกรอบที่ต้องการ (380x380 pixels หรือตามที่แสดงในหน้าจอ)
       const frameSize = Math.min(videoWidth, videoHeight) * 0.6;
-      
+
       // กำหนดขนาด canvas ให้ตรงกับกรอบที่แสดง
       canvas.width = frameSize;
       canvas.height = frameSize;
@@ -435,7 +435,7 @@ const EditProfilePage: React.FC = () => {
       const imageData = croppedImageBase64.split(',')[1];
       const byteCharacters = atob(imageData);
       const byteArray = new Uint8Array(Array.from(byteCharacters).map(char => char.charCodeAt(0)));
-      
+
       websocket.send(JSON.stringify({
         captured_image: Array.from(byteArray)
       }));
@@ -595,7 +595,7 @@ const EditProfilePage: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* เส้นแนวนำที่มุม */}
                       <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white/50"></div>
                       <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white/50"></div>
@@ -605,22 +605,12 @@ const EditProfilePage: React.FC = () => {
                   </div>
 
                   <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
-                    <div className="text-white text-center">
-                      <p
-                        className="text-2xl font-semibold"
-                        style={{
-                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                        }}
-                      >
+                    <div className="text-center">
+                      <p className="instruction-text">
                         {instruction || "ถ่ายภาพใบหน้าของคุณ"}
                       </p>
                       {errorDirectiom && (
-                        <p
-                          className="text-xl font-semibold text-red-500"
-                          style={{
-                            textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                          }}
-                        >
+                        <p className="error-text">
                           {errorDirectiom}
                         </p>
                       )}
