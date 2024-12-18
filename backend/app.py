@@ -107,7 +107,7 @@ app.include_router(
 app.include_router(
     logs_routes.router,  # เพิ่มการรวม user_routes
     prefix="/api/logs",  # Base path for user-related routes
-    tags=["auth"],
+    tags=["logs"],
 )
 
 """
