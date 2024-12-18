@@ -348,20 +348,11 @@ class Face_service:
 
             user = User(**user_response.data)
             if not user.embeddeds:
-                # บันทึก log สถานะ error
-                await log_service.create_log(
-                    employee_id=employee_id,
-                    log={
-                        "action": "face_scan",
-                        "status": "error", 
-                        "message": "ไม่พบข้อมูลใบหน้าของผู้ใช้"
-                    }
-                )
-                
+                # บบการบันทึก log กรณีไม่พบข้อมูลใบหน้า
                 await websocket.send_json(
                     {
                         "data": {
-                            "status": "failed",
+                            "status": "stopped",
                             "message": "ไม่พบข้อมูลใบหน้าของผู้ใช้",
                         }
                     }
@@ -388,7 +379,7 @@ class Face_service:
                     if frame is None:
                         continue
 
-                    frame = cv2.flip(frame, 1)
+                    # frame = cv2.flip(frame, 1)
 
                     is_authenticated, confidence, message = (
                         await auth_service.authenticate_face(
@@ -425,26 +416,17 @@ class Face_service:
                         )
 
                 except WebSocketDisconnect:
-                    # บันทึก log สถานะ error เมื่อการเชื่อมต่อหลุด
-                    await log_service.create_log(
-                        employee_id=employee_id,
-                        log={
-                            "action": "face_scan",
-                            "status": "error",
-                            "message": "การเชื่อมต่อขาดหาย",
-                            "attempt": attempt_count + 1
-                        }
-                    )
+                    # บบการบันทึก log กรณีการเชื่อมต่อหลุด
                     return None, "การเชื่อมต่อขาดหาย", 0.0
                     
                 except Exception as e:
-                    # บันทึก log สถานะ error เมื่อเกิดข้อผิดพลาด
+                    # บังคงบันทึก log กรณีเกิดข้อผิดพลาดอื่นๆ
                     await log_service.create_log(
                         employee_id=employee_id,
                         log={
                             "action": "face_scan", 
                             "status": "error",
-                            "message": f"เกิดข้อผิดพลาด: {str(e)}",
+                            "message": f"Error: {str(e)}",
                             "attempt": attempt_count + 1
                         }
                     )
@@ -465,7 +447,7 @@ class Face_service:
                 log={
                     "action": "face_scan",
                     "status": "stopped",
-                    "message": "ครบจำนวนครั้งที่กำหนดแล้ว",
+                    "message": "Authentication failed - Maximum attempts reached",
                     "attempt": attempt_count
                 }
             )
@@ -482,13 +464,13 @@ class Face_service:
             return None, "คุณไม่สามารถยืนยันตัวตนได้ - ครบจำนวนครั้งที่กำหนดแล้ว", 0.0
 
         except Exception as e:
-            # บันทึก log สถานะ error เมื่อเกิดข้อผิดพลาดร้ายแรง
+            # บังคงบันทึก log กรณีเกิดข้อผิดพลาดร้ายแรง
             await log_service.create_log(
                 employee_id=employee_id,
                 log={
                     "action": "face_scan",
                     "status": "error", 
-                    "message": f"เกิดข้อผิดพลาดร้ายแรง: {str(e)}"
+                    "message": f"Error server: {str(e)}"
                 }
             )
             
@@ -524,62 +506,67 @@ class Face_service:
         try:
             encode = None
             frame = None
-            while current_direction_idx < len(scan_directions):
-                expected_direction = scan_directions[current_direction_idx]
-                await websocket.send_json(
-                    {
-                        "data": {
-                            "status": "scan",
-                            "instructions": f"Please move your head into frame.",
-                        }
+            expected_direction = scan_directions[current_direction_idx]
+            
+            while True:  # เพิ่ม loop เพื่อให้สามารถถ่ายซ้ำได้
+                # รอรับภาพที่ถ่ายจาก frontend
+                await websocket.send_json({
+                    "data": {
+                        "status": "scanning",
+                        "instructions": f"ถ่ายภาพใบหน้าของคุณ",
                     }
-                )
+                })
+                
                 data = await websocket.receive_json()
-                # Decode the received image
-                frame_bytes = np.frombuffer(bytearray(data["image"]), dtype=np.uint8)
-                frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
-                results = self.face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                if not results.multi_face_landmarks:
-                    await websocket.send_text("No face detected. Please try again.")
-                    continue
-
-                face_landmarks = results.multi_face_landmarks[0]
-                # frame_with_landmarks = face_service.draw_landmarks(frame, face_landmarks)
-                detected_direction = self.check_head_direction(face_landmarks)
-                # print(f"Detected direction: {detected_direction}")
-                if detected_direction == expected_direction:
+                
+                # ตรวจสอบวารปิดกล้อง
+                if "action" in data and data["action"] == "normal_close":
+                    print("Camera closed normally")
+                    return None, []
+                
+                # ตรวจสอบว่าเป็นการส่งภาพมาหรือไม่
+                if "captured_image" in data:
+                    frame_bytes = np.frombuffer(bytearray(data["captured_image"]), dtype=np.uint8)
+                    frame = cv2.imdecode(frame_bytes, cv2.IMREAD_COLOR)
+                    
+                    # ตรวจสอบใบหน้าในภาพที่ถ่าย
+                    results = self.face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    
+                    if not results.multi_face_landmarks:
+                        await websocket.send_json({
+                            "data": {
+                                "status": "failed",
+                                "message": "ไม่พบใบหน้าในภาพ กรุณาถ่ายใหม่"
+                            }
+                        })
+                        continue  # ให้วนกลับไปถ่ายใหม่
+                        
+                    face_landmarks = results.multi_face_landmarks[0]
+                    detected_direction = self.check_head_direction(face_landmarks)
+                    
+                    # สร้าง face encoding จากภาพที่ถ่าย
                     face_encodings = self.generate_encodeings(images=frame)
                     if face_encodings:
                         encode = face_encodings[0]
                         images.clear()
-                        images.append({"frame": frame, "direction": expected_direction})
-                        await websocket.send_json(
-                            {
-                                "data": {
-                                    "status": "scanning",
-                                    "instructions": f"Face detected. Please wait.",
-                                }
+                        images.append({"frame": frame, "direction": detected_direction})
+                        
+                        await websocket.send_json({
+                            "data": {
+                                "status": "success",
+                                "message": "บันทึกภาพสำเร็จ"
                             }
-                        )
+                        })
                         return encode, images
                     else:
-                        await websocket.send_json(
-                            {
-                                "data": {
-                                    "status": "scanning",
-                                    "instructions": f"No face detected. Please try again.",
-                                }
-                            }
-                        )
-                else:
-                    await websocket.send_json(
-                        {
+                        await websocket.send_json({
                             "data": {
-                                "status": "scanning",
-                                "instructions": f"Please move your head to: {expected_direction}",
+                                "status": "failed",
+                                "message": "ไม่สามารถประมวลผลใบหน้าได้ กรุณาถ่ายใหม่"
                             }
-                        }
-                    )
-                    continue
+                        })
+                        continue  # ให้วนกลับไปถ่ายใหม่
+                        
         except WebSocketDisconnect:
             print("WebSocket disconnected.")
+            return None, []

@@ -99,7 +99,7 @@ export const getisCheckin = async (token: string,checkinorout:string) => {
  * @throws An error if the request fails or if the registration fails.
  */
 
-export const edituserdata = async (employee_id: string, name: string, email: string, phone: string, imageData:File | null) => {
+export const edituserdata = async (employee_id: string, name: string, email: string, phone: string, imageData:File | null, role:string) => {
     try {
         // console.log(employee_id, name, email, phone);
         const formData = new FormData();
@@ -116,11 +116,14 @@ export const edituserdata = async (employee_id: string, name: string, email: str
         if (!token) {
             throw new Error('No token found');
         }
+        console.log(role);
+
         const body = {
             'employee_id': employee_id ?? null,
             'name': name ?? null,
             'email': email ?? null,
             'tel': phone ?? null,
+            'roles': role ?? null,
         }
         const response = await fetch(`${BACKEND_URL}/api/users/update_user`, {
         method: 'PUT',

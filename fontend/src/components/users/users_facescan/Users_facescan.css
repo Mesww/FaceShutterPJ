@@ -1,18 +1,59 @@
 /* ปรับขนาดและระยะห่าง */
 .mobile-popup {
-    font-size: 14px; /* ปรับขนาดตัวอักษร */
-    padding: 16px;   /* เพิ่มพื้นที่รอบข้อความ */
-    border-radius: 10px; /* มุมโค้ง */
-  }
-  
-  .mobile-title {
-    font-size: 18px; /* ขนาดหัวเรื่อง */
-    font-weight: bold;
-  }
-  
-  .mobile-btn {
-    font-size: 14px; /* ขนาดของปุ่ม */
-    padding: 8px 16px; /* ขนาดของปุ่ม */
-    border-radius: 5px; /* มุมปุ่ม */
-  }
-  
+  font-size: 14px; /* ปรับขนาดตัวอักษร */
+  padding: 16px; /* เพิ่มพื้นที่รอบข้อความ */
+  border-radius: 10px; /* มุมโค้ง */
+}
+
+.mobile-title {
+  font-size: 18px; /* ขนาดหัวเรื่อง */
+  font-weight: bold;
+}
+
+.mobile-btn {
+  font-size: 14px; /* ขนาดของปุ่ม */
+  padding: 8px 16px; /* ขนาดของปุ่ม */
+  border-radius: 5px; /* มุมปุ่ม */
+}
+
+/* ข้อความสำหรับ Direction */
+.custom-direction-text {
+  font-size: clamp(16px, 5vw, 28px); /* ขนาดยืดหยุ่น */
+  line-height: 1.6;
+  color: #ffffff; /* สีข้อความ */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); /* เงาเข้ม */
+  background: rgba(0, 0, 0, 0.5); /* พื้นหลังโปร่งแสง */
+  padding: 6px 12px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+/* ข้อความสำหรับ Instruction */
+.custom-instruction-text {
+  font-size: clamp(18px, 6vw, 32px);
+  line-height: 1.6;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 12px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+/* ข้อความสำหรับ Error */
+.custom-error-text {
+  font-size: clamp(16px, 5vw, 26px);
+  line-height: 1.6;
+  color: #32CD32; /* สีเขียว */
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 12px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.custom-error-text:empty {
+  display: none;
+}
+
+

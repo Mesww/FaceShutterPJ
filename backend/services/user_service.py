@@ -20,6 +20,44 @@ class UserService:
     pathenv = Path("./.env")
     load_dotenv(dotenv_path=pathenv)
     config = dotenv_values()
+    
+    @staticmethod
+    async def add_admin(request: User) -> Returnformat:
+        try:
+            db = await connect_to_mongodb()  # Establish database connection
+            collection = db["users"]
+
+            # Check if user already exists by employee_id
+            old_user = await collection.find_one({"employee_id": request.employee_id})
+            if old_user:
+                if old_user['roles'] == 'ADMIN':
+                    return Returnformat(400, "Admin already exists", None)
+                else:
+                    update_user = Userupdate(roles=RoleEnum.ADMIN)
+                    return await UserService.update_user_by_employee_id(request.employee_id, update_user)
+
+            # Prepare user data for insertion
+            user_data = (
+                request.model_dump()
+            )  # Pydantic models use dict() instead of model_dump()
+            
+            user_data["roles"] = request.roles.value  # Convert Enum to string
+
+            # Insert the new user into the database
+            new_user = await collection.insert_one(user_data)
+
+            # Fetch the inserted document (optional but useful)
+            inserted_user = await collection.find_one({"_id": new_user.inserted_id})
+
+            # Convert ObjectId to string for serialization
+            inserted_user["_id"] = str(inserted_user["_id"])
+
+            # Return success response with user data
+            return Returnformat(200, "Admin registered successfully", inserted_user)
+
+        except Exception as e:
+            return Returnformat(400, str(e), None)
+    
     @staticmethod
     async def get_user_by_employee_id(employee_id: str) -> Returnformat:
         try:
@@ -36,8 +74,10 @@ class UserService:
                 return Returnformat(400, "User not found", None)
             
             user["_id"] = str(user["_id"])
-            if user['roles'] == 'ADMIN':
-                return Returnformat(200, "Admin fetched successfully", user)
+            
+            if len(user["images"]) == 0:
+                print(user)
+                return Returnformat(200, "User fetched successfully", user)
             
             image_path = user["images"][0] 
             user["images_profile_path"] = image_path['path']
@@ -155,6 +195,8 @@ class UserService:
             user_data["embeddeds"] = user_data["embeddeds"] if user_data["embeddeds"] else exit_user["embeddeds"]
             user_data["roles"] = user_data["roles"] if user_data["roles"] else exit_user["roles"]
             user_data["update_at"] = datetime.now(tz=timezone)
+            user_data["password"] = user_data["password"] if user_data["password"] else exit_user["password"]
+            
             # print(user_data)
             # Update the user in the database
             updated_user = await collection.update_one(
@@ -261,28 +303,6 @@ class UserService:
         except Exception as e:
             return Returnformat(400, str(e), None)
 
-    # @staticmethod
-    # async def authorregis(employee_id: str, request: User) -> Returnformat:
-    #     try:
-    #         db = await connect_to_mongodb()  # Establish database connection
-    #         collection = db["users"]
-
-    #         # Prepare user data for update
-    #         user_data = request.model_dump()  # Pydantic models use dict() instead of model_dump()
-    #         user_data["roles"] = request.roles.value  # Convert Enum to string
-
-    #         new_user = await collection.insert_one(user_data)
-
-    #         # Fetch the updated document (optional but useful)
-    #         new_user = await collection.find_one({"_id": new_user.inserted_id})
-
-    #         # Convert ObjectId to string for serialization
-    #         new_user["_id"] = str(new_user["_id"])
-
-    #         # Return success response with updated user data
-    #         return Returnformat(200, "User updated successfully", new_user)
-    #     except Exception as e:
-    #         return Returnformat(400, str(e), None)
 
     # Token generation function
     
@@ -380,10 +400,39 @@ class UserService:
         try:
             db = await connect_to_mongodb()  # Establish database connection
             collection = db["users"]
-            users = await collection.find().to_list(1000)
-            print(users)
+            users = await collection.find().to_list(length=None)
+            # print(users)
             for user in users:
                 user["_id"] = str(user["_id"])
+                if user.get("password"):
+                    print(user.get("password"))
+                    user["is_password"] = True
+                else:
+                    user["is_password"] = False
+                user["password"] = None
+                
             return users
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    @staticmethod
+    async def delete_user_by_employee_id(employee_id: str) -> Returnformat:
+        try:
+            db = await connect_to_mongodb()
+            collection = db["users"]
+            
+            # ตรวจสอบว่ามีผู้ใช้อยู่หรือไม่
+            user = await collection.find_one({"employee_id": employee_id})
+            if not user:
+                return Returnformat(400, "User not found", None)
+            
+            # ลบผู้ใช้
+            result = await collection.delete_one({"employee_id": employee_id})
+            
+            if result.deleted_count == 0:
+                return Returnformat(400, "Failed to delete user", None)
+            
+            return Returnformat(200, "User deleted successfully", None)
+            
+        except Exception as e:
+            return Returnformat(400, str(e), None)
