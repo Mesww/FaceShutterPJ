@@ -379,7 +379,7 @@ class Face_service:
                     if frame is None:
                         continue
 
-                    frame = cv2.flip(frame, 1)
+                    # frame = cv2.flip(frame, 1)
 
                     is_authenticated, confidence, message = (
                         await auth_service.authenticate_face(
