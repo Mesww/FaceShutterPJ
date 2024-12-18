@@ -207,7 +207,7 @@ class FaceAuthenticationService:
             # 2. ตรัจจับใบหน้า
             face_locations = face_recognition.face_locations(rgb_frame, model="hog", number_of_times_to_upsample=0)
             if not face_locations:
-                return False, 0.0, "กรุณาวางใบหน้าให้อยู่ในกรอบ","failed"
+                return False, 0.0, "กรุณาวางใบหน้าให้อยู่ในกรอบ"
 
             # 3. ตรวจสอบขนาดและตำแหน่งใบหน้า
             top, right, bottom, left = face_locations[0]
@@ -225,7 +225,7 @@ class FaceAuthenticationService:
             # 5. ตรวจสอบการมีชีวิต
             results = self.face_mesh.process(rgb_frame)
             if not results.multi_face_landmarks:
-                return False, 0.0, "กรุณาหันหน้าเข้าหากล้อง","failed"
+                return False, 0.0, "กรุณาหันหน้าเข้าหากล้อง"
 
             landmarks = results.multi_face_landmarks[0]
 
@@ -233,7 +233,12 @@ class FaceAuthenticationService:
             if not self.current_pose:
                 # สุ่มท่าทางใหม่
                 pose = self.generate_random_pose()
-                return False, 0.0, f"กรุณาทำท่าทาง: {pose}","pose_required"
+                await websocket.send_json({
+                    "status": "pose_required",
+                    "pose": pose,
+                    "message": f"กรุณาทำท่าทาง: {pose}"
+                })
+                return False, 0.0, f"กรุณาทำท่าทาง: {pose}"
 
             # ตรวจสอบว่าท่าทางถูกต้องหรือไม่
             pose_success, pose_message = self.check_pose(landmarks)
@@ -456,12 +461,13 @@ class FaceAuthenticationService:
         """ตรวจสอบว่าผู้ใช้ทำท่าทางถูกต้องหรือไม่"""
         if not self.current_pose or self.pose_completed:
             return False, "กรุณารอการสุ่มท่าทางใหม่"
-
-        # ตรวจสอบ timeout และคำนวณเวลาที่เหลือ
+        
+         # ตรวจสอบ timeout และคำนวณเวลาที่เหลือ
         time_elapsed = time.time() - self.pose_start_time
         time_remaining = max(0, self.POSE_TIMEOUT - time_elapsed)
-        
-        if time_elapsed > self.POSE_TIMEOUT:
+
+        # ตรวจสอบ timeout
+        if time.time() - self.pose_start_time > self.POSE_TIMEOUT:
             self.current_pose = None
             return False, "หมดเวลา กรุณาลองใหม่"
 
