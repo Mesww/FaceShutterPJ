@@ -20,11 +20,13 @@ class UserMiddleware(BaseHTTPMiddleware):
                 # Deny access if no token
                 return JSONResponse(status_code=401, content={"detail": "Missing token"})
             payload = user_service.extract_token(token)
-            employee_id = payload.get("employee_id")
+            print(payload)
+            employee_id = payload.get("sub")
+            print(employee_id)
             user = await user_service.get_user_by_employee_id(employee_id)
-
+            # print(user.data)
             # Simulate admin check (e.g., token, headers, etc.)
-            if user.data is None or user.data.role != "ADMIN":
+            if user.data is None or user.data['roles'] != "ADMIN":
                 # Deny access if not admin
                 return JSONResponse(status_code=403, content={"detail": "Admin access only"})
 
