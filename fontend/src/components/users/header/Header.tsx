@@ -37,11 +37,17 @@ const Header: React.FC<AdminHeaderProps> = ({
 
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-             {profileimage != null ? <img src={profileimage} alt="Profile" className="rounded-full object-cover" />:<User size={20} className="text-red-600" />}
+              {profileimage != null ? 
+                <img src={profileimage} alt="Profile" className="w-10 h-10 rounded-full object-cover" /> : 
+                <User size={20} className="text-red-600" />
+              }
             </div>
-            <div className="text-left">
+            <div className="text-left hidden sm:block">
               <div className="font-medium text-gray-900">พนักงาน</div>
-              <div className="text-sm text-gray-500">{name ? name :""}</div>
+              <div className="text-sm text-gray-500 truncate max-w-[150px]">{name ? name : ""}</div>
+            </div>
+            <div className="text-left sm:hidden">
+              <div className="font-medium text-gray-900 text-sm truncate max-w-[100px]">{name ? name : ""}</div>
             </div>
           </div>
         </div>

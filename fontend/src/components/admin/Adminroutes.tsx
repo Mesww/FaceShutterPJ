@@ -11,9 +11,7 @@ import AdminSettings from "./admin_setting/admin_setting";
   // ? use this function to create admin routes
   const adminRoutes = (): RouteObject[] => [
     // { path: "Login", element: <Login  /> },
-    // { path: "AdminDashboard", element: <AdminDashboard  /> },
     { path: "AdminManage", element: <AdminManage  /> },
-    // { path: "AdminAccess", element: <AdminAccess  /> },
     { path: "AdminReports", element: <AdminReports  /> },
     { path: "AdminNotifications", element: <AdminNotifications  /> },
     { path: "AdminSettings", element: <AdminSettings  /> },

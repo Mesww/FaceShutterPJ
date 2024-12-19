@@ -57,16 +57,20 @@ class History_Service:
         history_collection = db['checkinouthistory']
         checkinouttoday_collection = db['checkinouttoday']
         
-        # Query historical records within a date range for all employees
+        # Query historical records within date range
         records = await history_collection.find({
             "date": {"$gte": start_date, "$lte": end_date}
         }).to_list()
         
         for record in records:
             record["_id"] = str(record["_id"])
-        record_today = await checkinouttoday_collection.find().to_list()
+
+        # Query today's records only if today falls within the selected date range
+        today_records = await checkinouttoday_collection.find({
+            "date": {"$gte": start_date, "$lte": end_date}
+        }).to_list()
         
-        for record in record_today:
+        for record in today_records:
             record["_id"] = str(record["_id"])
             records.append(record)
         

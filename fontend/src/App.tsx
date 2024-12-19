@@ -45,11 +45,6 @@ function App() {
               <Route key={index} path={route.path} element={route.element} />
             ))}
           </Route>
-        </Routes>
-      </UserProvider>
-
-        {/* Amin Routes */}
-        <Routes>
           <Route path='/admin/' element={<Navigate to="/admin/login" />}>
           </Route>
           
@@ -69,6 +64,10 @@ function App() {
             ))}
           </Route>
         </Routes>
+      </UserProvider>
+
+        {/* Amin Routes */}
+     
     </Router>
   )
 }
