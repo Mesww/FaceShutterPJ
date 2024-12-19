@@ -8,6 +8,8 @@ import * as XLSX from 'xlsx';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header';
 import { BACKEND_URL } from '@/configs/backend';
+import { myUser } from '@/interfaces/admininterface';
+import { useUserData } from '@/containers/provideruserdata';
 
 // Updated interface to match API response
 interface AttendanceRecord {
@@ -27,7 +29,9 @@ const AdminReports = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const notificationCount = 3;
-
+  const [user , setUser] = useState<myUser | null>(null);
+  const {userData} = useUserData();
+  
   // State for attendance records
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,7 +72,8 @@ const AdminReports = () => {
     };
 
     fetchAttendanceRecords();
-  }, [startDate, endDate]);
+    setUser(userData);
+  }, [startDate, endDate, userData]);
 
   // Filter records
   const filteredAttendanceRecords = Array.isArray(attendanceRecords)
@@ -242,7 +247,8 @@ const AdminReports = () => {
           notificationCount={notificationCount}
           showNotifications={showNotifications}
           setShowNotifications={setShowNotifications}
-        />
+          employee_id={user?.employee_id}
+  />
 
         <div className="w-full p-2 md:p-4 bg-white">
           {/* Filter Section */}

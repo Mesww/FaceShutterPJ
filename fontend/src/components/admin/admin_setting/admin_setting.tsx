@@ -1,13 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header';
-import "../admin_dashboard/Admin_dashboard.css";
+// import "../admin_dashboard/Admin_dashboard.css";
+import { useUserData } from '@/containers/provideruserdata';
+import { myUser } from '@/interfaces/admininterface';
 
 const AdminSettings = () => {
     const [showNotifications, setShowNotifications] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const notificationCount = 3;
+  const {userData} = useUserData();
 
+   const [user , setUser] = useState<myUser | null>(null);
+ 
 
     // Map paths to titles and descriptions
     const menuItems = [
@@ -17,11 +22,7 @@ const AdminSettings = () => {
             title: "User Management",
             description: "Add, delete, edit user information",
         },
-        // {
-        //     path: "/admin/AdminAccess",
-        //     title: "สิทธิ์การเข้าถึง",
-        //     description: "กำหนดสิทธิ์การเข้าถึงระบบ",
-        // },
+    
         {
             path: "/admin/AdminReports",
             title: "Reports",
@@ -35,7 +36,9 @@ const AdminSettings = () => {
     ];
 
     const currentMenuItem = menuItems.find((item) => item.path === location.pathname);
-
+    useEffect(() => {
+        setUser(userData);
+    }, [userData]);
     return (
         <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
 
@@ -62,6 +65,7 @@ const AdminSettings = () => {
                     notificationCount={notificationCount}
                     showNotifications={showNotifications}
                     setShowNotifications={setShowNotifications}
+                    employee_id={user?.employee_id}
                 />
 
                 {/* Main content area with proper margin for sidebar */}
