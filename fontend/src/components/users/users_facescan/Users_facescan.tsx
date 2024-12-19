@@ -780,7 +780,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                     audio={false}
                     screenshotFormat="image/jpeg"
                     className="absolute inset-0 w-full h-full object-cover"
-                    mirrored={true}
+                    mirrored={facingMode === "user"}
                     videoConstraints={{
                       facingMode: facingMode,
                       width: { ideal: 1280 },
