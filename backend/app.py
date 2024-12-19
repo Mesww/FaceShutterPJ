@@ -116,25 +116,28 @@ app.include_router(
 
 """
 
+scopes = ['openid', 'SAM-Account-Name', 'E-Mail-Addresses', 'User-Principal-Name', 'Given-Name', 'Surname','profile', 'offline_access']
+
 @app.post('/login')
 def login():
     oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_CALLBACK_URL,
-            scope=['openid', 'email', 'profile'])
+            scope = scopes)
     authorization_url, state = oauth.authorization_url(OAUTH_AUTHORIZE_URL)
     return {"authorization_url": authorization_url, "state": state}
 
-@app.get('/callback')
+@app.post('/callback')
 def callback(request: Request):
     oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_CALLBACK_URL)
     try:
-        code = 'PLPIUTTHJUiRAA9Df7SiGA.jIqHlakd3Qg2AIa9ZaC88_qY3sQ.Tb-keuKJScDnkZQwB30E8cDjtQl2lg88rTE0GcbT-GJNnT3o6v-lEBWJ20YTsspcKvmOFiiq0mmcq5QHzbFXTS1jUWwFSa46Y9gH3bMlomqdog2_RNu26NtqwFgNSSzLk5YspMTgx5ys7qLkA_Hbx7e2-95ojL9RREClThrUQH5gxIrBgKQOJfsN_wGWB8iH9r-Cr74QawkSenuV-q99O50ESogSsWal_irPPfDFlXPnyaIvppnxhBdXOWLajWjwLe4chm9drc-8H_LcUjbPgvI-VHgUwOBeYFSsIFQEgKuo38XC-B5NnM4_7OZmLRRAzsdQ349lQ_JCUyQKOyh8VLPzRz2EkQfHdLI36wg6Yi7bR727Pumc-YvreeqBjgOWgyq858ix4VOgybl0lqBXJDi44nvmEsi9RYxPElY9syK6s2ebSkhFXRWeaRaXwHYGvKEIneHU6xBK-btJ1HDdqm4bvUANf6I5_5vXLO-pb0D514QyHpWkAJI3rTen_8IzkcT48ehM4MN2YjjbDp7tduybs35TFHJ-98Za3cdpbGNSBCCkj_p71gbwWS-lEBGJHLdt7wzxvcGScSEYr7kxmaxaqgwSBOWGyyKhSeNMm3GBVF8I6GvOODd7BoqPgwjBoMXlKcVeom4FCPl3B-UQZSIqf_bq56ljHCUvy-43WbU'
         token = oauth.fetch_token(
             OAUTH_TOKEN_URL,
-            authorization_response='https://facescan-cits.mfu.ac.th/users/UsersFacescan?code=LxJjHtXqBEaZs2Zaz2lpmg.IGEHJawd3QgGADPuTeqnEj3D4vU.CqJnD5W2p02NFAxTYb5sMQh0A7zN5IPjsoJhW8LaXxgLfr4rPPB2-ljk1H_E27tHGHj9Kafau6Tp9l8wYdqq5tZL8TgiGWado2UbcmZLXZDrs38z7J1KhKuFysVKq1C82Q7eZXikaT0Qijhdxg_zp6hQh93e1aW7uCsmldCWFT8soQnWlZHHf3kA7nx7ZFaaBvySDzcEyvYi8syn67qhMOv72VjJQiuMw0znE5f0ZuU-5RojysvC2ixeBM0HUm3adD0JTNBhYqh3lHFQCSMqabPGsheG_iqLKklkmdZoI0xD1WmCLAvDCap1J090TPeuD6aqxv4IWTnbET4mnq6p-xAC1gRdJeGvhHhfNoIElrUi1gcZ0k4kkHOoVIFDXb6Y8b3QDOlUg9SNBLjRR4IGpsE61hDiFEH9cGbkfzyTVzuz28xAwGqU7Z4L1HgokYWiSskfskU2R3XUxqCAYzY8Fm_t_YdVRRSodQuek6ayVUMCaUwCT2wh-yc4-vWGve80vz66M3JKAfhAHwYZIyFrSDfMKyW4nJpxMlWDLREnwVcahbdTLG3kihhww0YVwpqkzQLoZubdcUrLQn-DgRtgnRXH52F7RyfZCF8d1mi-llz0_gScL8U_R47OgZTlzwq3gwSY1RK8KhylHvLPEG0G53KxKSwaDCT7-lnCIgbLVTU&state=euSiE4wGD6sVA9tI3xcYXItIdeqGdW',
+            authorization_response='https://facescan-cits.mfu.ac.th/users/UsersFacescan?code=PLPIUTTHJUiRAA9Df7SiGA.fgjeAOof3Qg_AFdxP9rAemnW9R4.akGVNtWLr80QNcY13T77jQBeLYN-rgdFHlGbMuW_zUBqXvDJ6N0XTkU9tYulfdFrs2RSmnEYohprp4-w57QOCAQVProz-DRcozbYGLwb5a1HqC_2RbUViZ-nGeFXEoG7QNP2EYm-Cq13-vjjND5JyOsv3GA9oloXFniMSplErIXDGv9OtkMWjaG9WmxqKnUX9mG5SmamQFLy7B_gb81P5e7KEhQlO_Nl7cZWfBkYDHDP3Xqpc0iuWjpy1KNisrvB8MMR8lIYTZ9GRo3vfEnR7WvtvYG-3gFB9BonK51zUv5uY2WSW4JJPPh7OjUJDUaqouezi-N6rK0ui_5UREVCr5eTdYCjBqmNYu6RVfPwa5VZ-b6So4TzF652WTRzxs2BW5fYic_uEw8PeTaxgs1qKqCmXlXqqss5974JK2HMCkectjJWCvvG9mSrNUeaxJWfuqW5_2ZYkzYAJgj1cqhdJjDdLQurNVQqeYTYIrNuIhEq6nXQCQYZftu8goeCCEB8TzE10-rrb_ZHhHm5HoRpip4byYqf1zs6q6N1M5N-LBB5V-A6a3X2JNkJuUOok6NR9cpEpiFixLu-NL59ihApA8N_zrPqbsDbAe9AUxEOL1vaiDAEvDiY1Ko5RxO29Kv2Zs5HiFpQYpFxt0k6ru8mAFk2hc9RENRMQb99yE91JuU&state=84H4Dqfv4ROaSpWYJInwk25hy0bTUx',
+            code='PLPIUTTHJUiRAA9Df7SiGA.fgjeAOof3Qg_AFdxP9rAemnW9R4.akGVNtWLr80QNcY13T77jQBeLYN-rgdFHlGbMuW_zUBqXvDJ6N0XTkU9tYulfdFrs2RSmnEYohprp4-w57QOCAQVProz-DRcozbYGLwb5a1HqC_2RbUViZ-nGeFXEoG7QNP2EYm-Cq13-vjjND5JyOsv3GA9oloXFniMSplErIXDGv9OtkMWjaG9WmxqKnUX9mG5SmamQFLy7B_gb81P5e7KEhQlO_Nl7cZWfBkYDHDP3Xqpc0iuWjpy1KNisrvB8MMR8lIYTZ9GRo3vfEnR7WvtvYG-3gFB9BonK51zUv5uY2WSW4JJPPh7OjUJDUaqouezi-N6rK0ui_5UREVCr5eTdYCjBqmNYu6RVfPwa5VZ-b6So4TzF652WTRzxs2BW5fYic_uEw8PeTaxgs1qKqCmXlXqqss5974JK2HMCkectjJWCvvG9mSrNUeaxJWfuqW5_2ZYkzYAJgj1cqhdJjDdLQurNVQqeYTYIrNuIhEq6nXQCQYZftu8goeCCEB8TzE10-rrb_ZHhHm5HoRpip4byYqf1zs6q6N1M5N-LBB5V-A6a3X2JNkJuUOok6NR9cpEpiFixLu-NL59ihApA8N_zrPqbsDbAe9AUxEOL1vaiDAEvDiY1Ko5RxO29Kv2Zs5HiFpQYpFxt0k6ru8mAFk2hc9RENRMQb99yE91JuU',
             client_secret=OAUTH_SECRET,
             include_client_id=True,
-            scope=['openid', 'email', 'profile']
+            scope = scopes
         )
+        print(f"Token: {token}")
         userinfo_response = oauth.get(OAUTH_USERINFO_URL, headers={'Authorization': f"Bearer {token['access_token']}"})
         print(f"Raw userinfo response: {userinfo_response.text}")
         if userinfo_response.status_code != 200 or not userinfo_response.text:
