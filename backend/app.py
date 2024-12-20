@@ -1,6 +1,6 @@
 import asyncio
 import base64
-import datetime
+import pytz
 from pathlib import Path
 import time
 from dotenv import dotenv_values, load_dotenv
@@ -357,7 +357,22 @@ async def websocket_endpoint(websocket: WebSocket):
         # ในกรณีที่เกิดข้อผิดพลาด ไม่ต้องลบรูปภาพเก่า
         await websocket.close()
 
-
+@app.websocket("/ws/time")
+async def time_websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    tz = pytz.timezone('Asia/Bangkok')
+    try:
+        while True:
+            current_time = datetime.now(tz).strftime("%H:%M:%S")
+            await websocket.send_json({
+                "current_time": current_time,
+                "timestamp": datetime.now().timestamp()
+            })
+            await asyncio.sleep(1)
+    except WebSocketDisconnect:
+        print("Time WebSocket disconnected")
+    except Exception as e:
+        print(f"Error in time websocket: {e}")
 
 
 if __name__ == "__main__":

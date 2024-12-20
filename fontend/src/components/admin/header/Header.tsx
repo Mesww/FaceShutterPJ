@@ -14,6 +14,8 @@ interface AdminHeaderProps {
   notificationCount: number;
   showNotifications: boolean;
   setShowNotifications: React.Dispatch<React.SetStateAction<boolean>>;
+  employee_id: string|undefined;
+
 }
 
 const Header: React.FC<AdminHeaderProps> = ({
@@ -21,6 +23,7 @@ const Header: React.FC<AdminHeaderProps> = ({
   notificationCount,
   showNotifications,
   setShowNotifications,
+  employee_id,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
@@ -70,7 +73,7 @@ const Header: React.FC<AdminHeaderProps> = ({
             </div>
             <div className="text-left">
               <div className="font-medium text-gray-900">System Administrator</div>
-              <div className="text-sm text-gray-500">admin@example.com</div>
+              <div className="text-sm text-gray-500">{employee_id ?? ""}</div>
             </div>
           </div>
         </div>
@@ -104,7 +107,7 @@ const Header: React.FC<AdminHeaderProps> = ({
                 </div>
                 <div className="text-left">
                   <div className="font-medium text-gray-900">System Administrator</div>
-                  <div className="text-sm text-gray-500">admin@example.com</div>
+                  <div className="text-sm text-gray-500">{employee_id ?? ""}</div>
                 </div>
               </div>
               <div className="relative">

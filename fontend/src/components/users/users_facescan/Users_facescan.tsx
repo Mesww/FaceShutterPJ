@@ -43,6 +43,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [toltalDirection, setToltalDirection] = useState<number>(0);
   const [errorDirectiom, setErrorDirection] = useState<string>("");
+  const [timeWebSocket, setTimeWebSocket] = useState<WebSocket | null>(null);
+  const [currentTime, setCurrentTime] = useState<string>("00:00:00");
 
   const [errorsMessage, setErrorsMessage] = useState<string | null>(null);
 
@@ -105,7 +107,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
           case "failed":
             console.error("Error:", messages);
             setErrorsMessage(messages);
-            setInstruction("กรุณาวางใบหน้าให้อยู่ในกรอบ");
+            setInstruction("วางใบหน้าในกรอบ");
             break;
           case "stopped":
             handleScanStop();
@@ -336,6 +338,52 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     return null;
   }, [facingMode, isScanning, isAuthen]);
 
+  // เพิ่มฟังก์ชันสำหรับจัดการ WebSocket เวลา
+const setupTimeWebSocket = useCallback(() => {
+  const ws = new WebSocket(`${BACKEND_WS_URL}/time`);
+  
+  ws.onopen = () => {
+    console.log("Time WebSocket connected");
+  };
+  
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      setCurrentTime(data.current_time);
+    } catch (error) {
+      console.error("Error parsing time data:", error);
+    }
+  };
+  
+  ws.onclose = () => {
+    console.log("Time WebSocket disconnected");
+    // ลองเชื่อมต่อใหม่หลังจาก 5 วินาที
+    setTimeout(() => setupTimeWebSocket(), 5000);
+  };
+  
+  ws.onerror = (error) => {
+    console.error("Time WebSocket error:", error);
+  };
+  
+  setTimeWebSocket(ws);
+  
+  return () => {
+    ws.close();
+  };
+}, []);
+// เพิ่ม useEffect สำหรับจัดการ WebSocket เวลา
+useEffect(() => {
+  const cleanup = setupTimeWebSocket();
+  return () => {
+    cleanup();
+    if (timeWebSocket) {
+      timeWebSocket.close();
+    }
+  };
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [setupTimeWebSocket]);
+
+
   // WebSocket Setup and Cleanup
   useEffect(() => {
     let imageInterval: NodeJS.Timeout;
@@ -530,6 +578,18 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     setEmployeeId(value);
   };
 
+  const DigitalClock: React.FC<{ time: string }> = ({ time }) => {
+    return (
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-6 py-3 rounded-lg shadow-lg">
+        <div className="font-mono text-xl md:text-2xl tracking-wider">
+          {time}
+        </div>
+      </div>
+    );
+  };
+  
+
+
   // Menu Configuration
   const menuItems = (isLogined || login) ? [
     {
@@ -710,7 +770,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       {/* Main Content */}
       <main className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
-        <Header profileimage={profileImage} currentMenuItem={currentMenuItem} name={userDetails.name} />
+        <Header profileimage={profileImage} currentMenuItem={currentMenuItem} name={userDetails.name} >
+          
+          </Header>
         {/* Main content area with proper margin for sidebar */}
         <div className="w-full p-2 md:p-4 bg-white">
           <form onSubmit={handleFormSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -753,7 +815,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
               </button>
             </div>
           </form>
-
+        
           {(isScanning || isAuthen) && (
             <div className="fixed inset-0 bg-gray-900 z-50">
               <button
@@ -780,7 +842,7 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                     audio={false}
                     screenshotFormat="image/jpeg"
                     className="absolute inset-0 w-full h-full object-cover"
-                    mirrored={true}
+                    mirrored={facingMode === "user"}
                     videoConstraints={{
                       facingMode: facingMode,
                       width: { ideal: 1280 },
@@ -822,53 +884,34 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
                   </div>
 
                   <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
-                    <div className="text-white text-center">
+                    <div className="text-center">
                       {currentDirection && imageCount < toltalDirection && (
-                        <p
-                          className="text-xl font-semibold mb-2"
-                          style={{
-                            textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                          }}
-                        >
+                        <p className="custom-direction-text">
                           {`${currentDirection} - Image ${imageCount}/${toltalDirection}`}
                         </p>
                       )}
-                      <p
-                        className="text-2xl font-semibold"
-                        style={{
-                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                        }}
-                      >
-                        {isScanning && !isAuthen
-                          ? (instruction || "วางใบหน้าในกรอบ")
-                          : instruction}
-                      </p>
-                      <p
-                        className="text-xl font-semibold text-red-500"
-                        style={{
-                          textShadow: "2px 2px 0px black, -2px 2px 0px black, 2px -2px 0px black, -2px -2px 0px black",
-                        }}
-                      >
-                        {errorDirectiom || errorsMessage}
-                      </p>
+                      {(isScanning && !isAuthen ? instruction || "วางใบหน้าในกรอบ" : instruction) && (
+                        <p className="custom-instruction-text">
+                          {isScanning && !isAuthen ? instruction || "วางใบหน้าในกรอบ" : instruction}
+                        </p>
+                      )}
+                      {errorDirectiom || errorsMessage ? (
+                        <p className="custom-error-text mt-1">
+                          {errorDirectiom || errorsMessage}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
-
-                  {/* {isScanning && !isAuthen && (
-                    <button
-                      onClick={captureImage}
-                      className="absolute bottom-10 left-1/2 transform -translate-x-1/2 px-8 py-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center gap-3 text-lg font-semibold shadow-lg"
-                    >
-                      <Camera size={28} />
-                      ถ่ายภาพ
-                    </button>
-                  )} */}
                 </>
               </div>
             </div>
           )}
         </div>
+        <div className="fixed md:bottom-4 bottom-16 mb-4 right-4 z-50">
+        <DigitalClock time={currentTime} />
+        </div>
         <Outlet />
+
       </main>
     </div>
   );

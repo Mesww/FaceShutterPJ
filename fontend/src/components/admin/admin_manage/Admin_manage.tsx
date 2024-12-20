@@ -16,6 +16,8 @@ import { BACKEND_URL } from '@/configs/backend';
 import Swal from 'sweetalert2';
 import { addAdmin } from '@/containers/userLogin';
 import forge from "node-forge";
+import { useUserData } from '@/containers/provideruserdata';
+import { myUser } from '@/interfaces/admininterface';
 
 
 interface User {
@@ -27,6 +29,7 @@ interface User {
   password?: string;
   is_password:boolean;
 }
+
 
 // Separate component for role selection dropdown
 const RoleDropdown: React.FC<{
@@ -88,12 +91,12 @@ const AdminManage: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const notificationCount = 3;
-
+  const {userData} = useUserData();
   // State for users fetched from the API
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [user , setUser] = useState<myUser | null>(null);
   // Fetch users from API
   const fetchUsers = async () => {
     try {
@@ -109,10 +112,15 @@ const AdminManage: React.FC = () => {
     }
   };
 
+
+
   // Fetch users when component mounts
   useEffect(() => {
     fetchUsers();
-  }, []);
+    setLoading(true);
+    setUser(userData);
+    setLoading(false);
+  }, [userData]);
 
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditFormVisible, setIsEditFormVisible] = useState(false);
@@ -345,6 +353,7 @@ const AdminManage: React.FC = () => {
           notificationCount={notificationCount}
           showNotifications={showNotifications}
           setShowNotifications={setShowNotifications}
+          employee_id={user?.employee_id}
         />
 
         {/* Main content area with proper margin for sidebar */}

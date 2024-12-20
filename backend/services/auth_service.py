@@ -50,7 +50,7 @@ class FaceAuthenticationService:
         self.current_pose = None
         self.pose_completed = False
         self.pose_start_time = None
-        self.POSE_TIMEOUT = 5  # timeout 5 วินาที
+        self.POSE_TIMEOUT = 10  # timeout 10 วินาที
 
   
     def calculate_eye_aspect_ratio(self, eye_landmarks: List[Tuple[float, float]]) -> float:
@@ -461,6 +461,10 @@ class FaceAuthenticationService:
         """ตรวจสอบว่าผู้ใช้ทำท่าทางถูกต้องหรือไม่"""
         if not self.current_pose or self.pose_completed:
             return False, "กรุณารอการสุ่มท่าทางใหม่"
+        
+         # ตรวจสอบ timeout และคำนวณเวลาที่เหลือ
+        time_elapsed = time.time() - self.pose_start_time
+        time_remaining = max(0, self.POSE_TIMEOUT - time_elapsed)
 
         # ตรวจสอบ timeout
         if time.time() - self.pose_start_time > self.POSE_TIMEOUT:
@@ -485,7 +489,8 @@ class FaceAuthenticationService:
                 self.pose_completed = True
                 return True, "ทำท่าทางถูกต้อง"
 
-        return False, "กรุณา" + self.current_pose
+        # แสดงเวลาที่เหลือพร้อมคำแนะนำ
+        return False, f"กรุณา{self.current_pose} (เหลือเวลา {time_remaining:.1f} วินาที)"
 
 
 class AdminAuthenticationService:
