@@ -771,7 +771,7 @@ useEffect(() => {
       <main className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
         <Header profileimage={profileImage} currentMenuItem={currentMenuItem} name={userDetails.name} >
-          <DigitalClock time={currentTime} />
+          
           </Header>
         {/* Main content area with proper margin for sidebar */}
         <div className="w-full p-2 md:p-4 bg-white">
@@ -815,7 +815,7 @@ useEffect(() => {
               </button>
             </div>
           </form>
-
+        
           {(isScanning || isAuthen) && (
             <div className="fixed inset-0 bg-gray-900 z-50">
               <button
@@ -907,7 +907,11 @@ useEffect(() => {
             </div>
           )}
         </div>
+        <div className="fixed md:bottom-4 bottom-16 mb-4 right-4 z-50">
+        <DigitalClock time={currentTime} />
+        </div>
         <Outlet />
+
       </main>
     </div>
   );
