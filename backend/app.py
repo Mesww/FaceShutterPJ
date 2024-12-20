@@ -356,7 +356,22 @@ async def websocket_endpoint(websocket: WebSocket):
         # ในกรณีที่เกิดข้อผิดพลาด ไม่ต้องลบรูปภาพเก่า
         await websocket.close()
 
-
+@app.websocket("/ws/time")
+async def time_websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    
+    try:
+        while True:
+            current_time = datetime.now().strftime("%H:%M:%S")
+            await websocket.send_json({
+                "current_time": current_time,
+                "timestamp": datetime.now().timestamp()
+            })
+            await asyncio.sleep(1)
+    except WebSocketDisconnect:
+        print("Time WebSocket disconnected")
+    except Exception as e:
+        print(f"Error in time websocket: {e}")
 
 
 if __name__ == "__main__":

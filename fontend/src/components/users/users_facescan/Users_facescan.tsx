@@ -43,6 +43,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [toltalDirection, setToltalDirection] = useState<number>(0);
   const [errorDirectiom, setErrorDirection] = useState<string>("");
+  const [timeWebSocket, setTimeWebSocket] = useState<WebSocket | null>(null);
+  const [currentTime, setCurrentTime] = useState<string>("00:00:00");
 
   const [errorsMessage, setErrorsMessage] = useState<string | null>(null);
 
@@ -336,6 +338,52 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     return null;
   }, [facingMode, isScanning, isAuthen]);
 
+  // เพิ่มฟังก์ชันสำหรับจัดการ WebSocket เวลา
+const setupTimeWebSocket = useCallback(() => {
+  const ws = new WebSocket(`${BACKEND_WS_URL}/time`);
+  
+  ws.onopen = () => {
+    console.log("Time WebSocket connected");
+  };
+  
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      setCurrentTime(data.current_time);
+    } catch (error) {
+      console.error("Error parsing time data:", error);
+    }
+  };
+  
+  ws.onclose = () => {
+    console.log("Time WebSocket disconnected");
+    // ลองเชื่อมต่อใหม่หลังจาก 5 วินาที
+    setTimeout(() => setupTimeWebSocket(), 5000);
+  };
+  
+  ws.onerror = (error) => {
+    console.error("Time WebSocket error:", error);
+  };
+  
+  setTimeWebSocket(ws);
+  
+  return () => {
+    ws.close();
+  };
+}, []);
+// เพิ่ม useEffect สำหรับจัดการ WebSocket เวลา
+useEffect(() => {
+  const cleanup = setupTimeWebSocket();
+  return () => {
+    cleanup();
+    if (timeWebSocket) {
+      timeWebSocket.close();
+    }
+  };
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [setupTimeWebSocket]);
+
+
   // WebSocket Setup and Cleanup
   useEffect(() => {
     let imageInterval: NodeJS.Timeout;
@@ -530,6 +578,18 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     setEmployeeId(value);
   };
 
+  const DigitalClock: React.FC<{ time: string }> = ({ time }) => {
+    return (
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-6 py-3 rounded-lg shadow-lg">
+        <div className="font-mono text-xl md:text-2xl tracking-wider">
+          {time}
+        </div>
+      </div>
+    );
+  };
+  
+
+
   // Menu Configuration
   const menuItems = (isLogined || login) ? [
     {
@@ -710,7 +770,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       {/* Main Content */}
       <main className={`flex-1 w-full md:w-auto transition-all duration-300 
         ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
-        <Header profileimage={profileImage} currentMenuItem={currentMenuItem} name={userDetails.name} />
+        <Header profileimage={profileImage} currentMenuItem={currentMenuItem} name={userDetails.name} >
+          <DigitalClock time={currentTime} />
+          </Header>
         {/* Main content area with proper margin for sidebar */}
         <div className="w-full p-2 md:p-4 bg-white">
           <form onSubmit={handleFormSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

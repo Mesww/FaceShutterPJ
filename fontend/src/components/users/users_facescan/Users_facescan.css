@@ -57,3 +57,23 @@
 }
 
 
+
+/* เพิ่ม styles สำหรับนาฬิกาดิจิตอล */
+.digital-clock {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.time-separator {
+  animation: pulse 1s infinite;
+}

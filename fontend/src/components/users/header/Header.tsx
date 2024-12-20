@@ -11,12 +11,14 @@ interface AdminHeaderProps {
   currentMenuItem: MenuItem | undefined;
   name:string | null
   profileimage:string | null
+  children?: React.ReactNode;
 }
 
 const Header: React.FC<AdminHeaderProps> = ({
   currentMenuItem,
   name,
-  profileimage
+  profileimage,
+  children
 }) => {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
@@ -32,7 +34,7 @@ const Header: React.FC<AdminHeaderProps> = ({
 
         <div className="flex items-center space-x-6">
           <div className="relative">
-            
+            {children}
           </div>
 
           <div className="flex items-center space-x-3">

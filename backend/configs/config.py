@@ -8,6 +8,8 @@ from cryptography.hazmat.primitives import serialization, hashes
 SIMILARITY_THRESHOLD = 60.0
 
 
+
+
 DEFAULT_TIMEZONE = "Asia/Bangkok"
 
 CHECKIN_TIME_START = "8:00:00"
