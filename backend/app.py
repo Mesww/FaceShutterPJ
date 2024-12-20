@@ -1,6 +1,6 @@
 import asyncio
 import base64
-import datetime
+import pytz
 from pathlib import Path
 import time
 from dotenv import dotenv_values, load_dotenv
@@ -359,10 +359,10 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.websocket("/ws/time")
 async def time_websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    
+    tz = pytz.timezone('Asia/Bangkok')
     try:
         while True:
-            current_time = datetime.now().strftime("%H:%M:%S")
+            current_time = datetime.now(tz).strftime("%H:%M:%S")
             await websocket.send_json({
                 "current_time": current_time,
                 "timestamp": datetime.now().timestamp()
