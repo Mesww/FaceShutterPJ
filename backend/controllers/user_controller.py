@@ -121,7 +121,7 @@ class UserController:
             print(f'Getting user... {credentials.credentials}')
             userservice = UserService()
             employee_id = userservice.extract_token( token=credentials.credentials)
-            print(employee_id.get('sub'))
+            print(employee_id)
            
             # print(employee_id)
             # employee_id = int(employee_id["sub"])

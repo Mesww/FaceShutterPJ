@@ -55,6 +55,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
+    expose_headers=["*"],
+    allow_origin_regex=None,
 )
 
 app.add_middleware(UserMiddleware)

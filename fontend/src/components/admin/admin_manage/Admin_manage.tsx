@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Search, Edit, Trash2, UserPlus } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table"
 import { BACKEND_URL } from '@/configs/backend';
 import Swal from 'sweetalert2';
-import { addAdmin } from '@/containers/userLogin';
+import { addAdmin, getLogined } from '@/containers/userLogin';
 import forge from "node-forge";
 import { useUserData } from '@/containers/provideruserdata';
 import { myUser } from '@/interfaces/admininterface';
@@ -91,17 +91,34 @@ const AdminManage: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const notificationCount = 3;
-  const {userData} = useUserData();
+  const {userData,} = useUserData();
   // State for users fetched from the API
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [user , setUser] = useState<myUser | null>(null);
+  const navigate = useNavigate();
   // Fetch users from API
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BACKEND_URL}/api/users/get_all_user`);
+      const token = getLogined();
+      if(token === undefined){
+        Swal.fire({
+          title: 'Unauthorized',
+          text: 'You are not authorized to access this page',
+          icon: 'error',
+          timer: 1500
+        });
+        navigate('/admin/login');
+        return;
+      }
+      // console.log(token);
+      const response = await axios.get(`${BACKEND_URL}/api/users/get_all_user`,{
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       console.log(response.data);
       setUsers(response.data);
       setLoading(false);
