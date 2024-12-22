@@ -580,7 +580,7 @@ useEffect(() => {
 
   const DigitalClock: React.FC<{ time: string }> = ({ time }) => {
     return (
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-6 py-3 rounded-lg shadow-lg">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in-out">
         <div className="font-mono text-xl md:text-2xl tracking-wider">
           {time}
         </div>
@@ -906,10 +906,13 @@ useEffect(() => {
               </div>
             </div>
           )}
+          
         </div>
-        <div className="fixed md:bottom-4 bottom-16 mb-4 right-4 z-50">
-        <DigitalClock time={currentTime} />
+      {((!isScanning && !isAuthen) && (!showConfirmDialog && !isRegister)) && (
+        <div className="fixed md:bottom-4 bottom-16 right-4 z-50 ">
+          <DigitalClock time={currentTime} />
         </div>
+      )}
         <Outlet />
 
       </main>
