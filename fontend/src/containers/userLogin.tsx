@@ -50,7 +50,6 @@ export const addAdmin = async (employeeId: string, password: string, token: stri
             password: forge.util.bytesToHex(encryptedPassword),
         };
 
-        // Fixed headers configuration
         const response = await axios.post(
             `${BACKEND_URL}/api/users/add_admin`, 
             encryptedData,
@@ -61,15 +60,15 @@ export const addAdmin = async (employeeId: string, password: string, token: stri
                 }
             }
         );
-
-        alert(response.data.message);
+        
+        return response;
+        
     } catch (error) {
         if (axios.isAxiosError(error)) {
-            alert(error.response?.data?.detail || "Network error occurred");
+            throw new Error(error.response?.data?.detail || "Network error occurred");
         } else {
-            alert("An unexpected error occurred");
+            throw new Error("An unexpected error occurred");
         }
-        console.error(error);
     }
 }
 export const adminLogin = async (employeeId: string, password: string) => {
