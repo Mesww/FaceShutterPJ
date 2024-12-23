@@ -24,8 +24,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [instruction, setInstruction] = useState("");
   const [errors, setErrors] = useState<string | null>();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [imageCount, setImageCount] = useState<number>(0);
-  const [currentDirection, setCurrentDirection] = useState<string>("");
 
   // User States
   const [userDetails, setUserDetails] = useState<User>({
@@ -41,7 +39,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [login, setLogin] = useState<boolean>(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [toltalDirection, setToltalDirection] = useState<number>(0);
   const [errorDirectiom, setErrorDirection] = useState<string>("");
   const [timeWebSocket, setTimeWebSocket] = useState<WebSocket | null>(null);
   const [currentTime, setCurrentTime] = useState<string>("00:00:00");
@@ -51,7 +48,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
   // Camera States
   const webcamRef = useRef<Webcam>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
-  // const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [websocket, setWebSocket] = useState<WebSocket | null>(null);
 
   // Provider Data
@@ -67,45 +63,26 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     profileImage
   } = useUserData();
 
-  const directionInstructions: Record<string, string> = {
-    "Front": "กรุณาหันหน้าตรง",
-    "Turn_left": "กรุณาหันหน้าไปทางซ้าย",
-    "Turn_right": "กรุณาหันหน้าไปทางขวา"
-  };
-
-  const errordirectionInstructions: Record<string, string> = {
-    "Front": "ตรง",
-    "Turn_left": "ซ้าย",
-    "Turn_right": "ขวา"
-  };
-
   // WebSocket Message Handler
   const handleWebSocketMessage = useCallback((event: MessageEvent) => {
     try {
       const message = event.data;
-      // console.log(message);
 
       if (message.startsWith("{")) {
         const jsonData = JSON.parse(message);
         if (jsonData.data === undefined) {
-          // console.log("Received JSON data:", jsonData);
           return;
         }
         const status = jsonData.data.status;
         const messages = jsonData.data.message;
-        // console.log("Status:", status);
-
         switch (status) {
           case "progress":
-            // console.log(messages);
             setInstruction(messages);
             setErrorsMessage('');
             break;
           case "pending":
-            // console.log("User data received, awaiting scan...");
             break;
           case "failed":
-            // console.error("Error:", messages);
             setErrorsMessage(messages);
             setInstruction("วางใบหน้าในกรอบ");
             break;
@@ -166,11 +143,8 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
             });
             break;
           case "register":
-            // console.log("User data received, awaiting scan...", jsonData.data.totaldirection);
-            setToltalDirection(jsonData.data.totaldirection);
             break;
           case "scanning":
-            // console.log("User data received, awaiting scan...", jsonData.data.instructions);
             setInstruction(jsonData.data.instructions);
             break;
           case "success":
@@ -178,35 +152,10 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
             break;
         }
       }
-      // Handle image count and direction instructions
-      if (message.startsWith("Please move your head to:")) {
-        const direction = message.replace("Please move your head to: ", "");
-
-        const specificInstruction = directionInstructions[direction] || direction;
-        handleHeadMovementInstruction(specificInstruction);
-        // Reset image count when direction changes
-        setImageCount(0);
-        setCurrentDirection(direction);
-      }
-      // Handle incorrect direction message
-      else if (message.startsWith("Incorrect direction! Detected:")) {
-        const match = message.match(/Incorrect direction! Detected: (\w+)/);
-        // console.log(match);
-        if (match) {
-          const direction = match[1];
-          const errorDetails = `ท่านหันหน้าไปทาง ${errordirectionInstructions[direction]}`;
-          setErrorDirection(errorDetails);
-        }
-      }
       // Existing other message handlers...
       else if (message.startsWith("Image ")) {
         const match = message.match(/Image (\d+) captured for (\w+)/);
         if (match) {
-          const count = parseInt(match[1]);
-          const direction = match[2];
-          setImageCount(count);
-          setCurrentDirection(direction);
-          setInstruction(`${directionInstructions[direction]}`);
           setErrorDirection('')
         }
       }
@@ -284,12 +233,6 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     handleScanStop();
     fetchCheckinoroutTime();
   };
-
-  const handleHeadMovementInstruction = (message: string) => {
-    setInstruction(message.replace("Please move your head to: ", ""));
-    setConnectionStatus('connected');
-  };
-
   // Image Processing
   const sendImage = useCallback((ws: WebSocket) => {
     if (isScanning && !isAuthen) return null;
@@ -547,11 +490,9 @@ useEffect(() => {
     setIsScanning(false);
     setIsAuthen(false);
     setErrors(null);
-    setImageCount(0);
     setInstruction("");
     setErrorDirection("");
-    setCurrentDirection("");
-    setWebSocket(null); // เพิ่มบรรทัดนี้
+    setWebSocket(null); 
   };
 
   // Registration Handlers
@@ -890,11 +831,6 @@ useEffect(() => {
 
                   <div className="absolute top-0 left-0 right-0 flex flex-col items-center pt-4 mt-5">
                     <div className="text-center">
-                      {currentDirection && imageCount < toltalDirection && (
-                        <p className="custom-direction-text">
-                          {`${currentDirection} - Image ${imageCount}/${toltalDirection}`}
-                        </p>
-                      )}
                       {(isScanning && !isAuthen ? instruction || "วางใบหน้าในกรอบ" : instruction) && (
                         <p className="custom-instruction-text">
                           {isScanning && !isAuthen ? instruction || "วางใบหน้าในกรอบ" : instruction}
