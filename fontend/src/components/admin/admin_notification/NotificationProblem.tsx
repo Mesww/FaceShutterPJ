@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Zap } from 'lucide-react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { getLogined } from '@/containers/userLogin';
+import Swal from 'sweetalert2';
 
 interface Log {
   _id: string;
@@ -22,14 +25,27 @@ interface Log {
 const NotificationProblem = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [logEntries, setLogEntries] = useState<Log[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchLogs = async () => {
       try {
+          const token = getLogined();
+              if(token === undefined){
+                Swal.fire({
+                  title: 'Unauthorized',
+                  text: 'You are not authorized to access this page',
+                  icon: 'error',
+                  timer: 1500
+                });
+                navigate('/admin/login');
+                return;
+              }
         const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/logs/getlogs`, {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           }
         });
         
@@ -37,14 +53,16 @@ const NotificationProblem = () => {
                     Array.isArray(response.data.data) ? response.data.data : [];
         
         setLogEntries(logs);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.error('Error fetching logs:', error);
+        // console.error('Error fetching logs:', error);
       }
     };
 
     fetchLogs();
     const interval = setInterval(fetchLogs, 30000);
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getNotificationStyles = (status: string): string => {

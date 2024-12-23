@@ -5,6 +5,9 @@ import Header from '../header/Header.js';
 import { useUserData } from '@/containers/provideruserdata.js';
 import axios from 'axios';
 import {BACKEND_URL} from '@/configs/backend';
+import { getLogined } from '@/containers/userLogin.js';
+import Swal from 'sweetalert2';
+import { useNavigate } from 'react-router-dom';
 interface AttendanceRecord {
   _id: { $oid: string };
   employee_id: string;
@@ -53,7 +56,7 @@ const AttendanceHistoryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
+  const navigate = useNavigate();
 
   const getCombinedStatus = (record: AttendanceRecord): string => {
     if (record.status === 'Incomplete') {
@@ -154,37 +157,43 @@ const AttendanceHistoryPage = () => {
     setError(null);
 
     try { 
-      const response = await axios.get(`${BACKEND_URL}/api/history/get_history_records`, {
-        params: {
-          employee_id: userData.employee_id,
-          start_date: startDate,
-          end_date: endDate
-        }
-      });
+        const token = getLogined();
+            if(token === undefined){
+              Swal.fire({
+                title: 'Unauthorized',
+                text: 'You are not authorized to access this page',
+                icon: 'error',
+                timer: 1500
+              });
+              navigate('/admin/login');
+              return;
+            }
+
+
+      const response = await axios.get(`${BACKEND_URL}/api/history/get_history_records/${userData.employee_id}/${startDate}/${endDate}`,
+        {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
 
       // Extract the array from response.data
       const records = response.data.data || response.data;
-
-      console.log('Fetched records:', records);
-
       // Ensure you're setting an array
       setAttendanceData(Array.isArray(records) ? records : []);
 
-      console.log('Attendance records:', attendanceData);
-
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('Failed to fetch attendance records');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-
   useEffect(() => {
     setName(userData?.name || '');
   }, [userData?.name]);
-
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -252,7 +261,6 @@ const AttendanceHistoryPage = () => {
               </div>
             </div>
           </div>
-
 
           {/* Loading and Error States */}
           {loading && (
@@ -352,14 +360,8 @@ const AttendanceHistoryPage = () => {
                   แสดง {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredData.length)} จาก {filteredData.length} รายการ
                 </div>
               </div>
-
-
-
-
             </>
           )}
-
-
         </div>
       </div>
     </div>

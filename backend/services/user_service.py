@@ -24,7 +24,7 @@ class UserService:
     @staticmethod
     async def add_admin(request: User) -> Returnformat:
         try:
-            db = await connect_to_mongodb()  # Establish database connection
+            db = await connect_to_mongodb()
             collection = db["users"]
 
             # Check if user already exists by employee_id
@@ -33,26 +33,30 @@ class UserService:
                 if old_user['roles'] == 'ADMIN':
                     return Returnformat(400, "Admin already exists", None)
                 else:
-                    update_user = Userupdate(roles=RoleEnum.ADMIN)
-                    return await UserService.update_user_by_employee_id(request.employee_id, update_user)
+                    # อัพเดททั้ง role และ password
+                    update_data = {
+                        "roles": RoleEnum.ADMIN.value,
+                        "password": request.password
+                    }
+                    result = await collection.update_one(
+                        {"employee_id": request.employee_id},
+                        {"$set": update_data}
+                    )
+                    if result.modified_count == 0:
+                        return Returnformat(400, "Failed to update user", None)
+                    
+                    updated_user = await collection.find_one({"employee_id": request.employee_id})
+                    updated_user["_id"] = str(updated_user["_id"])
+                    return Returnformat(200, "User updated to admin successfully", updated_user)
 
-            # Prepare user data for insertion
-            user_data = (
-                request.model_dump()
-            )  # Pydantic models use dict() instead of model_dump()
-            
-            user_data["roles"] = request.roles.value  # Convert Enum to string
+            # ถ้าไม่มีผู้ใช้อยู่ก่อน ให้สร้างใหม่ตามปกติ
+            user_data = request.model_dump()
+            user_data["roles"] = request.roles.value
 
-            # Insert the new user into the database
             new_user = await collection.insert_one(user_data)
-
-            # Fetch the inserted document (optional but useful)
             inserted_user = await collection.find_one({"_id": new_user.inserted_id})
-
-            # Convert ObjectId to string for serialization
             inserted_user["_id"] = str(inserted_user["_id"])
 
-            # Return success response with user data
             return Returnformat(200, "Admin registered successfully", inserted_user)
 
         except Exception as e:
@@ -322,11 +326,11 @@ class UserService:
         return token
     def extract_token(self,token: str):
         try:
-            print(token)
+            # print(token)
             SECRET_KEY = self.config.get("SECRET_KEY", "RickAstley")
-            print(SECRET_KEY)
+            # print(SECRET_KEY)
             ALGORITHM = self.config.get("ALGORITHM", "HS256")
-            print(ALGORITHM)
+            # print(ALGORITHM)
             # Decode the JWT
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             return payload  # Return the payload if valid

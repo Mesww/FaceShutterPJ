@@ -10,6 +10,9 @@ import Header from '../header/Header';
 import { BACKEND_URL } from '@/configs/backend';
 import { myUser } from '@/interfaces/admininterface';
 import { useUserData } from '@/containers/provideruserdata';
+import { getLogined } from '@/containers/userLogin';
+import Swal from 'sweetalert2';
+import { useNavigate } from 'react-router-dom';
 
 // Updated interface to match API response
 interface AttendanceRecord {
@@ -45,6 +48,7 @@ const AdminReports = () => {
 
   const [startDate, setStartDate] = useState(getCurrentDate());
   const [endDate, setEndDate] = useState(getCurrentDate());
+  const navigate = useNavigate();
 
   // Fetch attendance records
   useEffect(() => {
@@ -52,20 +56,36 @@ const AdminReports = () => {
       setLoading(true);
       setError(null);
       try {
+          const token = getLogined();
+              if(token === undefined){
+                Swal.fire({
+                  title: 'Unauthorized',
+                  text: 'You are not authorized to access this page',
+                  icon: 'error',
+                  timer: 1500
+                });
+                navigate('/admin/login');
+                return;
+              }
         const response = await axios.get(
-          `${BACKEND_URL}/api/history/get_all_history_records/${startDate}/${endDate}`
+          `${BACKEND_URL}/api/history/get_all_history_records/${startDate}/${endDate}`,{
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
         );
 
         // แก้ไขการดึงข้อมูล
         const records = response.data.data || [];
 
-        console.log('API Response:', response.data);
-        console.log('Records count:', records.length);
+        // console.log('API Response:', response.data);
+        // console.log('Records count:', records.length);
 
         setAttendanceRecords(records);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
         setError('Failed to fetch attendance records');
-        console.error(err);
+        // console.error(err);
       } finally {
         setLoading(false);
       }
@@ -73,6 +93,7 @@ const AdminReports = () => {
 
     fetchAttendanceRecords();
     setUser(userData);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate, userData]);
 
   // Filter records
@@ -83,7 +104,7 @@ const AdminReports = () => {
         record.employee_id.toLowerCase().includes(searchReportName.toLowerCase()))
     )
     : [];
-  console.log('Filtered Records:', filteredAttendanceRecords);
+  // console.log('Filtered Records:', filteredAttendanceRecords);
 
   // Determine combined status
   const getCombinedStatus = (record: AttendanceRecord): string => {

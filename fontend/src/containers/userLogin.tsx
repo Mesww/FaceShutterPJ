@@ -3,10 +3,10 @@ import forge from "node-forge";
 import axios from "axios";
 import { BACKEND_URL } from '@/configs/backend';
 
-export const checkisLogined:boolean = (()=> {
+export const checkisLogined: boolean = (() => {
     const token = Cookie.get('token');
     if (token !== undefined) {
-        console.log(token);
+        // console.log(token);
         return true;
     }
     return false;
@@ -21,8 +21,8 @@ export const getLogined = () => {
     return token;
 }
 
-export const setLogined = (token:string) => {
-  
+export const setLogined = (token: string) => {
+
     Cookie.set('token', token);
     return true;
 }
@@ -33,13 +33,11 @@ export const removeLogined = () => {
 }
 
 
-export const addAdmin = async (employeeId:string, password:string) => {
+export const addAdmin = async (employeeId: string, password: string, token: string) => {
     try {
-        // Fetch public key from the backend
-        const { data: { public_key } } = await axios.get(BACKEND_URL+"/get_public_key");
+        const { data: { public_key } } = await axios.get(BACKEND_URL + "/get_public_key");
         const publicKey = forge.pki.publicKeyFromPem(public_key);
 
-        // Encrypt employeeId and password
         const encryptedEmployeeId = publicKey.encrypt(employeeId, "RSA-OAEP", {
             md: forge.md.sha256.create(),
         });
@@ -47,26 +45,37 @@ export const addAdmin = async (employeeId:string, password:string) => {
             md: forge.md.sha256.create(),
         });
 
-        // Convert to hex for transmission
         const encryptedData = {
             employee_id: forge.util.bytesToHex(encryptedEmployeeId),
             password: forge.util.bytesToHex(encryptedPassword),
         };
 
-        // Send encrypted data to backend
-        const response = await axios.post(BACKEND_URL+"/api/users/add_admin", encryptedData);
-        alert(response.data.message);
+        const response = await axios.post(
+            `${BACKEND_URL}/api/users/add_admin`, 
+            encryptedData,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        
+        return response;
+        
     } catch (error) {
-        console.error(error);
-        alert("Register failed!");
+        if (axios.isAxiosError(error)) {
+            throw new Error(error.response?.data?.detail || "Network error occurred");
+        } else {
+            throw new Error("An unexpected error occurred");
+        }
     }
 }
-
-export const adminLogin = async (employeeId:string, password:string) =>  {
+export const adminLogin = async (employeeId: string, password: string) => {
     try {
-        
+
         // Fetch public key from the backend
-        const { data: { public_key } } = await axios.get(BACKEND_URL+"/get_public_key");
+        const { data: { public_key } } = await axios.get(BACKEND_URL + "/get_public_key");
         const publicKey = forge.pki.publicKeyFromPem(public_key);
 
         // Encrypt employeeId and password
@@ -84,7 +93,7 @@ export const adminLogin = async (employeeId:string, password:string) =>  {
         };
 
         // Send encrypted data to backend
-        const response = await axios.post(BACKEND_URL+"/api/auth/login", encryptedData);
+        const response = await axios.post(BACKEND_URL + "/api/auth/login", encryptedData);
 
         // alert(response.data.message);
         if (response.data.token) {
@@ -92,8 +101,9 @@ export const adminLogin = async (employeeId:string, password:string) =>  {
             return true;
         }
         return false;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-        console.error(error);
+        // console.error(error);
         alert("Login failed!");
     }
 }

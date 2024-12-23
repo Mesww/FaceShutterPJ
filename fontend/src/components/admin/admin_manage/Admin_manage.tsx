@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Search, Edit, Trash2, UserPlus } from 'lucide-react';
 import Sidebar from '../sidebar/Sidebar';
 import Header from '../header/Header';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table"
 import { BACKEND_URL } from '@/configs/backend';
 import Swal from 'sweetalert2';
-import { addAdmin } from '@/containers/userLogin';
+import { addAdmin, getLogined } from '@/containers/userLogin';
 import forge from "node-forge";
 import { useUserData } from '@/containers/provideruserdata';
 import { myUser } from '@/interfaces/admininterface';
@@ -91,24 +91,42 @@ const AdminManage: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const notificationCount = 3;
-  const {userData} = useUserData();
+  const {userData,} = useUserData();
   // State for users fetched from the API
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [user , setUser] = useState<myUser | null>(null);
+  const navigate = useNavigate();
   // Fetch users from API
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BACKEND_URL}/api/users/get_all_user`);
-      console.log(response.data);
+      const token = getLogined();
+      if(token === undefined){
+        Swal.fire({
+          title: 'Unauthorized',
+          text: 'You are not authorized to access this page',
+          icon: 'error',
+          timer: 1500
+        });
+        navigate('/admin/login');
+        return;
+      }
+      // console.log(token);
+      const response = await axios.get(`${BACKEND_URL}/api/users/get_all_user`,{
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      // console.log(response.data);
       setUsers(response.data);
       setLoading(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('Failed to fetch users');
       setLoading(false);
-      console.error('Error fetching users:', err);
+      // console.error('Error fetching users:', err);
     }
   };
 
@@ -120,6 +138,7 @@ const AdminManage: React.FC = () => {
     setLoading(true);
     setUser(userData);
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData]);
 
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -131,8 +150,23 @@ const AdminManage: React.FC = () => {
   const [newAdminEmployeeId, setNewAdminEmployeeId] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
 
+  // เพิ่ม state สำหรับ validation messages
+  const [employeeIdError, setEmployeeIdError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
   const handleDeleteUser = async (userId: string) => {
     try {
+      const token = getLogined();
+      if(token === undefined){
+        Swal.fire({
+          title: 'Unauthorized',
+          text: 'You are not authorized to access this page',
+          icon: 'error',
+          timer: 1500
+        });
+        navigate('/admin/login');
+        return;
+      }
       // แสดง Sweet Alert เพื่อยืนยันการลบ
       const result = await Swal.fire({
         title: 'Confirm Delete',
@@ -147,7 +181,11 @@ const AdminManage: React.FC = () => {
 
       // ถ้ากดยืนยัน
       if (result.isConfirmed) {
-        const response = await axios.delete(`${BACKEND_URL}/api/users/delete_user/${userId}`);
+        const response = await axios.delete(`${BACKEND_URL}/api/users/delete_user/${userId}`,{
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         
         if (response.data.status === 200) {
           // แสดง Sweet Alert เมื่อลบสำเร็จ
@@ -164,8 +202,9 @@ const AdminManage: React.FC = () => {
           throw new Error(response.data.message || 'Failed to delete user');
         }
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
-      console.error('Error deleting user:', err);
+      // console.error('Error deleting user:', err);
       // แสดง Sweet Alert เมื่อเกิดข้อผิดพลาด
       await Swal.fire({
         title: 'Error',
@@ -184,7 +223,17 @@ const AdminManage: React.FC = () => {
   const handleSaveUser = async (updatedUser: User) => {
     try {
       // console.log(updatedUser.password);
- 
+      const token = getLogined();
+      if(token === undefined){
+        Swal.fire({
+          title: 'Unauthorized',
+          text: 'You are not authorized to access this page',
+          icon: 'error',
+          timer: 1500
+        });
+        navigate('/admin/login');
+        return;
+      }
       // Prepare the request body to match the API requirements
       const requestBody = {
         name: updatedUser.name,
@@ -208,7 +257,13 @@ const AdminManage: React.FC = () => {
       // Make API call to update user
       const response = await axios.put(
         `${BACKEND_URL}/api/users/update_user_by_employee_id/${originalEmployeeId}`,
-        requestBody
+        requestBody,
+        {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        }
       );
 
       // Update local state with the response from the server
@@ -232,8 +287,9 @@ const AdminManage: React.FC = () => {
       } else {
         throw new Error(response.data.message || 'Failed to update user');
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
-      console.error('Error updating user:', err);
+      // console.error('Error updating user:', err);
       alert('Failed to update user');
     }
   };
@@ -246,37 +302,50 @@ const AdminManage: React.FC = () => {
   };
 
   const handleAddAdmin = async () => {
-    // Find if the employee already exists
-    const existingUser = users.find(user => user.employee_id === newAdminEmployeeId);
+    try {
+      if (!newAdminEmployeeId || !newAdminPassword) {
+        await Swal.fire({
+          title: 'Error',
+          text: 'Please enter employee ID and password',
+          icon: 'error'
+        });
+        return;
+      }
 
-    if (existingUser) {
-      // If user exists, update their role to ADMIN
-      setUsers(users.map(user =>
-        user.employee_id === newAdminEmployeeId
-          ? { ...user, roles: 'ADMIN' }
-          : user
-      ));
-      Swal.fire({
-        title: 'User already exists',
-        text: 'User already exists and has been updated to an admin.',
-        icon: 'info',
-        timer: 1500
+      const token = getLogined();
+      if(token === undefined){
+        await Swal.fire({
+          title: 'Unauthorized',
+          text: 'You are not authorized to access this page',
+          icon: 'error',
+          timer: 1500
+        });
+        navigate('/admin/login');
+        return;
+      }
+
+      await addAdmin(newAdminEmployeeId, newAdminPassword, token);
+      
+      // เพิ่มการเรียก fetchUsers เพื่อรีเฟรชข้อมูล
+      await fetchUsers();
+      
+      await Swal.fire({
+        title: 'Success',
+        text: 'Admin added/updated successfully',
+        icon: 'success'
       });
-    } else {
-      // If user doesn't exist, add a new admin with minimal information
-      setUsers([...users, {
-        employee_id: newAdminEmployeeId,
-        name: 'New Admin',
-        email: `${newAdminEmployeeId}@mfu.ac.th`,
-        tel: '',
-        roles: 'ADMIN',
-        is_password: true
-      }]);
-      await addAdmin(newAdminEmployeeId, newAdminPassword);
+      
+      setIsAddAdminModalVisible(false);
+      setNewAdminEmployeeId('');
+      setNewAdminPassword('');
+      
+    } catch (error) {
+      await Swal.fire({
+        title: 'Error',
+        text: error instanceof Error ? error.message : 'Failed to add admin',
+        icon: 'error'
+      });
     }
-    // Close the modal and reset the input
-    setIsAddAdminModalVisible(false);
-    setNewAdminEmployeeId('');
   };
 
   const filteredUsers = users.filter(user =>
@@ -327,6 +396,13 @@ const AdminManage: React.FC = () => {
       </div>
     );
   }
+
+  // เมื่อเปิด modal ให้ set error message ทันที
+  const handleShowAddAdminModal = () => {
+    setIsAddAdminModalVisible(true);
+    setEmployeeIdError('Employee ID must be between 6-10 characters');
+    setPasswordError('Password is required');
+  };
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -381,7 +457,7 @@ const AdminManage: React.FC = () => {
 
                 {/* Add Admin Button */}
                 <button
-                  onClick={() => setIsAddAdminModalVisible(true)}
+                  onClick={handleShowAddAdminModal}
                   className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition-colors"
                 >
                   <UserPlus className="w-4 h-4" />
@@ -453,22 +529,36 @@ const AdminManage: React.FC = () => {
                       <input
                         type="text"
                         value={newAdminEmployeeId}
-                        onChange={(e) => setNewAdminEmployeeId(e.target.value)}
+                        onChange={(e) => {
+                          setNewAdminEmployeeId(e.target.value);
+                          if (e.target.value.length < 6 || e.target.value.length > 10) {
+                            setEmployeeIdError('Employee ID must be between 6-10 characters');
+                          } else {
+                            setEmployeeIdError('');
+                          }
+                        }}
                         className="w-full p-2 border rounded"
-                        placeholder="Enter employee ID."
-                        required
+                        placeholder="Enter employee ID"
                       />
+                      <p className="text-red-500 text-sm mt-1">{employeeIdError}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Password</label>
                       <input
                         type="password"
-                        name="password"
+                        value={newAdminPassword}
+                        onChange={(e) => {
+                          setNewAdminPassword(e.target.value);
+                          if (!e.target.value.trim()) {
+                            setPasswordError('Password is required');
+                          } else {
+                            setPasswordError('');
+                          }
+                        }}
                         className="w-full p-2 border rounded"
-                        placeholder="Enter password."
-                        onChange={(e) => setNewAdminPassword(e.target.value)}
-                        required
+                        placeholder="Enter password"
                       />
+                      <p className="text-red-500 text-sm mt-1">{passwordError}</p>
                     </div>
                     <div className="flex justify-end gap-2 mt-4">
                       <button
@@ -476,16 +566,19 @@ const AdminManage: React.FC = () => {
                         onClick={() => {
                           setIsAddAdminModalVisible(false);
                           setNewAdminEmployeeId('');
+                          setNewAdminPassword('');
+                          setEmployeeIdError('');
+                          setPasswordError('');
                         }}
                         className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
                       >
-                        Cancle
+                        Cancel
                       </button>
                       <button
                         type="button"
                         onClick={handleAddAdmin}
-                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                        disabled={!newAdminEmployeeId}
+                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+                        disabled={!newAdminEmployeeId || !newAdminPassword || !!employeeIdError || !!passwordError}
                       >
                         Add Admin
                       </button>

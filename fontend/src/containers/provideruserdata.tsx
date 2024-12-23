@@ -38,7 +38,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      console.log('Fetching user data');
+      // console.log('Fetching user data');
       const token = Cookies.get('token');
       if (!token || token === 'undefined') {
         removeLogined();
@@ -48,14 +48,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (!data) {
         throw new Error('No user data received');
       }
-      console.log('User data:', data);
+      // console.log('User data:', data);
       setUserData(data);
-      console.log(data.images_profile !== null);
+      // console.log(data.images_profile !== null);
       if (data.images_profile) {
         setProfileImage(`data:image/jpeg;base64,${data.images_profile}`);
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      // console.error('Error fetching user data:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch user data');
       setUserData(null);
       setProfileImage(null);
@@ -81,7 +81,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setDisableCheckinorouttext(isCheckin.message ?? null);
       }
     } catch (error) {
-      console.error('Error fetching checkinorout time:', error);
+      // console.error('Error fetching checkinorout time:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch checkinorout time');
       setIsCheckinroute(null);
     }
@@ -119,7 +119,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   // Handle login state changes
   useEffect(() => {
     if (isLogined) {
-      console.log('User logged in, fetching user data');
+      // console.log('User logged in, fetching user data');
       fetchUserData();
     }
   }, [isLogined]); // Only re-run if login state changes

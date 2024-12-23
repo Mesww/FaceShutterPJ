@@ -37,32 +37,16 @@ const EditProfilePage: React.FC = () => {
   const [email, setEmail] = useState(userData?.email || '');
   const [phone, setPhone] = useState(userData?.tel || '');
   const [role, setRole] = useState(userData?.roles || '');
-  // console.log(userData)
 
   const [websocket, setWebSocket] = useState<WebSocket | null>(null);
-  ;
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
   const [errors, setErrors] = useState<string | null>(null);
   const [, setToltalDirection] = useState<number>(0);
-  const [, setImageCount] = useState<number>(0);
   const [errorDirectiom, setErrorDirection] = useState<string>("");
-
-  const directionInstructions: Record<string, string> = {
-    "Front": "กรุณาหันหน้าตรง",
-    "Turn_left": "กรุณาหันหน้าไปทางซ้าย",
-    "Turn_right": "กรุณาหันหน้าไปทางขวา"
-  };
-  const errordirectionInstructions: Record<string, string> = {
-    "Front": "ตรง",
-    "Turn_left": "ซ้าย",
-    "Turn_right": "ขวา"
-  };
-  const [, setCurrentDirection] = useState<string>("");
 
 
   const stopCamera = () => {
     if (webcamRef.current?.video) {
-      console.log('Stopping camera...');
       const mediaStream = webcamRef.current.video.srcObject as MediaStream;
       mediaStream?.getTracks().forEach(track => track.stop());
     }
@@ -80,12 +64,9 @@ const EditProfilePage: React.FC = () => {
     stopCamera();
     setIsScanning(false);
     setErrors(null);
-    setImageCount(0);
     setInstruction("");
     setErrorDirection("");
-    setCurrentDirection("");
   };
-
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -106,8 +87,8 @@ const EditProfilePage: React.FC = () => {
           title: 'mobile-title',
         },
       });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error('Error updating profile:', error);
       Swal.fire({
         title: 'เกิดข้อผิดพลาด!',
         text: 'ไม่สามารถอัปเดตโปรไฟล์ได้',
@@ -137,8 +118,6 @@ const EditProfilePage: React.FC = () => {
 
   const handleScanSuccess = async () => {
     try {
-      console.log('Scan success - starting update process');
-
       // ปิดการสแกน
       handleScanStop();
 
@@ -161,8 +140,9 @@ const EditProfilePage: React.FC = () => {
           title: 'mobile-title',
         },
       });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error('Error updating profile:', error);
+      // console.error('Error updating profile:', error);
 
       // แสดง SweetAlert กรณีเกิดข้อผิดพลาด
       Swal.fire({
@@ -178,12 +158,6 @@ const EditProfilePage: React.FC = () => {
       });
     }
   };
-
-  const handleHeadMovementInstruction = (message: string) => {
-    setInstruction(message.replace("Please move your head to: ", ""));
-    setConnectionStatus('connected');
-  };
-
 
   // WebSocket Message Handler
   const handleWebSocketMessage = useCallback(async (event: MessageEvent) => {
@@ -205,11 +179,11 @@ const EditProfilePage: React.FC = () => {
             await handleScanSuccess();
             break;
           case "progress":
-            console.log(messages);
+            // console.log(messages);
             setInstruction(messages);
             break;
           case "failed":
-            console.error("Error:", messages);
+            // console.error("Error:", messages);
             if (messages.includes("ไม่พบใบหน้า")) {
               setInstruction("ไม่พบใบหน้าในภาพ กรุณาถ่ายใหม่");
               setErrorDirection("กรุณาวางใบหน้าให้อยู่ในกรอบและถ่ายใหม่");
@@ -222,41 +196,12 @@ const EditProfilePage: React.FC = () => {
             break;
         }
       }
-
-      // Handle direction instructions without resetting camera
-      if (message.startsWith("Please move your head to:")) {
-        const direction = message.replace("Please move your head to: ", "");
-        const specificInstruction = directionInstructions[direction] || direction;
-        handleHeadMovementInstruction(specificInstruction);
-        setImageCount(0);
-        setCurrentDirection(direction);
-      }
-      // Handle incorrect direction message
-      else if (message.startsWith("Incorrect direction! Detected:")) {
-        const match = message.match(/Incorrect direction! Detected: (\w+)/);
-        if (match) {
-          const direction = match[1];
-          const errorDetails = `ท่านหันหน้าไปทาง ${errordirectionInstructions[direction]}`;
-          setErrorDirection(errorDetails);
-        }
-      }
-      // Handle image count
-      else if (message.startsWith("Image ")) {
-        const match = message.match(/Image (\d+) captured for (\w+)/);
-        if (match) {
-          const count = parseInt(match[1]);
-          const direction = match[2];
-          setImageCount(count);
-          setCurrentDirection(direction);
-          setInstruction(`${directionInstructions[direction]}`);
-          setErrorDirection("");
-        }
-      }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error("Error processing WebSocket message:", error);
+      // console.error("Error processing WebSocket message:", error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [directionInstructions, handleScanSuccess, setImageCount]);
+  }, [handleScanSuccess]);
 
   // WebSocket Setup and Cleanup
   useEffect(() => {
@@ -299,18 +244,19 @@ const EditProfilePage: React.FC = () => {
         ws.onmessage = handleWebSocketMessage;
 
         ws.onclose = () => {
-          console.log('WebSocket closed');
+          // console.log('WebSocket closed');
           cleanup();
         };
-
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
+        
+        ws.onerror = () => {
+          // console.error('WebSocket error:', error);
           cleanup();
           setErrors("การเชื่อมต่อล้มเหลว กรุณาลองใหม่อีกครั้ง");
         };
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.error('Error setting up WebSocket:', error);
+        // console.error('Error setting up WebSocket:', error);
         cleanup();
         setErrors("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
       }
@@ -358,19 +304,10 @@ const EditProfilePage: React.FC = () => {
   useEffect(() => {
     setIsLoadings(isLoading);
     setLoadingMessage("กำลังโหลดข้อมูล...");
-    console.log('isLoadings:', isLoadings);
     setName(userData?.name || '');
     setEmail(userData?.email || '');
     setPhone(userData?.tel || '');
     setRole(userData?.roles || '');
-    console.log('FaceScan State:', {
-      isScanning,
-      isLoadings,
-      connectionStatus,
-      instruction,
-      errors
-    });
-    // refreshUserData();
   }, [connectionStatus, errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel, userData?.roles]);
 
   // Modify the start scanning method
@@ -399,7 +336,7 @@ const EditProfilePage: React.FC = () => {
         return;
       }
 
-      // กนาดของวิดีโอ
+      // ขนาดของวิดีโอ
       const videoWidth = video.videoWidth;
       const videoHeight = video.videoHeight;
 
@@ -442,8 +379,9 @@ const EditProfilePage: React.FC = () => {
 
       setInstruction("กำลังประมวลผลภาพ...");
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error("Error capturing and sending image:", error);
+      // console.error("Error capturing and sending image:", error);
       setInstruction("เกิดข้อผิดพลาดในการถ่ายและส่งภาพ");
     }
   }, [webcamRef, websocket]);
