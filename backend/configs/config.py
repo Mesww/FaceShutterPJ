@@ -30,6 +30,8 @@ CONSECUTIVE_SUCCESS_NEEDED = 1
 SCAN_DIRECTION = ["Front"]
 IMAGE_PER_DIRECTION = 1
 
+
+
 # Store active connections
 class ConnectionManager:
     def __init__(self):

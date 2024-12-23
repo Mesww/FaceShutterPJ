@@ -4,6 +4,9 @@ import Header from '../header/Header.js';
 import { useUserData } from '@/containers/provideruserdata.js';
 import axios from 'axios';
 import { AlertTriangle, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { getLogined } from '@/containers/userLogin.js';
+import Swal from 'sweetalert2';
 
 interface Log {
   _id: string;
@@ -88,14 +91,28 @@ const [name, setName] = useState(userData?.name || '');
   useEffect(() => {
     setName(userData?.name || '');
   }, [userData?.name]);
-
+  
+  const navigate = useNavigate();
   useEffect(() => {
     const fetchLogs = async () => {
       try {
+         const token = getLogined();
+                    if(token === undefined){
+                      Swal.fire({
+                        title: 'Unauthorized',
+                        text: 'You are not authorized to access this page',
+                        icon: 'error',
+                        timer: 1500
+                      });
+                      navigate('/admin/login');
+                      return;
+                    }
+        
         const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/logs/getlogs`, {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           }
         });
         
@@ -122,7 +139,8 @@ const [name, setName] = useState(userData?.name || '');
       const interval = setInterval(fetchLogs, 30000);
       return () => clearInterval(interval);
     }
-  }, [userData?.employee_id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ userData?.employee_id]);
   
   const getIcon = (status: string) => {
     switch (status) {

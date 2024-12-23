@@ -317,6 +317,7 @@ const setupTimeWebSocket = useCallback(() => {
     ws.close();
   };
 }, []);
+
 // เพิ่ม useEffect สำหรับจัดการ WebSocket เวลา
 useEffect(() => {
   const cleanup = setupTimeWebSocket();
