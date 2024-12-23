@@ -102,13 +102,14 @@ const AdminManage: React.FC = () => {
     try {
       setLoading(true);
       const response = await axios.get(`${BACKEND_URL}/api/users/get_all_user`);
-      console.log(response.data);
+      // console.log(response.data);
       setUsers(response.data);
       setLoading(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('Failed to fetch users');
       setLoading(false);
-      console.error('Error fetching users:', err);
+      // console.error('Error fetching users:', err);
     }
   };
 
@@ -164,8 +165,9 @@ const AdminManage: React.FC = () => {
           throw new Error(response.data.message || 'Failed to delete user');
         }
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
-      console.error('Error deleting user:', err);
+      // console.error('Error deleting user:', err);
       // แสดง Sweet Alert เมื่อเกิดข้อผิดพลาด
       await Swal.fire({
         title: 'Error',
@@ -232,8 +234,9 @@ const AdminManage: React.FC = () => {
       } else {
         throw new Error(response.data.message || 'Failed to update user');
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
-      console.error('Error updating user:', err);
+      // console.error('Error updating user:', err);
       alert('Failed to update user');
     }
   };

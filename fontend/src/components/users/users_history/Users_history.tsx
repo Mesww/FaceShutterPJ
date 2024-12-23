@@ -165,16 +165,17 @@ const AttendanceHistoryPage = () => {
       // Extract the array from response.data
       const records = response.data.data || response.data;
 
-      console.log('Fetched records:', records);
+      // console.log('Fetched records:', records);
 
       // Ensure you're setting an array
       setAttendanceData(Array.isArray(records) ? records : []);
 
-      console.log('Attendance records:', attendanceData);
+      // console.log('Attendance records:', attendanceData);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('Failed to fetch attendance records');
-      console.error(err);
+      // console.error(err);
     } finally {
       setLoading(false);
     }

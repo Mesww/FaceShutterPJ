@@ -58,7 +58,7 @@ export const sendImageToBackend = async ({
       throw new ImageUploadError('Please capture an image first');
     }
     
-    console.log(`name, employeeId ${name}, ${employeeId}`);
+    // console.log(`name, employeeId ${name}, ${employeeId}`);
     if (!name || !employeeId) {
       throw new ImageUploadError('Name and employee ID are required');
     }
@@ -83,7 +83,7 @@ export const sendImageToBackend = async ({
         'Accept': 'application/json',
       }
     });
-    console.log('apiResponse', apiResponse);
+    // console.log('apiResponse', apiResponse);
     const data = await handleApiResponse(apiResponse);
 
     // Show success message
@@ -100,7 +100,7 @@ export const sendImageToBackend = async ({
       errorMessage = error.message;
     }
 
-    console.error('Registration error:', error);
+    // console.error('Registration error:', error);
     throw new ImageUploadError(errorMessage);
 
   } finally {

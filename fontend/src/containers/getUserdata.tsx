@@ -18,8 +18,9 @@ export const getuserdata = async (token: string) => {
         }
         const datas = await response.json(); 
         return  datas.data;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-        console.error('Error:', error);
+        // console.error('Error:', error);
         // alert(error instanceof Error ? error.message : 'Registration failed');
     }
 }
@@ -37,8 +38,9 @@ export const getisuserdata = async (employee_id: string) => {
             throw new Error(errorData.detail || 'Registration failed');
         }
         return  await response.json();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-        console.error('Error:', error);
+        // console.error('Error:', error);
         // alert(error instanceof Error ? error.message : 'Registration failed');
     }
 }
@@ -62,8 +64,9 @@ export const getcheckinorouttime = async (): Promise<Responsedata | undefined> =
         }
         const data:Responsedata = await response.json();
         return  data;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-        console.error('Error:', error);
+        // console.error('Error:', error);
         // alert(error instanceof Error ? error.message : 'Checkin or out time failed');
     }
 }
@@ -82,8 +85,9 @@ export const getisCheckin = async (token: string,checkinorout:string) => {
             throw new Error(errorData.detail || 'Checkin failed');
         }
         return  await response.json();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-        console.error('Error:', error);
+        // console.error('Error:', error);
         // alert(error instanceof Error ? error.message : 'Checkin failed');
     }       
 }
@@ -109,14 +113,14 @@ export const edituserdata = async (employee_id: string, name: string, email: str
         formData.append('tel', phone);
         // console.log(formData.get('employee_id'));
         if (imageData) {
-            console.log('imageData:', imageData);
+            // console.log('imageData:', imageData);
             formData.append('image', imageData);
         }
         const token = getLogined();
         if (!token) {
             throw new Error('No token found');
         }
-        console.log(role);
+        // console.log(role);
 
         const body = {
             'employee_id': employee_id ?? null,
@@ -138,8 +142,9 @@ export const edituserdata = async (employee_id: string, name: string, email: str
             throw new Error(errorData.detail || 'Registration failed');
         }
         return await response.json();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-        console.error('Error:', error);
+        // console.error('Error:', error);
         // alert(error instanceof Error ? error.message : 'Registration failed');
     }
 }

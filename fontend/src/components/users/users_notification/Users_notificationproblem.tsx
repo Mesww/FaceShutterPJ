@@ -111,8 +111,9 @@ const [name, setName] = useState(userData?.name || '');
         }));
 
         setLogEntries(userLogs);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.error('Error fetching logs:', error);
+        // console.error('Error fetching logs:', error);
       }
     };
 

@@ -62,7 +62,7 @@ const EditProfilePage: React.FC = () => {
 
   const stopCamera = () => {
     if (webcamRef.current?.video) {
-      console.log('Stopping camera...');
+      // console.log('Stopping camera...');
       const mediaStream = webcamRef.current.video.srcObject as MediaStream;
       mediaStream?.getTracks().forEach(track => track.stop());
     }
@@ -106,8 +106,9 @@ const EditProfilePage: React.FC = () => {
           title: 'mobile-title',
         },
       });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error('Error updating profile:', error);
+      // console.error('Error updating profile:', error);
       Swal.fire({
         title: 'เกิดข้อผิดพลาด!',
         text: 'ไม่สามารถอัปเดตโปรไฟล์ได้',
@@ -137,7 +138,7 @@ const EditProfilePage: React.FC = () => {
 
   const handleScanSuccess = async () => {
     try {
-      console.log('Scan success - starting update process');
+      // console.log('Scan success - starting update process');
 
       // ปิดการสแกน
       handleScanStop();
@@ -161,8 +162,9 @@ const EditProfilePage: React.FC = () => {
           title: 'mobile-title',
         },
       });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error('Error updating profile:', error);
+      // console.error('Error updating profile:', error);
 
       // แสดง SweetAlert กรณีเกิดข้อผิดพลาด
       Swal.fire({
@@ -205,11 +207,11 @@ const EditProfilePage: React.FC = () => {
             await handleScanSuccess();
             break;
           case "progress":
-            console.log(messages);
+            // console.log(messages);
             setInstruction(messages);
             break;
           case "failed":
-            console.error("Error:", messages);
+            // console.error("Error:", messages);
             if (messages.includes("ไม่พบใบหน้า")) {
               setInstruction("ไม่พบใบหน้าในภาพ กรุณาถ่ายใหม่");
               setErrorDirection("กรุณาวางใบหน้าให้อยู่ในกรอบและถ่ายใหม่");
@@ -252,8 +254,9 @@ const EditProfilePage: React.FC = () => {
           setErrorDirection("");
         }
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error("Error processing WebSocket message:", error);
+      // console.error("Error processing WebSocket message:", error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [directionInstructions, handleScanSuccess, setImageCount]);
@@ -299,18 +302,19 @@ const EditProfilePage: React.FC = () => {
         ws.onmessage = handleWebSocketMessage;
 
         ws.onclose = () => {
-          console.log('WebSocket closed');
+          // console.log('WebSocket closed');
           cleanup();
         };
-
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
+        
+        ws.onerror = () => {
+          // console.error('WebSocket error:', error);
           cleanup();
           setErrors("การเชื่อมต่อล้มเหลว กรุณาลองใหม่อีกครั้ง");
         };
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.error('Error setting up WebSocket:', error);
+        // console.error('Error setting up WebSocket:', error);
         cleanup();
         setErrors("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
       }
@@ -358,18 +362,18 @@ const EditProfilePage: React.FC = () => {
   useEffect(() => {
     setIsLoadings(isLoading);
     setLoadingMessage("กำลังโหลดข้อมูล...");
-    console.log('isLoadings:', isLoadings);
+    // console.log('isLoadings:', isLoadings);
     setName(userData?.name || '');
     setEmail(userData?.email || '');
     setPhone(userData?.tel || '');
     setRole(userData?.roles || '');
-    console.log('FaceScan State:', {
-      isScanning,
-      isLoadings,
-      connectionStatus,
-      instruction,
-      errors
-    });
+    // console.log('FaceScan State:', {
+    //   isScanning,
+    //   isLoadings,
+    //   connectionStatus,
+    //   instruction,
+    //   errors
+    // });
     // refreshUserData();
   }, [connectionStatus, errors, instruction, isLoading, isLoadings, isScanning, userData?.email, userData?.name, userData?.tel, userData?.roles]);
 
@@ -442,8 +446,9 @@ const EditProfilePage: React.FC = () => {
 
       setInstruction("กำลังประมวลผลภาพ...");
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error("Error capturing and sending image:", error);
+      // console.error("Error capturing and sending image:", error);
       setInstruction("เกิดข้อผิดพลาดในการถ่ายและส่งภาพ");
     }
   }, [webcamRef, websocket]);

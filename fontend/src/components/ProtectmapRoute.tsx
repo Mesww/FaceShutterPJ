@@ -21,7 +21,7 @@ const ProtectmapRoute: React.FC<ProtectmapRouteProps> = ({
     const token = getLogined();
     if (token) {
       const userData = await getuserdata(token);
-      console.log('User Data:', userData);
+      // console.log('User Data:', userData);
       return userData.roles; // Assuming `userData` has a `roles` property
     }
     return '';
@@ -30,7 +30,7 @@ const ProtectmapRoute: React.FC<ProtectmapRouteProps> = ({
   useEffect(() => {
     const checkAccess = async () => {
       const token = getLogined();
-      console.log('Token:', token);
+      // console.log('Token:', token);
 
       if (!token) {
         setIsAuthenticated(false);
@@ -41,8 +41,8 @@ const ProtectmapRoute: React.FC<ProtectmapRouteProps> = ({
       setIsAuthenticated(true);
 
       const role = await getCurrentUserRole();
-      console.log('User Role:', role);
-      console.log('Required Roles:', requireRoles);
+      // console.log('User Role:', role);
+      // console.log('Required Roles:', requireRoles);
       setUserRole(role);
       const access = requireRoles.includes(role);
       setHasAccess(access);
@@ -53,8 +53,8 @@ const ProtectmapRoute: React.FC<ProtectmapRouteProps> = ({
 
   // Logging outside of the effect to track state after updates
   useEffect(() => {
-    console.log('isAuthenticated:', isAuthenticated);
-    console.log('hasAccess:', hasAccess);
+    // console.log('isAuthenticated:', isAuthenticated);
+    // console.log('hasAccess:', hasAccess);
   }, [isAuthenticated, hasAccess]);
 
   // Show loading state if authentication and role check are in progress

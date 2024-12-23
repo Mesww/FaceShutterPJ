@@ -59,13 +59,14 @@ const AdminReports = () => {
         // แก้ไขการดึงข้อมูล
         const records = response.data.data || [];
 
-        console.log('API Response:', response.data);
-        console.log('Records count:', records.length);
+        // console.log('API Response:', response.data);
+        // console.log('Records count:', records.length);
 
         setAttendanceRecords(records);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
         setError('Failed to fetch attendance records');
-        console.error(err);
+        // console.error(err);
       } finally {
         setLoading(false);
       }
@@ -83,7 +84,7 @@ const AdminReports = () => {
         record.employee_id.toLowerCase().includes(searchReportName.toLowerCase()))
     )
     : [];
-  console.log('Filtered Records:', filteredAttendanceRecords);
+  // console.log('Filtered Records:', filteredAttendanceRecords);
 
   // Determine combined status
   const getCombinedStatus = (record: AttendanceRecord): string => {

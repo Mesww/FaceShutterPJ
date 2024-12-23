@@ -6,7 +6,7 @@ import { BACKEND_URL } from '@/configs/backend';
 export const checkisLogined:boolean = (()=> {
     const token = Cookie.get('token');
     if (token !== undefined) {
-        console.log(token);
+        // console.log(token);
         return true;
     }
     return false;
@@ -56,8 +56,9 @@ export const addAdmin = async (employeeId:string, password:string) => {
         // Send encrypted data to backend
         const response = await axios.post(BACKEND_URL+"/api/users/add_admin", encryptedData);
         alert(response.data.message);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-        console.error(error);
+        // console.error(error);
         alert("Register failed!");
     }
 }
@@ -92,8 +93,9 @@ export const adminLogin = async (employeeId:string, password:string) =>  {
             return true;
         }
         return false;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-        console.error(error);
+        // console.error(error);
         alert("Login failed!");
     }
 }
