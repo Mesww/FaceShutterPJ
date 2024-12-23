@@ -164,28 +164,20 @@ const AttendanceHistoryPage = () => {
 
       // Extract the array from response.data
       const records = response.data.data || response.data;
-
-      // console.log('Fetched records:', records);
-
       // Ensure you're setting an array
       setAttendanceData(Array.isArray(records) ? records : []);
-
-      // console.log('Attendance records:', attendanceData);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('Failed to fetch attendance records');
-      // console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-
   useEffect(() => {
     setName(userData?.name || '');
   }, [userData?.name]);
-
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -253,7 +245,6 @@ const AttendanceHistoryPage = () => {
               </div>
             </div>
           </div>
-
 
           {/* Loading and Error States */}
           {loading && (
@@ -353,14 +344,8 @@ const AttendanceHistoryPage = () => {
                   แสดง {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredData.length)} จาก {filteredData.length} รายการ
                 </div>
               </div>
-
-
-
-
             </>
           )}
-
-
         </div>
       </div>
     </div>
