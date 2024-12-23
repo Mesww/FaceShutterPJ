@@ -147,7 +147,7 @@ async def async_daily_task():
     # Your async daily task logic here
     print(f"Async daily task started at {datetime.now()}")
     res= await History_Service.migrate_to_history()
-    print(res)
+    # print(res)
     print(f"Async daily task completed at {datetime.now()}")
 
 def daily_task():
@@ -209,7 +209,7 @@ async def websocket_endpoint(websocket: WebSocket):
             token = None
             employee_id = None
 
-    print("token,employee : ", token, employee_id)
+    # print("token,employee : ", token, employee_id)
 
     await websocket.accept()
 
