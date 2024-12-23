@@ -17,7 +17,7 @@ from backend.configs.config import (
 
 from backend.middleware.usermiddleware import UserMiddleware
 from backend.models.user_model import User, Userupdate
-from backend.routes import face_routes, user_routes, history_routes, checkinout_routes,auth_routes,logs_routes
+from backend.routes import user_routes, history_routes, checkinout_routes,auth_routes,logs_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
 from backend.services.face_service import Face_service
@@ -44,20 +44,21 @@ OAUTH_AUTHORIZE_URL = config.get("OAUTH_AUTHORIZE_URL","")
 OAUTH_TOKEN_URL = config.get("OAUTH_TOKEN_URL","")
 
 app = FastAPI()
-
+print(FONTEND_URL)
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # React development server
+        "http://localhost:5173",  # Development frontend
         FONTEND_URL,  # Production frontend
     ],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly list allowed methods
+    allow_headers=["*"],  # You might want to be more specific here
     expose_headers=["*"],
-    allow_origin_regex=None,
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
+
 
 app.add_middleware(UserMiddleware)
 # Health check endpoint
@@ -84,11 +85,7 @@ app.include_router(
     prefix="/api/users",  # Base path for user-related routes
     tags=["users"],
 )
-app.include_router(
-    face_routes.router,  # เพิ่มการรวม user_routes
-    prefix="/api/face",  # Base path for user-related routes
-    tags=["face"],
-)
+
 
 app.include_router(
     checkinout_routes.router,  # เพิ่มการรวม user_routes

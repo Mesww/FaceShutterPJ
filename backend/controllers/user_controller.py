@@ -60,27 +60,7 @@ class UserController:
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
     
-    @staticmethod
-    @router.post("/register")
-    async def register_user(
-        request: User,
-    ):
-        try:
-            print('Registing...')
-            res = await UserService.register_user(
-             request
-            )
-            print(res.status)
-            if res.status >= 400:
-                raise HTTPException(status_code=400, detail=res.message)
-            if res.to_json() is None:
-                raise HTTPException(status_code=400, detail=res.message)
-            print('Register complete')
-            
-            return res
-        
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+   
     @staticmethod
     @router.put("/update_user_by_employee_id/{employee_id}")
     async def update_user_by_employee_id(

@@ -137,6 +137,7 @@ const AdminManage: React.FC = () => {
     setLoading(true);
     setUser(userData);
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData]);
 
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -150,6 +151,17 @@ const AdminManage: React.FC = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
+      const token = getLogined();
+      if(token === undefined){
+        Swal.fire({
+          title: 'Unauthorized',
+          text: 'You are not authorized to access this page',
+          icon: 'error',
+          timer: 1500
+        });
+        navigate('/admin/login');
+        return;
+      }
       // แสดง Sweet Alert เพื่อยืนยันการลบ
       const result = await Swal.fire({
         title: 'Confirm Delete',
@@ -164,7 +176,11 @@ const AdminManage: React.FC = () => {
 
       // ถ้ากดยืนยัน
       if (result.isConfirmed) {
-        const response = await axios.delete(`${BACKEND_URL}/api/users/delete_user/${userId}`);
+        const response = await axios.delete(`${BACKEND_URL}/api/users/delete_user/${userId}`,{
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         
         if (response.data.status === 200) {
           // แสดง Sweet Alert เมื่อลบสำเร็จ
@@ -201,7 +217,17 @@ const AdminManage: React.FC = () => {
   const handleSaveUser = async (updatedUser: User) => {
     try {
       // console.log(updatedUser.password);
- 
+      const token = getLogined();
+      if(token === undefined){
+        Swal.fire({
+          title: 'Unauthorized',
+          text: 'You are not authorized to access this page',
+          icon: 'error',
+          timer: 1500
+        });
+        navigate('/admin/login');
+        return;
+      }
       // Prepare the request body to match the API requirements
       const requestBody = {
         name: updatedUser.name,
@@ -225,7 +251,13 @@ const AdminManage: React.FC = () => {
       // Make API call to update user
       const response = await axios.put(
         `${BACKEND_URL}/api/users/update_user_by_employee_id/${originalEmployeeId}`,
-        requestBody
+        requestBody,
+        {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        }
       );
 
       // Update local state with the response from the server
@@ -280,6 +312,17 @@ const AdminManage: React.FC = () => {
         timer: 1500
       });
     } else {
+      const token = getLogined();
+      if(token === undefined){
+        Swal.fire({
+          title: 'Unauthorized',
+          text: 'You are not authorized to access this page',
+          icon: 'error',
+          timer: 1500
+        });
+        navigate('/admin/login');
+        return;
+      }
       // If user doesn't exist, add a new admin with minimal information
       setUsers([...users, {
         employee_id: newAdminEmployeeId,
@@ -289,7 +332,7 @@ const AdminManage: React.FC = () => {
         roles: 'ADMIN',
         is_password: true
       }]);
-      await addAdmin(newAdminEmployeeId, newAdminPassword);
+      await addAdmin(newAdminEmployeeId, newAdminPassword,token);
     }
     // Close the modal and reset the input
     setIsAddAdminModalVisible(false);
