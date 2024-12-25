@@ -116,7 +116,7 @@ app.include_router(
 
 """
 
-scopes = ['openid', 'SAM-Account-Name', 'E-Mail-Addresses', 'User-Principal-Name', 'Given-Name', 'Surname','profile', 'offline_access']
+scopes = ['profile','email','openid']
 
 @app.post('/login')
 def login():
@@ -133,27 +133,28 @@ def callback(request: Request):
     try:
         token = oauth.fetch_token(
             OAUTH_TOKEN_URL,
-            authorization_response="https://facescan-cits.mfu.ac.th/users/UsersFacescan?code=PLPIUTTHJUiRAA9Df7SiGA.o5FITRAg3QhKAMCHFyKkKFRBA74.g7oh2WpbdNkjwvAF8tAPRcdGG47USmUkAF6EZyymaS7UvkFziJuIfTyTPxo96oWpm3fKGtI2V0xSQUAnbBBo9hUr6qu51Ot_OAMQIXo7IJXAPkGgHZ4BcDY8LS1js2tUI34pM_svdhxAXMQ5eUJrkMFBtzeIo2cxCs9iw5lVpo38uxaYc9IYNw5D-KY9KvxTIMVJG8sSampO39xFHhyZpMKvF8Gzxx0C7o514rWFoVx5myMVreSFFygTDd0C-52G-5OtH5AcEVjU4EnJZrirk4C4HEdXQyjcMVaU2YzyNe19Np03YeER7hH6w7jEzt5K-fYznryrtlKbOoEMc1K93rIgYwvRX_q0h3UHsmEZhqMAjeuo4cc_0Lg7ssVG4ekxFP4wtkV7X8dapPWaRujebFcxIT30e6um30jJ7C-a5fJSeVpfUoB3eNsmoa5SsZY8Hzsa3CN-DmXFvOQCfrEyyfLnpAR2klaYwMMin6JZO9gsJyUu4b3f1Gavik-9DeU9Una0yU6R8w2y5IpHelsucMc509Ab_7E77MmGrhfvcQSE7DP5tfATuQAZoZkRYCNBXtGLj7ORbhSMGllfKOBV6wvVEgIhBXcBODL4PCFXB2Bzn0OQ0dkP2RdcLTcadwi3hsJee5Gbw2izOoYQwY18-q7tsAIcL75nuaPrQkI7WJo&state=Cf1sEhy51BIjMBvzd95ac9KcazeJtT",
-            code='PLPIUTTHJUiRAA9Df7SiGA.o5FITRAg3QhKAMCHFyKkKFRBA74.g7oh2WpbdNkjwvAF8tAPRcdGG47USmUkAF6EZyymaS7UvkFziJuIfTyTPxo96oWpm3fKGtI2V0xSQUAnbBBo9hUr6qu51Ot_OAMQIXo7IJXAPkGgHZ4BcDY8LS1js2tUI34pM_svdhxAXMQ5eUJrkMFBtzeIo2cxCs9iw5lVpo38uxaYc9IYNw5D-KY9KvxTIMVJG8sSampO39xFHhyZpMKvF8Gzxx0C7o514rWFoVx5myMVreSFFygTDd0C-52G-5OtH5AcEVjU4EnJZrirk4C4HEdXQyjcMVaU2YzyNe19Np03YeER7hH6w7jEzt5K-fYznryrtlKbOoEMc1K93rIgYwvRX_q0h3UHsmEZhqMAjeuo4cc_0Lg7ssVG4ekxFP4wtkV7X8dapPWaRujebFcxIT30e6um30jJ7C-a5fJSeVpfUoB3eNsmoa5SsZY8Hzsa3CN-DmXFvOQCfrEyyfLnpAR2klaYwMMin6JZO9gsJyUu4b3f1Gavik-9DeU9Una0yU6R8w2y5IpHelsucMc509Ab_7E77MmGrhfvcQSE7DP5tfATuQAZoZkRYCNBXtGLj7ORbhSMGllfKOBV6wvVEgIhBXcBODL4PCFXB2Bzn0OQ0dkP2RdcLTcadwi3hsJee5Gbw2izOoYQwY18-q7tsAIcL75nuaPrQkI7WJo',
+            authorization_response="https://facescan-cits.mfu.ac.th/users/UsersFacescan?code=PLPIUTTHJUiRAA9Df7SiGA.-Z8OT8Mk3QhfAJCmnhktQ0ofQnw.gBJIm74LNcCYK0aQrVzR1wg-5pC6S0PQAXzNpYnhagxWP3Ws-RWzUVYSphUmuKmd6--YM5u44IjIwCOwXvhKXasOFjz7Z8PW3p_62Lz9Qmz1kE7sJO7l16jq9ImQLcxmU-2m78ItBe4wT4Oe1JKwRI78SfbZSjnTo6UFomQ_9es2sA6HIMMZgLm2YEZyJDON6cGhyJqX0WLznvdV1G75zQzQhX9kB6qZsxQcd9XGTc917MTI9C5f1CBFvjfN-uqQ2ZqdpERsfk3NRx147IjquypIxbpEfx9ryjodDUD9cgSDQ_BiKWLsNwBLqngKjEnMMGK8lMzyaqDM60A1ifleTMl-y1hKOXpb3RPzCStMt3sP3re0f5rfnJBiVehj_qO86kNKiqg1GXaBitiyBFgADC76lHK7rOfzG2Cre0vJac_4JBKMdTvRhWkol9TkCa74O6T6UrKZcNHrCKhDYG3NrBMU0iCBIQm9MtTtfLFmNn4ZrOQspgwLos-hCRZdGSKgyW4v6Ph07HdJCSWcuzuG4i-rnzPytd2sEM8ejwcSzb4NFtgUxx0gSusRBL09EJvOT6km37EvCUjVym_b-yQP6dzcOwH48GQSFqBR74n9Il_BZTU3YAYqzq7Y1Cz3K6118avLKomAY4_uckaC-uIpdZFDGKXNc2m_YMBsC2yLVFM&state=sHgtDOCP53E0accRRdljptCFav5La5",
             client_secret=OAUTH_SECRET,
             include_client_id=True,
             scope = scopes
         )
-        print(f"scopes: {scopes}")
-        print(f"Token: {token['scope']}")
-        token['scope'] = scopes
-        print(f"Token: {token['scope']}")
+        
+        print(f"client scopes: {scopes}")
+        # print(f"Token: {token['scope']}")
+        print(f"Token: {token}")
+        # token['scope'] = scopes
+        print(f"servers Scope: {token['scope']}")
         userinfo_response = oauth.get(OAUTH_USERINFO_URL, headers={'Authorization': f"Bearer {token['access_token']}"})
-        print(f"Raw userinfo response: {userinfo_response.text}")
-        if userinfo_response.status_code != 200 or not userinfo_response.text:
-            print("No userinfo response, decoding id_token")
-            decoded_id_token = jwt.decode(token['id_token'], options={"verify_signature": False})
-            userinfo = {
-                'name': decoded_id_token.get('name', 'Unknown'),
-                'email': decoded_id_token.get('upn', '')
-            }
-        else:
+        # print(f"Userinfo response: {userinfo_response.text}")
+        print(f"Userinfo response: {userinfo_response.status_code}")
+        # print(f"Userinfo response: {userinfo_response.json()}")
+        if userinfo_response.status_code == 200:
             userinfo = userinfo_response.json()
+            print(f"Userinfo: {userinfo}")
+        else:
+            print(f"Userinfo endpoint failed: {userinfo_response.text}")
+            userinfo = {}
+            
         return {"userinfo": userinfo}
     except Exception as e:
         return {"error": str(e)}
