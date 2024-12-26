@@ -137,6 +137,8 @@ def callback(request: Request):
             client_secret=OAUTH_SECRET,
             include_client_id=True,
             scope = scopes
+            
+            
         )
         
         print(f"client scopes: {scopes}")
