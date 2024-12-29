@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict
 
 from fastapi import WebSocket
@@ -12,25 +13,32 @@ SIMILARITY_THRESHOLD = 60.0
 
 DEFAULT_TIMEZONE = "Asia/Bangkok"
 
-CHECKIN_TIME_START = "8:00:00"
-CHECKIN_TIME_END = "8:59:00"
+CHECKIN_TIME_START = "13:00:00"
+CHECKIN_TIME_END = "15:59:00"
 
 # CHECKIN_TIME_START = "16:00:00"
 # CHECKIN_TIME_END = "17:00:00"
 
 CHECKOUT_TIME_START = "16:00:00"
-CHECKOUT_TIME_END = "16:59:00"
+CHECKOUT_TIME_END = "18:59:00"
 
 # For Face Detection
 MAX_ATTEMPTS = 50
 MIN_CONFIDENCE_THRESHOLD = 0.55
 CONSECUTIVE_SUCCESS_NEEDED = 1
 
-# for Face Registration
+# For Face Registration
 SCAN_DIRECTION = ["Front"]
 IMAGE_PER_DIRECTION = 1
 
+# For SNMP Service
+SNMP_OIDS = {
+    'id': '1.3.6.1.4.1.9.9.599.1.3.1.1.27',
+    'type': '1.3.6.1.4.1.9.9.599.1.3.1.1.28',
+    'macAccespoint': '1.3.6.1.4.1.9.9.599.1.3.1.1.8'
+}
 
+PATHENV = Path("./.env")
 
 # Store active connections
 class ConnectionManager:
