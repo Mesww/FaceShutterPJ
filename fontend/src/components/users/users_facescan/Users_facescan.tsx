@@ -213,7 +213,9 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
     setIsScanning(false);
     setIsAuthen(false);
     setInstruction("");
-    setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "", roles: "" });
+    if (!userData?.employee_id) {
+      setUserDetails({ employee_id: "", name: "", email: "", password: "", tel: "", roles: "" });
+    }
     setConnectionStatus('disconnected');
     setErrorsMessage('');
     if (websocket) websocket.close();
