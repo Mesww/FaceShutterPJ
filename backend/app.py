@@ -22,6 +22,7 @@ from backend.models.user_model import User, Userupdate
 from backend.routes import user_routes, history_routes, checkinout_routes,auth_routes,logs_routes,snmp_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
+from backend.services.checkinout_service import CheckInOut_Service
 from backend.services.face_service import Face_service
 from backend.services.history_service import History_Service
 from backend.services.snmp_service import SnmpService
@@ -374,9 +375,13 @@ async def websocket_endpoint(websocket: WebSocket):
 async def time_websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     tz = pytz.timezone('Asia/Bangkok')
+    # checkinout_service = CheckInOut_Service()
     try:
         while True:
             current_time = datetime.now(tz).strftime("%H:%M:%S")
+            # is_valid = await checkinout_service.is_checkinorout_time_valid(current_time)
+            # if is_valid['status']:
+            #     print(f"Data: {is_valid['data']}")
             await websocket.send_json({
                 "current_time": current_time,
                 "timestamp": datetime.now().timestamp()

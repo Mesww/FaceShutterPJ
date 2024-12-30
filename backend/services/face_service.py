@@ -107,6 +107,11 @@ class Face_service:
             user_service = UserService()
             snmp_service = SnmpService()
             timezone = pytz.timezone(DEFAULT_TIMEZONE)
+            
+            """
+            Check if the device is connected to the WIFI University network
+            """
+
             await websocket.send_json(
                 {
                     "data": {
