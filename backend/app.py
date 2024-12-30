@@ -25,8 +25,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.services.checkinout_service import CheckInOut_Service
 from backend.services.face_service import Face_service
 from backend.services.history_service import History_Service
-from backend.services.snmp_service import SnmpService
 from backend.services.user_service import UserService
+from backend.services.snmp_service import SnmpService
 from backend.utils.image_utills import Image_utills
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -45,6 +45,8 @@ OAUTH_SECRET = config.get("OAUTH_SECRET","")
 OAUTH_CALLBACK_URL = config.get("OAUTH_CALLBACK_URL","")
 OAUTH_AUTHORIZE_URL = config.get("OAUTH_AUTHORIZE_URL","")
 OAUTH_TOKEN_URL = config.get("OAUTH_TOKEN_URL","")
+
+snmp_service = SnmpService()
 
 
 
@@ -179,6 +181,12 @@ def shutdown_event():
     # Shutdown scheduler gracefully
     scheduler.shutdown()
 
+@app.on_event("startup")
+async def startup_event():
+    # Check if AP data exists in the database
+    await snmp_service.initialize_ap_collection()
+    pass
+
 
 manager = ConnectionManager()
 
@@ -202,7 +210,6 @@ active_connections = {}
 @app.websocket("/ws/auth")
 async def websocket_endpoint(websocket: WebSocket):
     face_service = Face_service()
-    snmp_service = SnmpService()
     # Extract token from query parameters
     token: Optional[str] = websocket.query_params.get("token")
     employee_id = None
