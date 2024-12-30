@@ -107,7 +107,7 @@ class Face_service:
             user_service = UserService()
             snmp_service = SnmpService()
             timezone = pytz.timezone(DEFAULT_TIMEZONE)
-            
+
             """
             Check if the device is connected to the WIFI University network
             """
@@ -285,75 +285,105 @@ class Face_service:
                     }
                 )
             else:
-                # print("Check: ",checkorcheckout)
-                if checkorcheckout["data"] == "checkin":
-                    data = CheckInOutToday(
-                        employee_id=user.employee_id,
-                        check_in_time=check_in_time,
-                        date=datetime.now(tz=timezone).strftime("%Y-%m-%d"),
-                    )
-                    # print("Checkin",data)
-                    ischeckin = await CheckInOut_Service.is_already_checked_in(
-                        user.employee_id
-                    )
-                    # print(ischeckin["data"])
+                load_dotenv(dotenv_path=PATHENV)
+                config = dotenv_values()
+                HOST = config.get("SNMP_HOST", "localhost")
+                COMMUNITY = config.get("SNMP_COMMUNITY", "public")
+                user_service = UserService()
+                snmp_service = SnmpService()
+                timezone = pytz.timezone(DEFAULT_TIMEZONE)
+                """
+                Check if the device is connected to the WIFI University network
+                """
 
-                    if ischeckin["data"]:
-                        await websocket.send_json(
-                            {
-                                "data": {
-                                    "status": "alreadycheckedin",
-                                    "message": "User already checked in today.",
-                                }
-                            }
+                await websocket.send_json(
+                    {
+                        "data": {
+                            "status": "pending",
+                            "message": "กำลังตรวจสอบการเชื่อมต่อ WIFI",
+                        }
+                    }
+                )
+                is_WIFI = True if await snmp_service.finder_snmp(HOST, COMMUNITY, SNMP_OIDS['id'], employee_id) else False
+                
+                if is_WIFI:
+                    # print("Check: ",checkorcheckout)
+                    if checkorcheckout["data"] == "checkin":
+                        data = CheckInOutToday(
+                            employee_id=user.employee_id,
+                            check_in_time=check_in_time,
+                            date=datetime.now(tz=timezone).strftime("%Y-%m-%d"),
                         )
-                    else:
-                        checkin = await CheckInOut_Service.check_in(data)
+                        # print("Checkin",data)
+                        ischeckin = await CheckInOut_Service.is_already_checked_in(
+                            user.employee_id
+                        )
+                        # print(ischeckin["data"])
+
+                        if ischeckin["data"]:
+                            await websocket.send_json(
+                                {
+                                    "data": {
+                                        "status": "alreadycheckedin",
+                                        "message": "User already checked in today.",
+                                    }
+                                }
+                            )
+                        else:
+                            checkin = await CheckInOut_Service.check_in(data)
+                            await websocket.send_json(
+                                {
+                                    "data": Returnformat(
+                                        status="success",
+                                        message=checkin["message"],
+                                        data=checkin["id"],
+                                    ).to_json()
+                                }
+                            )
+                    elif checkorcheckout["data"] == "checkout":
+                        ischeckout = await CheckInOut_Service.is_already_checked_out(
+                            user.employee_id
+                        )
+                        if ischeckout["data"]:
+                            await websocket.send_json(
+                                {
+                                    "data": {
+                                        "status": "alreadycheckedout",
+                                        "message": "User already checked out today.",
+                                    }
+                                }
+                            )
+
+                        else:
+                            checkout = await CheckInOut_Service.check_out(employee_id)
+                            await websocket.send_json(
+                                {
+                                    "data": Returnformat(
+                                        status="success",
+                                        message="Check-out complete",
+                                        data=checkout,
+                                    ).to_json()
+                                }
+                            )
+                    elif checkorcheckout["data"] == None:
                         await websocket.send_json(
                             {
                                 "data": Returnformat(
-                                    status="success",
-                                    message=checkin["message"],
-                                    data=checkin["id"],
+                                    status="error",
+                                    message="Invalid time",
+                                    data=checkorcheckout["data"],
                                 ).to_json()
                             }
                         )
-                elif checkorcheckout["data"] == "checkout":
-                    ischeckout = await CheckInOut_Service.is_already_checked_out(
-                        user.employee_id
-                    )
-                    if ischeckout["data"]:
-                        await websocket.send_json(
-                            {
-                                "data": {
-                                    "status": "alreadycheckedout",
-                                    "message": "User already checked out today.",
-                                }
-                            }
-                        )
-
-                    else:
-                        checkout = await CheckInOut_Service.check_out(employee_id)
-                        await websocket.send_json(
-                            {
-                                "data": Returnformat(
-                                    status="success",
-                                    message="Check-out complete",
-                                    data=checkout,
-                                ).to_json()
-                            }
-                        )
-                elif checkorcheckout["data"] == None:
+                else:
                     await websocket.send_json(
                         {
-                            "data": Returnformat(
-                                status="error",
-                                message="Invalid time",
-                                data=checkorcheckout["data"],
-                            ).to_json()
+                            "data": {
+                                "status": "alert",
+                                "message": "ไม่สามารถตรวจสอบการเชื่อมต่อ WIFI ได้"
+                            }
                         }
                     )
-
             token = user_service.generate_token(user.employee_id)
             await websocket.send_json(
                 {

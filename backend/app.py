@@ -224,7 +224,7 @@ async def websocket_endpoint(websocket: WebSocket):
     # print("token,employee : ", token, employee_id)
 
     await websocket.accept()
-
+    
     if token and employee_id:
         print("Checkinout_ws")
         # print("SNMP_HOST: ", SNMP_HOST)
