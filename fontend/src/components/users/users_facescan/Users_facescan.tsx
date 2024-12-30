@@ -369,16 +369,17 @@ useEffect(() => {
       setConnectionStatus('disconnected');
     };
     const on_close = () => {
-      cleanup();
-      setLoadingMessage("");
-      setIsLoadings(false);
-      stopCamera();
-      setIsScanning(false);
-      setIsAuthen(false);
-      setErrors(null);
-      setInstruction("");
-      setErrorDirection("");
-
+      if (!isScanning && !isAuthen) { // เพิ่มเงื่อนไขนี้
+        cleanup();
+        setLoadingMessage("");
+        setIsLoadings(false);
+        stopCamera();
+        setIsScanning(false);
+        setIsAuthen(false);
+        setErrors(null);
+        setInstruction("");
+        setErrorDirection("");
+      }
     }
     const setupWebSocket = (url: string, token?: string) => {
       cleanup();
@@ -463,49 +464,79 @@ useEffect(() => {
   // Camera Controls
   const handleSwitchCamera = async () => {
     try {
-      // เก็บสถานะปัจจุบัน
-      const currentFacingMode = facingMode;
+      // Store current state
       const wasScanning = isScanning;
-
-      // หยุดกล้องและปิด WebSocket เดิม
-      if (websocket?.readyState === WebSocket.OPEN) {
-        websocket.close();
-      }
-      stopCamera();
-
-      // สลับโหมดกล้อง
-      setFacingMode(currentFacingMode === "user" ? "environment" : "user");
-
-      // รอให้กล้องเปลี่ยนโหมดเสร็จ
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // ถ้ากำลังสแกนอยู่ ให้เริ่ม WebSocket ใหม่
-      if (wasScanning) {
-        const baseUrl = BACKEND_WS_URL;
-        const path = '/scan';
-        const wsUrl = `${baseUrl}${path}`;
-
-        const ws = new WebSocket(wsUrl);
-        setWebSocket(ws);
-
-        ws.onopen = () => {
-          setConnectionStatus('connected');
-          setIsLoadings(false);
-          if (userDetails) {
-            ws.send(JSON.stringify(userDetails));
+      const wasAuthen = isAuthen;
+      
+      // Set temporary loading state
+      setIsLoadings(true);
+      setLoadingMessage("กำลังสลับกล้อง...");
+  
+      // Switch camera mode
+      setFacingMode(prevMode => prevMode === "user" ? "environment" : "user");
+      
+      // Wait briefly for camera to initialize
+      await new Promise(resolve => setTimeout(resolve, 100));
+  
+      if (webcamRef.current?.video) {
+        // Get new media stream with updated facing mode
+        const newFacingMode = facingMode === "user" ? "environment" : "user";
+        const constraints = {
+          video: {
+            facingMode: newFacingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
         };
-
-        ws.onmessage = handleWebSocketMessage;
-        ws.onerror = () => {
-          // console.error('WebSocket error:', error);
-          setErrors("การเชื่อมต่อล้มเหลว กรุณาลองใหม่อีกครั้ง");
-        };
+  
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          webcamRef.current.video.srcObject = stream;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (mediaError) {
+          // console.error('Media error:', mediaError);
+          setErrors("ไม่สามารถเข้าถึงกล้องที่เลือกได้");
+          setFacingMode(prevMode => prevMode === "user" ? "environment" : "user");
+          setIsLoadings(false);
+          return;
+        }
       }
+  
+      // If WebSocket is open, send camera switch notification
+      if (websocket?.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({
+          action: "camera_switch",
+          facing_mode: facingMode === "user" ? "environment" : "user"
+        }));
+  
+        // Resend user data if we were in the middle of scanning
+        if (wasScanning && userDetails) {
+          websocket.send(JSON.stringify(userDetails));
+        } else if (wasAuthen && employeeId) {
+          websocket.send(JSON.stringify({ employee_id: employeeId }));
+        }
+      }
+  
+      // Reset states
+      setErrors(null);
+      setErrorDirection("");
+      setIsLoadings(false);
+      setLoadingMessage(null);
+  
+      // Restore instruction message
+      if (wasScanning) {
+        setInstruction("วางใบหน้าในกรอบ");
+      } else if (wasAuthen) {
+        setInstruction("กำลังตรวจสอบใบหน้า...");
+      }
+  
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      // console.error('Error switching camera:', error);
+      // console.error('Camera switch error:', error);
       setErrors("เกิดข้อผิดพลาดในการสลับกล้อง");
+      setIsLoadings(false);
+      setLoadingMessage(null);
+      setFacingMode(prevMode => prevMode === "user" ? "environment" : "user");
     }
   };
 
