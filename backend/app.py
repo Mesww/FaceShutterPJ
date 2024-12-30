@@ -10,18 +10,22 @@ import numpy as np
 from requests_oauthlib import OAuth2Session
 from backend.configs.config import (
     IMAGE_PER_DIRECTION,
+    PATHENV,
     SCAN_DIRECTION,
+    SNMP_OIDS,
     ConnectionManager,
     public_key_pem
 )
 
 from backend.middleware.usermiddleware import UserMiddleware
 from backend.models.user_model import User, Userupdate
-from backend.routes import user_routes, history_routes, checkinout_routes,auth_routes,logs_routes
+from backend.routes import user_routes, history_routes, checkinout_routes,auth_routes,logs_routes,snmp_routes
 import mediapipe as mp
 from fastapi.middleware.cors import CORSMiddleware
+from backend.services.checkinout_service import CheckInOut_Service
 from backend.services.face_service import Face_service
 from backend.services.history_service import History_Service
+from backend.services.snmp_service import SnmpService
 from backend.services.user_service import UserService
 from backend.utils.image_utills import Image_utills
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -31,8 +35,7 @@ from typing import Optional
 
 
 
-pathenv = Path("./.env")
-load_dotenv(dotenv_path=pathenv)
+load_dotenv(dotenv_path=PATHENV)
 config = dotenv_values()
 FONTEND_URL = config.get("FRONTEND_URL", "http://localhost:5173")
 SECRET_KEY = config.get("SECRET_KEY", "RickAstley")
@@ -42,6 +45,9 @@ OAUTH_SECRET = config.get("OAUTH_SECRET","")
 OAUTH_CALLBACK_URL = config.get("OAUTH_CALLBACK_URL","")
 OAUTH_AUTHORIZE_URL = config.get("OAUTH_AUTHORIZE_URL","")
 OAUTH_TOKEN_URL = config.get("OAUTH_TOKEN_URL","")
+
+
+
 
 app = FastAPI()
 print(FONTEND_URL)
@@ -109,6 +115,13 @@ app.include_router(
     prefix="/api/logs",  # Base path for user-related routes
     tags=["logs"],
 )
+
+app.include_router(
+    snmp_routes.router,  # เพิ่มการรวม snmp_routes
+    prefix="/api/snmp",  # Base path for snmp-related routes
+    tags=["snmp"],
+)
+
 
 """
 
@@ -189,8 +202,7 @@ active_connections = {}
 @app.websocket("/ws/auth")
 async def websocket_endpoint(websocket: WebSocket):
     face_service = Face_service()
-    user_service = UserService()
-
+    snmp_service = SnmpService()
     # Extract token from query parameters
     token: Optional[str] = websocket.query_params.get("token")
     employee_id = None
@@ -212,9 +224,12 @@ async def websocket_endpoint(websocket: WebSocket):
     # print("token,employee : ", token, employee_id)
 
     await websocket.accept()
-
+    
     if token and employee_id:
         print("Checkinout_ws")
+        # print("SNMP_HOST: ", SNMP_HOST)
+        # print("SNMP_COMMUNITY: ", SNMP_COMMUNITY)
+        # print("SNMP_OIDS['id']: ", SNMP_OIDS['id'])
         await face_service.checkinout_ws(websocket, employee_id=employee_id)
     else:
         print("Login")
@@ -360,9 +375,13 @@ async def websocket_endpoint(websocket: WebSocket):
 async def time_websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     tz = pytz.timezone('Asia/Bangkok')
+    # checkinout_service = CheckInOut_Service()
     try:
         while True:
             current_time = datetime.now(tz).strftime("%H:%M:%S")
+            # is_valid = await checkinout_service.is_checkinorout_time_valid(current_time)
+            # if is_valid['status']:
+            #     print(f"Data: {is_valid['data']}")
             await websocket.send_json({
                 "current_time": current_time,
                 "timestamp": datetime.now().timestamp()

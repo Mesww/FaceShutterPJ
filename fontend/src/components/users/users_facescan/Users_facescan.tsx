@@ -69,24 +69,49 @@ const FaceScanPage: React.FC<FaceScanPageProps> = () => {
       const message = event.data;
 
       if (message.startsWith("{")) {
+        setIsLoadings(false);
+        setLoadingMessage("");
         const jsonData = JSON.parse(message);
         if (jsonData.data === undefined) {
           return;
         }
         const status = jsonData.data.status;
         const messages = jsonData.data.message;
+        // console.log(status);
+
         switch (status) {
           case "progress":
             setInstruction(messages);
             setErrorsMessage('');
             break;
           case "pending":
+            setLoadingMessage(messages);
+            setIsLoadings(true);
             break;
           case "failed":
             setErrorsMessage(messages);
             setInstruction("วางใบหน้าในกรอบ");
             break;
+          case "alert":
+            Swal.fire({
+              icon: 'warning',
+              title: 'แจ้งเตือน',
+              text: messages,
+              confirmButtonText: 'ตกลง',
+              confirmButtonColor: '#3085d6',
+              width: '90%', // ปรับขนาดสำหรับมือถือ
+              customClass: {
+                popup: 'mobile-popup',
+                title: 'mobile-title',
+                confirmButton: 'mobile-btn',
+              },
+            }).then(() => {
+              setIsLoadings(false);
+              handleScanStop();
+            })
+            break;
           case "stopped":
+            setIsLoadings(false);
             handleScanStop();
             break;
           case "alreadycheckedin":
@@ -341,7 +366,18 @@ useEffect(() => {
       setWebSocket(null);
       setConnectionStatus('disconnected');
     };
+    const on_close = () => {
+      cleanup();
+      setLoadingMessage("");
+      setIsLoadings(false);
+      stopCamera();
+      setIsScanning(false);
+      setIsAuthen(false);
+      setErrors(null);
+      setInstruction("");
+      setErrorDirection("");
 
+    }
     const setupWebSocket = (url: string, token?: string) => {
       cleanup();
       setIsLoadings(true);
@@ -372,7 +408,7 @@ useEffect(() => {
       };
 
       ws.onmessage = handleWebSocketMessage;
-      ws.onclose = () => cleanup();
+      ws.onclose = () => on_close();
       ws.onerror = () => {
         cleanup();
         setErrors("การเชื่อมต่อล้มเหลว กรุณาลองใหม่อีกครั้ง");
@@ -380,9 +416,9 @@ useEffect(() => {
     };
 
     if (isScanning || isAuthen) {
-
       const baseUrl = BACKEND_WS_URL;
       const path = isScanning ? '/scan' : '/auth';
+      
       const token = isAuthen ? getLogined() : undefined;
       // console.log('Test');
       setupWebSocket(`${baseUrl}${path}`, token);
@@ -418,6 +454,7 @@ useEffect(() => {
       setShowConfirmDialog(true);
       return;
     }
+
     setIsAuthen(true);
   };
 
@@ -570,12 +607,12 @@ useEffect(() => {
       setEmployeeId(userData.employee_id);
       setUserDetails(userData);
     }
-    // console.log('FaceScan State:', {
-    //   isScanning,
-    //   isLoadings,
-    //   connectionStatus,
-    //   instruction,
-    // });
+    console.log('FaceScan State:', {
+      isScanning,
+      isLoadings,
+      connectionStatus,
+      instruction,
+    });
   }, [isScanning, isLoadings, connectionStatus, instruction, userData]);
 
   const currentMenuItem = menuItems.find(item => window.location.pathname.includes(item.path));

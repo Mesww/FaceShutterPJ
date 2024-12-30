@@ -92,6 +92,26 @@ export const getisCheckin = async (token: string,checkinorout:string) => {
     }       
 }
 
+export const getisWIFI = async (employee_id: string) => {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/snmp/findId/${employee_id}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Registration failed');
+        }
+        return  await response.json();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+        // console.error('Error:', error);
+        // alert(error instanceof Error ? error.message : 'Registration failed');
+    }
+}
+
 /**
  * Edits user data.
  * 

@@ -10,7 +10,7 @@ from backend.models.returnformat import Returnformat
 class CheckInOut_Service:
     @staticmethod
     async def is_checkinorout_time_valid(time:str):
-        print(time)
+        # print(time)
         if CheckInOut_Service.is_valid_checkin_time(time):
             return Returnformat(status="success", message="Time is valid", data="checkin").to_json() 
         elif CheckInOut_Service.is_valid_checkout_time(time):
