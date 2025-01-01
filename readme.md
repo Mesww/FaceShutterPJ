@@ -14,6 +14,10 @@ pip install -r requirements.txt
 # Production
     gunicorn backend.app:app -w 4 -k uvicorn.workers.UvicornWorker
 
+# Docker 
+    sudo docker compose up -d --build
+
+
 .env need 
 MONGOURL = mongodb://root:1234@faceshuttermongo:27017/
 SECRET_KEY = NeverGonnaGiveYouUp
