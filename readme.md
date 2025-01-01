@@ -12,7 +12,7 @@ pip install -r requirements.txt
 # Development
     uvicorn backend.app:app --reload 
 # Production
-    gunicorn backend.app:app -w 4 -k uvicorn.workers.UvicornWorker
+    gunicorn backend.app:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 120
 
 .env need 
 MONGOURL = mongodb://root:1234@faceshuttermongo:27017/
@@ -21,5 +21,7 @@ ALGORITHM = HS256
 FRONTEND_URL = http://localhost:80/
 OAUTH_CLIENT_ID 
 OAUTH_SECRET
+SNMP_HOST
+SNMP_COMMUNITY
 
 ==============================================
