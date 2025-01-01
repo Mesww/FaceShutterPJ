@@ -45,6 +45,7 @@ class UserMiddleware(BaseHTTPMiddleware):
             "/api/checkinout/checkin": ["ADMIN", "USER"],
             "/api/checkinout/checkout": ["ADMIN", "USER"],
             
+            
         }
 
     async def dispatch(self, request: Request, call_next):

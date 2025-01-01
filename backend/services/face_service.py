@@ -120,6 +120,7 @@ class Face_service:
                     }
                 }
             )
+            
             is_WIFI = True if await snmp_service.finder_snmp(HOST, COMMUNITY, SNMP_OIDS['id'], employee_id) else False
             
             if not is_WIFI:
@@ -237,6 +238,7 @@ class Face_service:
                     }
                 }
             )
+            
             if not employee_id:
                 await websocket.send_json(
                     {
@@ -247,6 +249,7 @@ class Face_service:
                     }
                 )
                 return
+            
             checklogined = await CheckInOut_Service.is_already_checked_in_out(
                 employee_id
             )
@@ -266,6 +269,7 @@ class Face_service:
                 )
                 await websocket.close()
                 return
+            
             timezone = pytz.timezone(DEFAULT_TIMEZONE)
             # print("Check in time: ",datetime.now(tz=timezone).strftime("%H:%M:%S"))
             check_in_time = datetime.now(tz=timezone).strftime("%H:%M:%S")
@@ -384,6 +388,7 @@ class Face_service:
                             }
                         }
                     )
+            
             token = user_service.generate_token(user.employee_id)
             await websocket.send_json(
                 {

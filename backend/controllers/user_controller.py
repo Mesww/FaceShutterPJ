@@ -26,9 +26,11 @@ class UserController:
         try:
             data = request.model_dump()
             adminAuthenserive = AdminAuthenticationService()
+            
             # encrypted employee_id and password
             encrypted_employee_id = bytes.fromhex(data['employee_id'])
             encrypted_password = bytes.fromhex(data['password'])
+            
             employee_id = private_key.decrypt(
             encrypted_employee_id,
             padding.OAEP(
@@ -86,6 +88,7 @@ class UserController:
                 employee_id,
                 request
             )
+            
             if res.status >= 400:
                 raise HTTPException(status_code=400, detail=res.message)
             return res
@@ -111,6 +114,7 @@ class UserController:
             return res
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+    
     @staticmethod
     @router.get("/get_is_user_by_employee_id/{employee_id}")
     async def get_is_user_by_employee_id(

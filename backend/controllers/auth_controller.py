@@ -21,6 +21,7 @@ class AdminAuthController:
     async def login(self, request: loginRequest):
      try:
         data = request.model_dump()
+        
         encrypted_employee_id = bytes.fromhex(data['employeeid'])
         encrypted_password = bytes.fromhex(data['password'])
 

@@ -263,6 +263,7 @@ async def websocket_endpoint(websocket: WebSocket):
     password = ""
 
     try:
+        
         encode, images = await face_service.face_registation(websocket=websocket)
         
         # ตรวจสอบว่ามีการถ่ายภาพสำเร็จหรือไม่
