@@ -53,11 +53,11 @@ const Header: React.FC<AdminHeaderProps> = ({
               className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <Bell size={20} className="text-gray-600" />
-              {notificationCount > 0 && (
+              {/* {notificationCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
                   {notificationCount}
                 </span>
-              )}
+              )} */}
             </button>
 
             {showNotifications && (
