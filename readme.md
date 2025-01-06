@@ -12,7 +12,7 @@ pip install -r requirements.txt
 # Development
     uvicorn backend.app:app --reload 
 # Production
-    gunicorn backend.app:app -w 4 -k uvicorn.workers.UvicornWorker
+    gunicorn backend.app:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 120
 
 # Docker 
     sudo docker compose up -d --build

@@ -108,7 +108,7 @@ const AdminManage: React.FC = () => {
           title: 'Unauthorized',
           text: 'You are not authorized to access this page',
           icon: 'error',
-          timer: 1500
+          // timer: 1500
         });
         navigate('/admin/login');
         return;
@@ -162,7 +162,7 @@ const AdminManage: React.FC = () => {
           title: 'Unauthorized',
           text: 'You are not authorized to access this page',
           icon: 'error',
-          timer: 1500
+          // timer: 1500
         });
         navigate('/admin/login');
         return;
@@ -193,7 +193,7 @@ const AdminManage: React.FC = () => {
             title: 'Success Delete',
             text: 'Delete user successfully',
             icon: 'success',
-            timer: 1500
+            // timer: 1500
           });
           
           // อัพเดทรายการผู้ใช้ในหน้าเว็บ
@@ -229,7 +229,7 @@ const AdminManage: React.FC = () => {
           title: 'Unauthorized',
           text: 'You are not authorized to access this page',
           icon: 'error',
-          timer: 1500
+          // timer: 1500
         });
         navigate('/admin/login');
         return;
@@ -318,7 +318,7 @@ const AdminManage: React.FC = () => {
           title: 'Unauthorized',
           text: 'You are not authorized to access this page',
           icon: 'error',
-          timer: 1500
+          // timer: 1500
         });
         navigate('/admin/login');
         return;
